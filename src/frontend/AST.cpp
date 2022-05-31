@@ -138,6 +138,7 @@ void AST::print(int depth) {
   bool first = true;
   bool flag = false;
   int size = 0;
+  int count = 0;
   switch (astType) {
   case ASSIGN_STMT:
     for (int i = 0; i < depth; i++)
@@ -150,52 +151,50 @@ void AST::print(int depth) {
   case BINARY_EXP:
     cout << "(";
     nodes[0]->print(depth);
-    for (unsigned i = 1; i < nodes.size(); i++) {
-      switch (ops.empty() ? type : ops[i - 1]) {
-      case DIV:
-        cout << " / ";
-        break;
-      case EQ:
-        cout << " == ";
-        break;
-      case GE:
-        cout << " >= ";
-        break;
-      case GT:
-        cout << " > ";
-        break;
-      case LE:
-        cout << " <= ";
-        break;
-      case LT:
-        cout << " < ";
-        break;
-      case L_AND:
-        cout << " && ";
-        break;
-      case L_OR:
-        cout << " || ";
-        break;
-      case MINUS:
-        cout << " - ";
-        break;
-      case MOD:
-        cout << " % ";
-        break;
-      case MUL:
-        cout << " * ";
-        break;
-      case NE:
-        cout << " != ";
-        break;
-      case PLUS:
-        cout << " + ";
-        break;
-      default:
-        break;
-      }
-      nodes[i]->print(depth);
+    switch (type) {
+    case DIV:
+      cout << " / ";
+      break;
+    case EQ:
+      cout << " == ";
+      break;
+    case GE:
+      cout << " >= ";
+      break;
+    case GT:
+      cout << " > ";
+      break;
+    case LE:
+      cout << " <= ";
+      break;
+    case LT:
+      cout << " < ";
+      break;
+    case L_AND:
+      cout << " && ";
+      break;
+    case L_OR:
+      cout << " || ";
+      break;
+    case MINUS:
+      cout << " - ";
+      break;
+    case MOD:
+      cout << " % ";
+      break;
+    case MUL:
+      cout << " * ";
+      break;
+    case NE:
+      cout << " != ";
+      break;
+    case PLUS:
+      cout << " + ";
+      break;
+    default:
+      break;
     }
+    nodes[1]->print(depth);
     cout << ")";
     break;
   case BLANK_STMT:
@@ -247,10 +246,26 @@ void AST::print(int depth) {
         cout << "{";
         first = true;
         for (int i = 0; i < size; i++) {
+          if (symbol->floatArray[i] == 0) {
+            count++;
+            continue;
+          }
+          if (count > 0) {
+            if (!first)
+              cout << ", ";
+            cout << count << " ** " << 0.0;
+            first = false;
+            count = 0;
+          }
           if (!first)
             cout << ", ";
           cout << symbol->floatArray[i];
           first = false;
+        }
+        if (count > 0) {
+          if (!first)
+            cout << ", ";
+          cout << count << " ** " << 0.0;
         }
         cout << "}";
       } else
@@ -261,10 +276,114 @@ void AST::print(int depth) {
         cout << "{";
         first = true;
         for (int i = 0; i < size; i++) {
+          if (symbol->intArray[i] == 0) {
+            count++;
+            continue;
+          }
+          if (count > 0) {
+            if (!first)
+              cout << ", ";
+            cout << count << " ** " << 0;
+            first = false;
+            count = 0;
+          }
           if (!first)
             cout << ", ";
           cout << symbol->intArray[i];
           first = false;
+        }
+        if (count > 0) {
+          if (!first)
+            cout << ", ";
+          cout << count << " ** " << 0;
+        }
+        cout << "}";
+      } else
+        cout << symbol->intValue;
+      break;
+    default:
+      break;
+    }
+    cout << ";" << endl;
+    break;
+  case GLOBAL_VAR_DEF:
+    for (int i = 0; i < depth; i++)
+      cout << "  ";
+    switch (symbol->dataType) {
+    case FLOAT:
+      cout << "float";
+      break;
+    case INT:
+      cout << "int";
+      break;
+    default:
+      break;
+    }
+    cout << " ";
+    cout << symbol->name;
+    size = 1;
+    for (int dimension : symbol->dimensions) {
+      cout << "[" << dimension << "]";
+      size *= dimension;
+      flag = true;
+    }
+    cout << " = ";
+    switch (symbol->dataType) {
+    case FLOAT:
+      if (flag) {
+        cout << "{";
+        first = true;
+        for (int i = 0; i < size; i++) {
+          if (symbol->floatArray[i] == 0) {
+            count++;
+            continue;
+          }
+          if (count > 0) {
+            if (!first)
+              cout << ", ";
+            cout << count << " ** " << 0.0;
+            first = false;
+            count = 0;
+          }
+          if (!first)
+            cout << ", ";
+          cout << symbol->floatArray[i];
+          first = false;
+        }
+        if (count > 0) {
+          if (!first)
+            cout << ", ";
+          cout << count << " ** " << 0.0;
+        }
+        cout << "}";
+      } else
+        cout << symbol->floatValue;
+      break;
+    case INT:
+      if (flag) {
+        cout << "{";
+        first = true;
+        for (int i = 0; i < size; i++) {
+          if (symbol->intArray[i] == 0) {
+            count++;
+            continue;
+          }
+          if (count > 0) {
+            if (!first)
+              cout << ", ";
+            cout << count << " ** " << 0;
+            first = false;
+            count = 0;
+          }
+          if (!first)
+            cout << ", ";
+          cout << symbol->intArray[i];
+          first = false;
+        }
+        if (count > 0) {
+          if (!first)
+            cout << ", ";
+          cout << count << " ** " << 0;
         }
         cout << "}";
       } else
@@ -305,7 +424,7 @@ void AST::print(int depth) {
     break;
   }
   case FUNC_DEF: {
-    switch (type) {
+    switch (symbol->dataType) {
     case FLOAT:
       cout << "float";
       break;
@@ -318,36 +437,33 @@ void AST::print(int depth) {
     default:
       break;
     }
-    cout << " " << name << "(";
-    for (unsigned i = 0; i < nodes.size() - 1; i++) {
+    cout << " " << symbol->name << "(";
+    for (unsigned i = 0; i < symbol->params.size(); i++) {
       if (!first)
         cout << ", ";
-      nodes[i]->print(depth);
+      switch (symbol->params[i]->dataType) {
+      case FLOAT:
+        cout << "float";
+        break;
+      case INT:
+        cout << "int";
+        break;
+      default:
+        break;
+      }
+      cout << " " << name;
+      for (unsigned j = 0; j < symbol->params[i]->dimensions.size(); j++) {
+        cout << "[";
+        if (symbol->params[i]->dimensions[j] != -1)
+          cout << symbol->params[i]->dimensions[j];
+        cout << "]";
+      }
       first = false;
     }
     cout << ")" << endl;
     nodes.back()->print(depth);
     break;
   }
-  case FUNC_PARAM:
-    switch (type) {
-    case FLOAT:
-      cout << "float";
-      break;
-    case INT:
-      cout << "int";
-      break;
-    default:
-      break;
-    }
-    cout << " " << name;
-    for (AST *node : nodes) {
-      cout << "[";
-      if (node)
-        node->print(depth);
-      cout << "]";
-    }
-    break;
   case IF_STMT:
     for (int i = 0; i < depth; i++)
       cout << "  ";
@@ -418,7 +534,7 @@ void AST::print(int depth) {
     }
     nodes.front()->print(depth);
     break;
-  case VAR_DEF:
+  case LOCAL_VAR_DEF:
     for (int i = 0; i < depth; i++)
       cout << "  ";
     switch (symbol->dataType) {
@@ -435,10 +551,6 @@ void AST::print(int depth) {
     cout << symbol->name;
     for (int dimension : symbol->dimensions)
       cout << "[" << dimension << "]";
-    if (!nodes.empty()) {
-      cout << " = ";
-      nodes.front()->print(depth);
-    }
     cout << ";" << endl;
     break;
   case WHILE_STMT:

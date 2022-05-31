@@ -54,13 +54,21 @@ void assert(int cond) {
   }
 }
 
+void assert_not(int cond) {
+  if (cond) {
+    error();
+  } else {
+    ok();
+  }
+}
+
 int main() {
-  assert(!float_eq(HEX2, FACT));
-  assert(!float_eq(EVAL1, EVAL2));
+  assert_not(float_eq(HEX2, FACT));
+  assert_not(float_eq(EVAL1, EVAL2));
   assert(float_eq(EVAL2, EVAL3));
   assert(float_eq(circle_area(RADIUS) /* f->i implicit conversion */,
                   circle_area(FIVE)));
-  assert(!float_eq(CONV1, CONV2) /* i->f implicit conversion */);
+  assert_not(float_eq(CONV1, CONV2) /* i->f implicit conversion */);
 
   // float conditional expressions
   if (1.5) ok();

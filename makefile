@@ -2,102 +2,61 @@ CC = g++
 CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
 
-test_grammar_parser: $(TARGET_DIR) $(TARGET_DIR)/test_grammar_parser.o $(TARGET_DIR)/GrammarParser.o \
+compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o $(TARGET_DIR)/Type.o
+	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o $(TARGET_DIR)/Type.o -o compiler
+
+test_syntax_parser: $(TARGET_DIR) $(TARGET_DIR)/test_syntax_parser.o $(TARGET_DIR)/SyntaxParser.o \
 	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/test_grammar_parser.o $(TARGET_DIR)/GrammarParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/AST.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/Token.o -o $(TARGET_DIR)/test_grammar_parser
+	$(CC) $(CFLAGS) $(TARGET_DIR)/test_syntax_parser.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/AST.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/Token.o -o test_syntax_parser
 
 test_lexical_parser: $(TARGET_DIR) $(TARGET_DIR)/test_lexical_parser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/test_lexical_parser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Token.o -o \
-	$(TARGET_DIR)/test_lexical_parser
+	test_lexical_parser
 	
+$(TARGET_DIR)/compiler.o: src/compiler.cpp
+	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
+
 $(TARGET_DIR)/test_lexical_parser.o: test/test_lexical_parser.cpp
 	$(CC) $(CFLAGS) -c test/test_lexical_parser.cpp -o $(TARGET_DIR)/test_lexical_parser.o
 
-$(TARGET_DIR)/test_grammar_parser.o: test/test_grammar_parser.cpp
-	$(CC) $(CFLAGS) -c test/test_grammar_parser.cpp -o $(TARGET_DIR)/test_grammar_parser.o
+$(TARGET_DIR)/test_syntax_parser.o: test/test_syntax_parser.cpp
+	$(CC) $(CFLAGS) -c test/test_syntax_parser.cpp -o $(TARGET_DIR)/test_syntax_parser.o
 
-$(TARGET_DIR)/LexicalParser.o: src/frontend/LexicalParser.cpp
-	$(CC) $(CFLAGS) -c src/frontend/LexicalParser.cpp -o $(TARGET_DIR)/LexicalParser.o
-
-$(TARGET_DIR)/GrammarParser.o: src/frontend/GrammarParser.cpp
-	$(CC) $(CFLAGS) -c src/frontend/GrammarParser.cpp -o $(TARGET_DIR)/GrammarParser.o
-
-$(TARGET_DIR)/AST.o: src/frontend/AST.cpp
+$(TARGET_DIR)/AST.o: src/frontend/AST.cpp src/frontend/AST.h
 	$(CC) $(CFLAGS) -c src/frontend/AST.cpp -o $(TARGET_DIR)/AST.o
 
-$(TARGET_DIR)/AssignStmtAST.o: src/frontend/ast/AssignStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/AssignStmtAST.cpp -o $(TARGET_DIR)/AssignStmtAST.o
+$(TARGET_DIR)/IR.o: src/frontend/IR.cpp src/frontend/IR.h
+	$(CC) $(CFLAGS) -c src/frontend/IR.cpp -o $(TARGET_DIR)/IR.o
 
-$(TARGET_DIR)/BinaryExpAST.o: src/frontend/ast/BinaryExpAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/BinaryExpAST.cpp -o $(TARGET_DIR)/BinaryExpAST.o
+$(TARGET_DIR)/IRItem.o: src/frontend/IRItem.cpp src/frontend/IRItem.h
+	$(CC) $(CFLAGS) -c src/frontend/IRItem.cpp -o $(TARGET_DIR)/IRItem.o
 
-$(TARGET_DIR)/BlankStmtAST.o: src/frontend/ast/BlankStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/BlankStmtAST.cpp -o $(TARGET_DIR)/BlankStmtAST.o
+$(TARGET_DIR)/IRParser.o: src/frontend/IRParser.cpp src/frontend/IRParser.h
+	$(CC) $(CFLAGS) -c src/frontend/IRParser.cpp -o $(TARGET_DIR)/IRParser.o
 
-$(TARGET_DIR)/BlockAST.o: src/frontend/ast/BlockAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/BlockAST.cpp -o $(TARGET_DIR)/BlockAST.o
+$(TARGET_DIR)/LexicalParser.o: src/frontend/LexicalParser.cpp src/frontend/LexicalParser.h
+	$(CC) $(CFLAGS) -c src/frontend/LexicalParser.cpp -o $(TARGET_DIR)/LexicalParser.o
 
-$(TARGET_DIR)/BreakStmtAST.o: src/frontend/ast/BreakStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/BreakStmtAST.cpp -o $(TARGET_DIR)/BreakStmtAST.o
-
-$(TARGET_DIR)/ConstDefAST.o: src/frontend/ast/ConstDefAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/ConstDefAST.cpp -o $(TARGET_DIR)/ConstDefAST.o
-
-$(TARGET_DIR)/ContinueStmtAST.o: src/frontend/ast/ContinueStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/ContinueStmtAST.cpp -o $(TARGET_DIR)/ContinueStmtAST.o
-
-$(TARGET_DIR)/ExpStmtAST.o: src/frontend/ast/ExpStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/ExpStmtAST.cpp -o $(TARGET_DIR)/ExpStmtAST.o
-
-$(TARGET_DIR)/FloatLiteralAST.o: src/frontend/ast/FloatLiteralAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/FloatLiteralAST.cpp -o $(TARGET_DIR)/FloatLiteralAST.o
-
-$(TARGET_DIR)/FuncCallAST.o: src/frontend/ast/FuncCallAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/FuncCallAST.cpp -o $(TARGET_DIR)/FuncCallAST.o
-
-$(TARGET_DIR)/FuncDefAST.o: src/frontend/ast/FuncDefAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/FuncDefAST.cpp -o $(TARGET_DIR)/FuncDefAST.o
-
-$(TARGET_DIR)/FuncFParamAST.o: src/frontend/ast/FuncFParamAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/FuncFParamAST.cpp -o $(TARGET_DIR)/FuncFParamAST.o
-
-$(TARGET_DIR)/IfStmtAST.o: src/frontend/ast/IfStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/IfStmtAST.cpp -o $(TARGET_DIR)/IfStmtAST.o
-
-$(TARGET_DIR)/InitValAST.o: src/frontend/ast/InitValAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/InitValAST.cpp -o $(TARGET_DIR)/InitValAST.o
-
-$(TARGET_DIR)/IntLiteralAST.o: src/frontend/ast/IntLiteralAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/IntLiteralAST.cpp -o $(TARGET_DIR)/IntLiteralAST.o
-
-$(TARGET_DIR)/LValAST.o: src/frontend/ast/LValAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/LValAST.cpp -o $(TARGET_DIR)/LValAST.o
-
-$(TARGET_DIR)/ReturnStmtAST.o: src/frontend/ast/ReturnStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/ReturnStmtAST.cpp -o $(TARGET_DIR)/ReturnStmtAST.o
-
-$(TARGET_DIR)/RootAST.o: src/frontend/ast/RootAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/RootAST.cpp -o $(TARGET_DIR)/RootAST.o
-
-$(TARGET_DIR)/UnaryExpAST.o: src/frontend/ast/UnaryExpAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/UnaryExpAST.cpp -o $(TARGET_DIR)/UnaryExpAST.o
-
-$(TARGET_DIR)/VarDefAST.o: src/frontend/ast/VarDefAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/VarDefAST.cpp -o $(TARGET_DIR)/VarDefAST.o
-
-$(TARGET_DIR)/WhileStmtAST.o: src/frontend/ast/WhileStmtAST.cpp
-	$(CC) $(CFLAGS) -c src/frontend/ast/WhileStmtAST.cpp -o $(TARGET_DIR)/WhileStmtAST.o
-
-$(TARGET_DIR)/Symbol.o: src/frontend/Symbol.cpp
+$(TARGET_DIR)/Symbol.o: src/frontend/Symbol.cpp src/frontend/Symbol.h
 	$(CC) $(CFLAGS) -c src/frontend/Symbol.cpp -o $(TARGET_DIR)/Symbol.o
 
-$(TARGET_DIR)/Token.o: src/frontend/Token.cpp
+$(TARGET_DIR)/SyntaxParser.o: src/frontend/SyntaxParser.cpp src/frontend/SyntaxParser.h
+	$(CC) $(CFLAGS) -c src/frontend/SyntaxParser.cpp -o $(TARGET_DIR)/SyntaxParser.o
+
+$(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 	$(CC) $(CFLAGS) -c src/frontend/Token.cpp -o $(TARGET_DIR)/Token.o
+
+$(TARGET_DIR)/Type.o: src/frontend/Type.cpp src/frontend/Type.h
+	$(CC) $(CFLAGS) -c src/frontend/Type.cpp -o $(TARGET_DIR)/Type.o
 
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)
 
 clean:
 	rm target -rf
-	rm test_lexical_parser test_grammar_parser -rf
+	rm compiler -f

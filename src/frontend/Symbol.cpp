@@ -28,7 +28,8 @@ string Symbol::toString() {
   s += ", ";
   switch (symbolType) {
   case CONST:
-  case VAR:
+  case GLOBAL_VAR:
+  case LOCAL_VAR:
     s += TYPE_STR.at(dataType);
     for (int dimension : dimensions)
       s += "[" + to_string(dimension) + "]";
