@@ -1,6 +1,7 @@
 #ifndef __IR_PARSER__
 #define __IR_PARSER__
 
+#include <utility>
 #include <vector>
 
 #include "AST.h"
@@ -16,26 +17,22 @@ public:
   vector<Symbol *> symbols;
   vector<Symbol *> consts;
   vector<Symbol *> globalVars;
-  unordered_map<Symbol *, vector<IR *>> funcs;
+  vector<pair<Symbol *, vector<IR *>>> funcs;
   int tempId;
 
-  vector<IR *> parseAddExp(AST *);
+  vector<IR *> parseAlgoExp(AST *);
   vector<IR *> parseAssignStmt(AST *);
   vector<IR *> parseAST(AST *);
   vector<IR *> parseBinaryExp(AST *);
   vector<IR *> parseBlock(AST *);
-  vector<IR *> parseEqExp(AST *);
+  vector<IR *> parseCmpExp(AST *);
   vector<IR *> parseExpStmt(AST *);
-  vector<IR *> parseFloatLiteral(AST *);
   vector<IR *> parseFuncCall(AST *);
   vector<IR *> parseFuncDef(AST *);
   vector<IR *> parseIfStmt(AST *);
-  vector<IR *> parseIntLiteral(AST *);
   vector<IR *> parseLAndExp(AST *);
   vector<IR *> parseLOrExp(AST *);
   vector<IR *> parseLVal(AST *);
-  vector<IR *> parseMulExp(AST *);
-  vector<IR *> parseRelExp(AST *);
   vector<IR *> parseReturnStmt(AST *);
   void parseRoot(AST *);
   vector<IR *> parseUnaryExp(AST *);
@@ -43,7 +40,7 @@ public:
 
   void printIRs();
 
-  IRParser(AST *, vector<Symbol *>);
+  IRParser(AST *, vector<Symbol *> &);
   ~IRParser();
 };
 

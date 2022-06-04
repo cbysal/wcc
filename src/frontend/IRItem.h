@@ -1,31 +1,46 @@
 #ifndef __IR_ITEM_H__
 #define __IR_ITEM_H__
 
+#include <string>
+#include <unordered_map>
+
 #include "IR.h"
 #include "Symbol.h"
-#include "Type.h"
+
+using namespace std;
 
 class IR;
 
 class IRItem {
 public:
-  Type type;
+  enum IRItemType {
+    FLOAT,
+    INT,
+    IR_OFFSET,
+    IR_T,
+    PLT,
+    RETURN,
+    SYMBOL,
+    TEMP,
+    VAL
+  };
+
+  IRItemType type;
   IR *ir;
-  int offset;
   Symbol *symbol;
-  int tempId;
   int iVal;
   float fVal;
   string name;
 
-  IRItem(Type);
-  IRItem(Type, IR *);
-  IRItem(Type, Symbol *);
-  IRItem(Type, float);
-  IRItem(Type, int);
-  IRItem(Type, string);
-  IRItem(Type, unsigned long);
+  IRItem(IRItemType);
+  IRItem(IRItemType, IR *);
+  IRItem(IRItemType, Symbol *);
+  IRItem(IRItemType, float);
+  IRItem(IRItemType, int);
+  IRItem(IRItemType, string &);
   ~IRItem();
 };
+
+extern unordered_map<IRItem::IRItemType, string> irItemTypeStr;
 
 #endif

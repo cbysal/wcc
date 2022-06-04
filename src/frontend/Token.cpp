@@ -1,58 +1,73 @@
 #include "Token.h"
 
-Token::Token(int line, int column, Type type) {
-  this->line = line;
-  this->column = column;
-  this->type = type;
+using namespace std;
+
+unordered_map<Token::Type, string> TokenTypeStr = {
+    {Token::ASSIGN, "ASSIGN"},
+    {Token::BREAK, "BREAK"},
+    {Token::COMMA, "COMMA"},
+    {Token::CONST, "CONST"},
+    {Token::CONTINUE, "CONTINUE"},
+    {Token::DIV, "DIV"},
+    {Token::ELSE, "ELSE"},
+    {Token::EQ, "EQ"},
+    {Token::FLOAT, "FLOAT"},
+    {Token::FLOAT_LITERAL, "FLOAT_LITERAL"},
+    {Token::GE, "GE"},
+    {Token::GT, "GT"},
+    {Token::ID, "ID"},
+    {Token::IF, "IF"},
+    {Token::INT, "INT"},
+    {Token::INT_LITERAL, "INT_LITERAL"},
+    {Token::LB, "LB"},
+    {Token::LC, "LC"},
+    {Token::LE, "LE"},
+    {Token::LP, "LP"},
+    {Token::LT, "LT"},
+    {Token::L_AND, "L_AND"},
+    {Token::L_NOT, "L_NOT"},
+    {Token::L_OR, "L_OR"},
+    {Token::MINUS, "MINUS"},
+    {Token::MOD, "MOD"},
+    {Token::MUL, "MUL"},
+    {Token::NE, "NE"},
+    {Token::PLUS, "PLUS"},
+    {Token::RB, "RB"},
+    {Token::RC, "RC"},
+    {Token::RETURN, "RETURN"},
+    {Token::RP, "RP"},
+    {Token::SEMICOLON, "SEMICOLON"},
+    {Token::VOID, "VOID"},
+    {Token::WHILE, "WHILE"}};
+
+Token::Token(Type type) { this->type = type; }
+
+Token::Token(float fVal) {
+  this->type = FLOAT_LITERAL;
+  this->fVal = fVal;
 }
 
-Token::Token(int line, int column, Type type, int value) {
-  this->line = line;
-  this->column = column;
-  this->type = type;
-  this->intValue = value;
+Token::Token(int iVal) {
+  this->type = INT_LITERAL;
+  this->iVal = iVal;
 }
 
-Token::Token(int line, int column, Type type, float value) {
-  this->line = line;
-  this->column = column;
-  this->type = type;
-  this->floatValue = value;
-}
-
-Token::Token(int line, int column, Type type, string value) {
-  this->line = line;
-  this->column = column;
-  this->type = type;
-  this->stringValue = value;
+Token::Token(string &sVal) {
+  this->type = ID;
+  this->sVal = sVal;
 }
 
 Token::~Token() {}
 
-const string Token::toString() {
-  string s;
-  s += '(';
-  s += to_string(line);
-  s += ", ";
-  s += to_string(column);
-  s += ", ";
-  s += TYPE_STR.at(type);
+string Token::toString() {
   switch (type) {
   case FLOAT_LITERAL:
-    s += ", ";
-    s += to_string(floatValue);
-    break;
+    return "(" + TokenTypeStr[type] + ", " + to_string(fVal) + ")";
   case ID:
-    s += ", ";
-    s += stringValue;
-    break;
+    return "(" + TokenTypeStr[type] + ", " + sVal + ")";
   case INT_LITERAL:
-    s += ", ";
-    s += to_string(intValue);
-    break;
+    return "(" + TokenTypeStr[type] + ", " + to_string(iVal) + ")";
   default:
-    break;
+    return "(" + TokenTypeStr[type] + ")";
   }
-  s += ')';
-  return s;
 }

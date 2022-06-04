@@ -4,26 +4,61 @@
 #include <string>
 #include <unordered_map>
 
-#include "Type.h"
-
 using namespace std;
 
 class Token {
 public:
-  unsigned line;
-  unsigned column;
-  Type type;
-  int intValue;
-  float floatValue;
-  string stringValue;
+  enum Type {
+    ASSIGN,
+    BREAK,
+    COMMA,
+    CONST,
+    CONTINUE,
+    DIV,
+    ELSE,
+    EQ,
+    FLOAT,
+    FLOAT_LITERAL,
+    GE,
+    GT,
+    ID,
+    IF,
+    INT,
+    INT_LITERAL,
+    LB,
+    LC,
+    LE,
+    LP,
+    LT,
+    L_AND,
+    L_NOT,
+    L_OR,
+    MINUS,
+    MOD,
+    MUL,
+    NE,
+    PLUS,
+    RB,
+    RC,
+    RETURN,
+    RP,
+    SEMICOLON,
+    VOID,
+    WHILE
+  };
 
-  Token(int line, int column, Type type);
-  Token(int line, int column, Type type, int value);
-  Token(int line, int column, Type type, float value);
-  Token(int line, int column, Type type, string value);
+  Type type;
+  int iVal;
+  float fVal;
+  string sVal;
+
+  Token(Type);
+  Token(float);
+  Token(int);
+  Token(string &);
   ~Token();
 
-  const string toString();
+  string toString();
 };
 
 #endif

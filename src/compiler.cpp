@@ -2,6 +2,7 @@
 #include <cstring>
 #include <filesystem>
 #include <iostream>
+#include <unistd.h>
 
 #include "frontend/IRParser.h"
 #include "frontend/LexicalParser.h"
@@ -13,6 +14,7 @@ char mode = 'A';
 
 bool debug = false;
 bool printSource = false;
+bool printTokens = false;
 bool printFormat = false;
 bool printSymbols = false;
 bool printIR = false;
@@ -20,6 +22,7 @@ bool printIR = false;
 int item = -1;
 
 int main(int argc, char *argv[]) {
+  clock_t beginTime = clock();
   if (argc != 3)
     return -1;
   int len = strlen(argv[1]);
@@ -38,17 +41,25 @@ int main(int argc, char *argv[]) {
       printSource = true;
       break;
     case 't':
+      printTokens = true;
+      break;
+    case 'y':
       printSymbols = true;
+      break;
     default:
       break;
     }
   }
   item = stoi(argv[2]);
   int id = 0;
-  string dir = "test_case/functional";
+  string dir1 = "test_case/functional";
+  string dir2 = "test_case/performance";
   vector<string> files;
   for (const filesystem::directory_entry &entry :
-       filesystem::directory_iterator(dir))
+       filesystem::directory_iterator(dir1))
+    files.push_back(entry.path());
+  for (const filesystem::directory_entry &entry :
+       filesystem::directory_iterator(dir2))
     files.push_back(entry.path());
   sort(files.begin(), files.end());
   for (const string &file : files) {
@@ -68,6 +79,13 @@ int main(int argc, char *argv[]) {
               "----------------"
            << endl;
       cout << lexicalParser->getContent() << endl;
+    }
+    if (printTokens) {
+      cout << "----------------------------------------------------------------"
+              "----------------"
+           << endl;
+      for (Token *token : tokens)
+        cout << token->toString() << endl;
     }
     if (printFormat) {
       cout << "----------------------------------------------------------------"
@@ -93,5 +111,12 @@ int main(int argc, char *argv[]) {
     delete lexicalParser;
     cout << endl;
   }
+  clock_t endTime = clock();
+  cerr << "Time: " << (endTime - beginTime) / 1000000.0 << "s" << endl;
+  pid_t pid = getpid();
+  cerr << "Mem: ";
+  system(string("cat /proc/" + to_string(pid) +
+                "/status | grep VmHWM | awk '{print $2 $3}' > /dev/fd/2")
+             .data());
   return 0;
 }

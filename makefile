@@ -1,31 +1,16 @@
 CC = g++
-CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
+CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror -O2
 TARGET_DIR = target
 
 compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
 	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o $(TARGET_DIR)/Type.o
+	$(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
 	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o $(TARGET_DIR)/Type.o -o compiler
+	$(TARGET_DIR)/Token.o -o compiler
 
-test_syntax_parser: $(TARGET_DIR) $(TARGET_DIR)/test_syntax_parser.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/test_syntax_parser.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/AST.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/Token.o -o test_syntax_parser
-
-test_lexical_parser: $(TARGET_DIR) $(TARGET_DIR)/test_lexical_parser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/test_lexical_parser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Token.o -o \
-	test_lexical_parser
-	
-$(TARGET_DIR)/compiler.o: src/compiler.cpp
+$(TARGET_DIR)/compiler.o: src/compiler.cpp src
 	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
-
-$(TARGET_DIR)/test_lexical_parser.o: test/test_lexical_parser.cpp
-	$(CC) $(CFLAGS) -c test/test_lexical_parser.cpp -o $(TARGET_DIR)/test_lexical_parser.o
-
-$(TARGET_DIR)/test_syntax_parser.o: test/test_syntax_parser.cpp
-	$(CC) $(CFLAGS) -c test/test_syntax_parser.cpp -o $(TARGET_DIR)/test_syntax_parser.o
 
 $(TARGET_DIR)/AST.o: src/frontend/AST.cpp src/frontend/AST.h
 	$(CC) $(CFLAGS) -c src/frontend/AST.cpp -o $(TARGET_DIR)/AST.o
@@ -50,9 +35,6 @@ $(TARGET_DIR)/SyntaxParser.o: src/frontend/SyntaxParser.cpp src/frontend/SyntaxP
 
 $(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 	$(CC) $(CFLAGS) -c src/frontend/Token.cpp -o $(TARGET_DIR)/Token.o
-
-$(TARGET_DIR)/Type.o: src/frontend/Type.cpp src/frontend/Type.h
-	$(CC) $(CFLAGS) -c src/frontend/Type.cpp -o $(TARGET_DIR)/Type.o
 
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)

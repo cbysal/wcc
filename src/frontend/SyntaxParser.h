@@ -2,6 +2,7 @@
 #define __SYNTAX_PARSER_H__
 
 #include <stack>
+#include <utility>
 #include <vector>
 
 #include "AST.h"
@@ -17,21 +18,21 @@ private:
   unsigned head;
   vector<Token *> tokens;
   vector<Symbol *> symbols;
+  vector<unordered_map<string, Symbol *>> symbolStack;
 
-  int depth;
-  vector<Symbol *> symbolStack;
-
-  Symbol *lastSymbol(string);
+  void deleteInitVal(AST *);
+  Symbol *lastSymbol(string &);
   AST *parseAddExp();
   AST *parseAssignStmt();
   AST *parseBlock();
   vector<AST *> parseConstDef();
-  template <typename T> void parseConstInitVal(vector<int>, T *, AST *);
+  template <typename T>
+  void parseConstInitVal(vector<int>, unordered_map<int, T> &, int, AST *);
   AST *parseEqExp();
   AST *parseExpStmt();
   AST *parseFuncCall();
   AST *parseFuncDef();
-  AST *parseFuncFParam();
+  Symbol *parseFuncParam();
   vector<AST *> parseGlobalVarDef();
   AST *parseIfStmt();
   AST *parseInitVal();
@@ -39,7 +40,7 @@ private:
   AST *parseLOrExp();
   AST *parseLVal();
   vector<AST *> parseLocalVarDef();
-  void allocInitVal(vector<int>, AST **, AST *);
+  void allocInitVal(vector<int>, unordered_map<int, AST *> &, int, AST *);
   AST *parseMulExp();
   AST *parseRelExp();
   AST *parseReturnStmt();
@@ -49,7 +50,7 @@ private:
   AST *parseWhileStmt();
 
 public:
-  SyntaxParser(const vector<Token *> tokens);
+  SyntaxParser(vector<Token *> &tokens);
   ~SyntaxParser();
 
   AST *getAST();

@@ -6,8 +6,6 @@
 
 using namespace std;
 
-#define BUF_SIZE 1024
-
 const regex ID_REGEX("[A-Za-z_]\\w*");
 const regex DEC_INT_REGEX("[1-9]\\d*");
 const regex OCT_INT_REGEX("0[0-7]*");
@@ -16,40 +14,40 @@ const regex FLOAT_REGEX(
     "((\\d+\\.(\\d+)?|\\.\\d+)([Ee][+-]?\\d+)?|\\d+([Ee][+-]?\\d+))|0[Xx](["
     "\\dA-Fa-f]+\\.?([\\dA-Fa-f]+)?|\\.[\\dA-Fa-f]+)[Pp][+-]?\\d+");
 
-char buf[BUF_SIZE + 1];
+char buf[BUFSIZ];
 
-LexicalParser::LexicalParser(string fileName) {
+unordered_map<string, Token::Type> KEYWORDS = {
+    {"break", Token::BREAK},       {"const", Token::CONST},
+    {"continue", Token::CONTINUE}, {"else", Token::ELSE},
+    {"float", Token::FLOAT},       {"if", Token::IF},
+    {"int", Token::INT},           {"return", Token::RETURN},
+    {"void", Token::VOID},         {"while", Token::WHILE}};
+
+LexicalParser::LexicalParser(const string &fileName) {
   this->fileName = fileName;
   this->isProcessed = false;
   this->head = 0;
-  this->lineCount = 1;
-  this->columnCount = 1;
 }
 
 LexicalParser::~LexicalParser() {
   for (Token *token : tokens)
     delete token;
-  tokens.clear();
 }
 
 void LexicalParser::readFile() {
   FILE *file = fopen(fileName.data(), "r");
-  if (file == nullptr) {
-    cerr << "Fail to open file: " << fileName << endl;
-    exit(-1);
-  }
   unsigned n;
-  while ((n = fread(buf, 1, BUF_SIZE, file)) != 0)
+  while ((n = fread(buf, 1, BUFSIZ, file)) != 0)
     content.append(buf, n);
   fclose(file);
 }
 
 void LexicalParser::parse() {
+  Token *token;
   if (isProcessed)
     return;
   isProcessed = true;
   readFile();
-  Token *token;
   while ((token = nextToken()) != nullptr)
     tokens.push_back(token);
 }
@@ -64,189 +62,165 @@ Token *LexicalParser::nextToken() {
     return nullptr;
   switch (content[head]) {
   case '!':
-    if (head + 1 == content.length() || content[head + 1] != '=') {
-      token = new Token(lineCount, columnCount, L_NOT);
-      head++;
+    head++;
+    if (content[head] != '=') {
+      token = new Token(Token::L_NOT);
       return token;
     }
-    token = new Token(lineCount, columnCount, NE);
-    head += 2;
+    token = new Token(Token::NE);
+    head++;
     return token;
   case '%':
-    token = new Token(lineCount, columnCount, MOD);
+    token = new Token(Token::MOD);
     head++;
     return token;
   case '&':
-    token = new Token(lineCount, columnCount, L_AND);
+    token = new Token(Token::L_AND);
     head += 2;
     return token;
   case '(':
-    token = new Token(lineCount, columnCount, LP);
+    token = new Token(Token::LP);
     head++;
     return token;
   case ')':
-    token = new Token(lineCount, columnCount, RP);
+    token = new Token(Token::RP);
     head++;
     return token;
   case '*':
-    token = new Token(lineCount, columnCount, MUL);
+    token = new Token(Token::MUL);
     head++;
     return token;
   case '+':
-    token = new Token(lineCount, columnCount, PLUS);
+    token = new Token(Token::PLUS);
     head++;
     return token;
   case ',':
-    token = new Token(lineCount, columnCount, COMMA);
+    token = new Token(Token::COMMA);
     head++;
     return token;
   case '-':
-    token = new Token(lineCount, columnCount, MINUS);
+    token = new Token(Token::MINUS);
     head++;
     return token;
   case '/':
-    if (head + 1 == content.length()) {
-      token = new Token(lineCount, columnCount, DIV);
-      head++;
-      return token;
-    }
     switch (content[head + 1]) {
-    case '*': {
+    case '*':
       head = content.find("*/", head + 2) + 2;
       return nextToken();
-    }
     case '/': {
-      size_t index = content.find('\n', head + 2);
-      if (index == string::npos)
-        return nullptr;
-      head = index + 1;
+      head = content.find('\n', head + 2) + 1;
       return nextToken();
     }
     default:
-      token = new Token(lineCount, columnCount, DIV);
+      token = new Token(Token::DIV);
       head++;
       return token;
     }
   case ';':
-    token = new Token(lineCount, columnCount, SEMICOLON);
+    token = new Token(Token::SEMICOLON);
     head++;
     return token;
   case '<':
-    if (head + 1 == content.length() || content[head + 1] != '=') {
-      token = new Token(lineCount, columnCount, LT);
-      head++;
+    head++;
+    if (content[head] != '=') {
+      token = new Token(Token::LT);
       return token;
     }
-    token = new Token(lineCount, columnCount, LE);
-    head += 2;
+    token = new Token(Token::LE);
+    head++;
     return token;
   case '=':
-    if (head + 1 == content.length() || content[head + 1] != '=') {
-      token = new Token(lineCount, columnCount, ASSIGN);
-      head++;
+    head++;
+    if (content[head] != '=') {
+      token = new Token(Token::ASSIGN);
       return token;
     }
-    token = new Token(lineCount, columnCount, EQ);
-    head += 2;
+    token = new Token(Token::EQ);
+    head++;
     return token;
   case '>':
-    if (head + 1 == content.length() || content[head + 1] != '=') {
-      token = new Token(lineCount, columnCount, GT);
-      head++;
+    head++;
+    if (content[head] != '=') {
+      token = new Token(Token::GT);
       return token;
     }
-    token = new Token(lineCount, columnCount, GE);
-    head += 2;
+    token = new Token(Token::GE);
+    head++;
     return token;
   case '[':
-    token = new Token(lineCount, columnCount, LB);
+    token = new Token(Token::LB);
     head++;
     return token;
   case ']':
-    token = new Token(lineCount, columnCount, RB);
+    token = new Token(Token::RB);
     head++;
     return token;
   case '{':
-    token = new Token(lineCount, columnCount, LC);
+    token = new Token(Token::LC);
     head++;
     return token;
   case '|':
-    token = new Token(lineCount, columnCount, L_OR);
+    token = new Token(Token::L_OR);
     head += 2;
     return token;
   case '}':
-    token = new Token(lineCount, columnCount, RC);
+    token = new Token(Token::RC);
     head++;
     return token;
   default: {
     unsigned tail = head;
-    while (tail < content.length() &&
-           (isalnum(content[tail]) || content[tail] == '_'))
+    while (isalnum(content[tail]) || content[tail] == '_')
       tail++;
     string tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, ID_REGEX)) {
-      if (KEYWORDS.find(tokenStr) != KEYWORDS.end()) {
-        token = new Token(lineCount, columnCount, KEYWORDS.at(tokenStr));
-        head = tail;
-        return token;
-      }
-      token = new Token(lineCount, columnCount, ID, tokenStr);
       head = tail;
-      return token;
+      if (KEYWORDS.find(tokenStr) != KEYWORDS.end())
+        return new Token(KEYWORDS[tokenStr]);
+      return new Token(tokenStr);
     }
     tail = head;
-    while (tail < content.length() &&
-           (isxdigit(content[tail]) || content[tail] == '.' ||
-            content[tail] == 'E' || content[tail] == 'e' ||
-            content[tail] == 'P' || content[tail] == 'p' ||
-            content[tail] == 'X' || content[tail] == 'x' ||
-            content[tail] == '+' || content[tail] == '-'))
+    while (isxdigit(content[tail]) || content[tail] == '.' ||
+           content[tail] == 'E' || content[tail] == 'e' ||
+           content[tail] == 'P' || content[tail] == 'p' ||
+           content[tail] == 'X' || content[tail] == 'x' ||
+           content[tail] == '+' || content[tail] == '-')
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, FLOAT_REGEX)) {
-      token = new Token(lineCount, columnCount, FLOAT_LITERAL, stof(tokenStr));
       head = tail;
-      return token;
+      return new Token(stof(tokenStr));
     }
     tail = head;
-    while (tail < content.length() &&
-           (isxdigit(content[tail]) || content[tail] == 'X' ||
-            content[tail] == 'x'))
+    while (isxdigit(content[tail]) || content[tail] == 'X' ||
+           content[tail] == 'x')
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, HEX_INT_REGEX)) {
-      token = new Token(lineCount, columnCount, INT_LITERAL,
-                        (int)stol(tokenStr, 0, 16));
       head = tail;
-      return token;
+      return new Token((int)stol(tokenStr, 0, 16));
     }
     tail = head;
-    while (tail < content.length() && isdigit(content[tail]))
+    while (isdigit(content[tail]))
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, DEC_INT_REGEX)) {
-      token =
-          new Token(lineCount, columnCount, INT_LITERAL, (int)stol(tokenStr));
       head = tail;
-      return token;
+      return new Token((int)stol(tokenStr));
     }
     tail = head;
-    while (tail < content.length() &&
-           (content[tail] >= '0' && content[tail] <= '7'))
+    while (content[tail] >= '0' && content[tail] <= '7')
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, OCT_INT_REGEX)) {
-      token = new Token(lineCount, columnCount, INT_LITERAL,
-                        (int)stol(tokenStr, 0, 8));
       head = tail;
-      return token;
+      return new Token((int)stol(tokenStr, 0, 8));
     }
   }
   }
   return nullptr;
 }
 
-string LexicalParser::getContent() { return content; }
+string &LexicalParser::getContent() { return content; }
 
 vector<Token *> &LexicalParser::getTokens() {
   if (!isProcessed)

@@ -2,26 +2,36 @@
 #define __SYMBOL_H__
 
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "AST.h"
-#include "Type.h"
+using namespace std;
 
 class Symbol {
 public:
-  int depth;
-  Type symbolType;
+  enum SymbolType { CONST, FUNC, GLOBAL_VAR, LOCAL_VAR, PARAM };
+  enum DataType { FLOAT, INT, VOID };
+
+  SymbolType symbolType;
+  DataType dataType;
   string name;
-  Type dataType;
   vector<Symbol *> params;
   vector<int> dimensions;
-  float floatValue;
-  int intValue;
-  float *floatArray;
-  int *intArray;
+  float fVal;
+  int iVal;
+  unordered_map<int, float> fMap;
+  unordered_map<int, int> iMap;
 
-  Symbol();
+  Symbol(SymbolType, DataType, string &);
+  Symbol(SymbolType, DataType, string &, float);
+  Symbol(SymbolType, DataType, string &, int);
+  Symbol(SymbolType, DataType, string &, vector<Symbol *> &);
+  Symbol(SymbolType, DataType, string &, vector<int> &);
+  Symbol(SymbolType, DataType, string &, vector<int> &,
+         unordered_map<int, float> &);
+  Symbol(SymbolType, DataType, string &, vector<int> &,
+         unordered_map<int, int> &);
   ~Symbol();
 
   string toString();

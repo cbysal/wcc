@@ -2,10 +2,10 @@
 #define __AST_H__
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Symbol.h"
-#include "Type.h"
 
 using namespace std;
 
@@ -13,32 +13,67 @@ class Symbol;
 
 class AST {
 public:
-  Type astType;
-  Type type;
+  enum ASTType {
+    ASSIGN_STMT,
+    BINARY_EXP,
+    BLANK_STMT,
+    BLOCK,
+    BREAK_STMT,
+    CONST_DEF,
+    CONST_INIT_VAL,
+    CONTINUE_STMT,
+    EXP_STMT,
+    FLOAT_LITERAL,
+    FUNC_CALL,
+    FUNC_DEF,
+    FUNC_PARAM,
+    GLOBAL_VAR_DEF,
+    IF_STMT,
+    INIT_VAL,
+    INT_LITERAL,
+    LOCAL_VAR_DEF,
+    L_VAL,
+    MEMSET_ZERO,
+    RETURN_STMT,
+    ROOT,
+    UNARY_EXP,
+    WHILE_STMT
+  };
+
+  enum OPType {
+    ADD,
+    DIV,
+    EQ,
+    GE,
+    GT,
+    LE,
+    LT,
+    L_AND,
+    L_NOT,
+    L_OR,
+    MOD,
+    MUL,
+    NE,
+    NEG,
+    POS,
+    SUB
+  };
+
+  ASTType astType;
+  OPType opType;
   string name;
   Symbol *symbol;
   int iVal;
   float fVal;
   vector<AST *> nodes;
-  vector<Type> ops;
 
-  AST(Type);
-  AST(Type, AST *);
-  AST(Type, AST *, AST *);
-  AST(Type, AST *, AST *, AST *);
-  AST(Type, Symbol *);
-  AST(Type, Symbol *, AST *);
-  AST(Type, Symbol *, vector<AST *>);
-  AST(Type, Type);
-  AST(Type, Type, AST *);
-  AST(Type, Type, AST *, AST *);
-  AST(Type, Type, string);
-  AST(Type, Type, string, vector<AST *>);
-  AST(Type, Type, string, vector<AST *>, AST *);
-  AST(Type, Type, vector<AST *>);
-  AST(Type, string, vector<AST *>);
-  AST(Type, vector<AST *>);
-  AST(Type, vector<AST *>, vector<Type>);
+  AST(ASTType);
+  AST(ASTType, const vector<AST *> &);
+  AST(ASTType, OPType);
+  AST(ASTType, OPType, const vector<AST *> &);
+  AST(ASTType, Symbol *);
+  AST(ASTType, Symbol *, const vector<AST *> &);
+  AST(ASTType, const string &, const vector<AST *> &);
   AST(float);
   AST(int);
   ~AST();

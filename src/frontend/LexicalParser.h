@@ -7,21 +7,11 @@
 
 #include "Token.h"
 
-using namespace std;
-
-const unordered_map<string, Type> KEYWORDS = {
-    {"break", BREAK}, {"const", CONST},   {"continue", CONTINUE},
-    {"else", ELSE},   {"float", FLOAT},   {"if", IF},
-    {"int", INT},     {"return", RETURN}, {"void", VOID},
-    {"while", WHILE}};
-
 class LexicalParser {
 private:
   string fileName;
   bool isProcessed;
   unsigned head;
-  unsigned lineCount;
-  unsigned columnCount;
   string content;
   vector<Token *> tokens;
 
@@ -30,10 +20,10 @@ private:
   void parse();
 
 public:
-  LexicalParser(string);
+  LexicalParser(const string &);
   ~LexicalParser();
 
-  string getContent();
+  string &getContent();
   vector<Token *> &getTokens();
 };
 

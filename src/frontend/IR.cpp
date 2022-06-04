@@ -1,55 +1,88 @@
+#include <string>
+#include <unordered_map>
+
 #include "IR.h"
+
+using namespace std;
 
 int irIdCount = 0;
 
-IR::IR(Type type) {
+unordered_map<IR::IRType, string> irTypeStr = {
+    {IR::ADD, "ADD"},
+    {IR::BEQ, "BEQ"},
+    {IR::BGE, "BGE"},
+    {IR::BGT, "BGT"},
+    {IR::BLE, "BLE"},
+    {IR::BLT, "BLT"},
+    {IR::BNE, "BNE"},
+    {IR::BREAK, "BREAK"},
+    {IR::CALL, "CALL"},
+    {IR::CONTINUE, "CONTINUE"},
+    {IR::DIV, "DIV"},
+    {IR::FUNC_END, "FUNC_END"},
+    {IR::GOTO, "GOTO"},
+    {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
+    {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
+    {IR::LOAD, "LOAD"},
+    {IR::MEMSET_ZERO, "MEMSET_ZERO"},
+    {IR::MOD, "MOD"},
+    {IR::MOV, "MOV"},
+    {IR::MUL, "MUL"},
+    {IR::NEG, "NEG"},
+    {IR::PLT, "PLT"},
+    {IR::POP, "POP"},
+    {IR::POS, "POS"},
+    {IR::PUSH, "PUSH"},
+    {IR::RETURN, "RETURN"},
+    {IR::STORE, "STORE"},
+    {IR::SUB, "SUB"}};
+
+IR::IR(IRType type) {
   this->irId = irIdCount++;
   this->type = type;
 }
 
-IR::IR(Type type, vector<IRItem *> items) {
+IR::IR(IRType type, const vector<IRItem *> &items) {
   this->irId = irIdCount++;
   this->type = type;
   this->items = items;
 }
 
+IR::~IR() {
+  for (IRItem *item : items)
+    delete item;
+}
+
 string IR::toString() {
-  string s;
-  s += '(';
-  s += to_string(irId);
-  s += ", ";
-  s += TYPE_STR.at(type);
+  string s = "(" + to_string(irId) + ", " + irTypeStr[type];
   for (IRItem *item : items) {
-    s += ", (";
-    s += TYPE_STR.at(item->type);
-    if (item->type != RETURN)
+    s += ", (" + irItemTypeStr[item->type];
+    if (item->type != IRItem::RETURN)
       s += ", ";
     switch (item->type) {
-    case FLOAT:
+    case IRItem::FLOAT:
       s += to_string(item->fVal);
       break;
-    case INT:
+    case IRItem::INT:
       s += to_string(item->iVal);
       break;
-    case IR_T:
+    case IRItem::IR_T:
       s += to_string(item->ir->irId);
       break;
-    case PLT:
+    case IRItem::PLT:
       s += item->name;
       break;
-    case SYMBOL:
+    case IRItem::SYMBOL:
       s += item->symbol->name;
       break;
-    case TEMP:
-      s += to_string(item->tempId);
+    case IRItem::TEMP:
+      s += to_string(item->iVal);
       break;
     default:
       break;
     }
     s += ")";
   }
-  s += ')';
+  s += ")";
   return s;
 }
-
-IR::~IR() {}

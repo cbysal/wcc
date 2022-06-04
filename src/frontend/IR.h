@@ -3,20 +3,52 @@
 
 #include "IRItem.h"
 #include "Symbol.h"
-#include "Type.h"
+
+using namespace std;
 
 class IRItem;
 
 class IR {
 public:
+  enum IRType {
+    ADD,
+    BEQ,
+    BGE,
+    BGT,
+    BLE,
+    BLT,
+    BNE,
+    BREAK,
+    CALL,
+    CONTINUE,
+    DIV,
+    FUNC_END,
+    GOTO,
+    LABEL_WHILE_BEGIN,
+    LABEL_WHILE_END,
+    LOAD,
+    MEMSET_ZERO,
+    MOD,
+    MOV,
+    MUL,
+    NEG,
+    PLT,
+    POP,
+    POS,
+    PUSH,
+    RETURN,
+    STORE,
+    SUB
+  };
+
   int irId;
-  Type type;
+  IRType type;
   vector<IRItem *> items;
 
   string toString();
 
-  IR(Type);
-  IR(Type, vector<IRItem *>);
+  IR(IRType);
+  IR(IRType, const vector<IRItem *> &);
   ~IR();
 };
 
