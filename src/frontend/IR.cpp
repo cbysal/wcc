@@ -9,6 +9,7 @@ int irIdCount = 0;
 
 unordered_map<IR::IRType, string> irTypeStr = {
     {IR::ADD, "ADD"},
+    {IR::ARG, "ARG"},
     {IR::BEQ, "BEQ"},
     {IR::BGE, "BGE"},
     {IR::BGT, "BGT"},

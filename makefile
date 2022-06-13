@@ -1,16 +1,25 @@
 CC = g++
-CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror -O2
+CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
 
-compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o -o compiler
+compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASMItem.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IRParser.o \
+	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
+	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASMItem.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IRParser.o \
+	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/compiler.o: src/compiler.cpp src
 	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
+
+$(TARGET_DIR)/ASM.o: src/backend/ASM.cpp src/backend/ASM.h
+	$(CC) $(CFLAGS) -c src/backend/ASM.cpp -o $(TARGET_DIR)/ASM.o
+
+$(TARGET_DIR)/ASMItem.o: src/backend/ASMItem.cpp src/backend/ASMItem.h
+	$(CC) $(CFLAGS) -c src/backend/ASMItem.cpp -o $(TARGET_DIR)/ASMItem.o
+
+$(TARGET_DIR)/ASMParser.o: src/backend/ASMParser.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParser.cpp -o $(TARGET_DIR)/ASMParser.o
 
 $(TARGET_DIR)/AST.o: src/frontend/AST.cpp src/frontend/AST.h
 	$(CC) $(CFLAGS) -c src/frontend/AST.cpp -o $(TARGET_DIR)/AST.o

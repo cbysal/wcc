@@ -335,11 +335,11 @@ AST *SyntaxParser::parseFuncDef() {
   Symbol *symbol = new Symbol(Symbol::FUNC, type, name, params);
   symbols.push_back(symbol);
   symbolStack.back()[name] = symbol;
+  head++;
+  symbolStack.push_back({});
   symbols.insert(symbols.end(), params.begin(), params.end());
   for (Symbol *param : params)
     symbolStack.back()[param->name] = param;
-  head++;
-  symbolStack.push_back({});
   AST *body = parseBlock();
   symbolStack.pop_back();
   return new AST(AST::FUNC_DEF, symbol, {body});

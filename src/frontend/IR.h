@@ -12,6 +12,7 @@ class IR {
 public:
   enum IRType {
     ADD,
+    ARG,
     BEQ,
     BGE,
     BGT,

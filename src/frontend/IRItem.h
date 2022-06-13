@@ -38,6 +38,7 @@ public:
   IRItem(IRItemType, float);
   IRItem(IRItemType, int);
   IRItem(IRItemType, string &);
+  IRItem(IRItemType, string &, int);
   ~IRItem();
 };
 
