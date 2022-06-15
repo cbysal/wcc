@@ -15,13 +15,13 @@ unordered_map<Symbol::SymbolType, string> symbolTypeStr = {
 unordered_map<Symbol::DataType, string> dataTypeStr = {
     {Symbol::FLOAT, "FLOAT"}, {Symbol::INT, "INT"}, {Symbol::VOID, "VOID"}};
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name) {
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name) {
   this->symbolType = symbolType;
   this->dataType = dataType;
   this->name = name;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
                float fVal) {
   this->symbolType = symbolType;
   this->dataType = dataType;
@@ -32,7 +32,7 @@ Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
     this->fVal = fVal;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
                int iVal) {
   this->symbolType = symbolType;
   this->dataType = dataType;
@@ -43,24 +43,25 @@ Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
     this->fVal = iVal;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
-               vector<Symbol *> &params) {
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
+               const vector<Symbol *> &params) {
   this->symbolType = symbolType;
   this->dataType = dataType;
   this->name = name;
   this->params = params;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
-               vector<int> &dimensions) {
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
+               const vector<int> &dimensions) {
   this->symbolType = symbolType;
   this->dataType = dataType;
   this->name = name;
   this->dimensions = dimensions;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
-               vector<int> &dimensions, unordered_map<int, float> &fMap) {
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
+               const vector<int> &dimensions,
+               const unordered_map<int, float> &fMap) {
   this->symbolType = symbolType;
   this->dataType = dataType;
   this->name = name;
@@ -68,8 +69,9 @@ Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
   this->fMap = fMap;
 }
 
-Symbol::Symbol(SymbolType symbolType, DataType dataType, string &name,
-               vector<int> &dimensions, unordered_map<int, int> &iMap) {
+Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
+               const vector<int> &dimensions,
+               const unordered_map<int, int> &iMap) {
   this->symbolType = symbolType;
   this->dataType = dataType;
   this->name = name;

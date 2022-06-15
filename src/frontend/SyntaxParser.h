@@ -21,6 +21,7 @@ private:
   vector<unordered_map<string, Symbol *>> symbolStack;
 
   void deleteInitVal(AST *);
+  void initSymbols();
   Symbol *lastSymbol(string &);
   AST *parseAddExp();
   AST *parseAssignStmt();

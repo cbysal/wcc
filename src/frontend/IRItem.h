@@ -15,21 +15,24 @@ class IRItem {
 public:
   enum IRItemType {
     FLOAT,
+    FTEMP,
     INT,
+    ITEMP,
     IR_OFFSET,
     IR_T,
     PLT,
     RETURN,
     SYMBOL,
-    TEMP,
     VAL
   };
 
   IRItemType type;
   IR *ir;
   Symbol *symbol;
-  int iVal;
-  float fVal;
+  union {
+    int iVal;
+    float fVal;
+  };
   string name;
 
   IRItem(IRItemType);

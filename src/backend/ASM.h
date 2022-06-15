@@ -16,6 +16,7 @@ public:
     BL,
     CMP,
     DW,
+    EOR,
     LABEL,
     LDR,
     MOV,
@@ -26,7 +27,9 @@ public:
     RSB,
     STR,
     SUB,
-    TAG
+    TAG,
+    VLDR,
+    VMOV
   };
   enum CondType {
     AL,

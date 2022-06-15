@@ -61,10 +61,11 @@ public:
 
   ASTType astType;
   OPType opType;
-  string name;
   Symbol *symbol;
-  int iVal;
-  float fVal;
+  union {
+    int iVal;
+    float fVal;
+  };
   vector<AST *> nodes;
 
   AST(ASTType);
@@ -73,7 +74,6 @@ public:
   AST(ASTType, OPType, const vector<AST *> &);
   AST(ASTType, Symbol *);
   AST(ASTType, Symbol *, const vector<AST *> &);
-  AST(ASTType, const string &, const vector<AST *> &);
   AST(float);
   AST(int);
   ~AST();

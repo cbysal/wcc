@@ -12,7 +12,6 @@ SyntaxParser::SyntaxParser(vector<Token *> &tokens) {
   this->isProcessed = false;
   this->head = 0;
   this->tokens = tokens;
-  this->symbolStack.resize(1);
 }
 
 SyntaxParser::~SyntaxParser() {
@@ -30,10 +29,87 @@ void SyntaxParser::deleteInitVal(AST *root) {
   delete root;
 }
 
+void SyntaxParser::initSymbols() {
+  symbolStack.resize(1);
+  Symbol *func;
+  Symbol *param1, *param2;
+  // getint
+  func = new Symbol(Symbol::FUNC, Symbol::INT, "getint", vector<Symbol *>());
+  symbols.push_back(func);
+  symbolStack.back()["getint"] = func;
+  // getch
+  func = new Symbol(Symbol::FUNC, Symbol::INT, "getch", vector<Symbol *>());
+  symbols.push_back(func);
+  symbolStack.back()["getch"] = func;
+  // getarray
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>{-1});
+  func = new Symbol(Symbol::FUNC, Symbol::INT, "getarray",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["getarray"] = func;
+  // getfloat
+  func =
+      new Symbol(Symbol::FUNC, Symbol::FLOAT, "getfloat", vector<Symbol *>());
+  symbols.push_back(func);
+  symbolStack.back()["getfloat"] = func;
+  // getfarray
+  param1 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>{-1});
+  func = new Symbol(Symbol::FUNC, Symbol::INT, "getfarray",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["getfarray"] = func;
+  // putint
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "putint",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["putint"] = func;
+  // putch
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
+  func =
+      new Symbol(Symbol::FUNC, Symbol::VOID, "putch", vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["putch"] = func;
+  // putarray
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "n", vector<int>());
+  param2 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>{-1});
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "putarray",
+                    vector<Symbol *>{param1, param2});
+  symbols.push_back(func);
+  symbolStack.back()["putarray"] = func;
+  // putfloat
+  param1 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>());
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfloat",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["putfloat"] = func;
+  // putfarray
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "n", vector<int>());
+  param2 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>{-1});
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfarray",
+                    vector<Symbol *>{param1, param2});
+  symbols.push_back(func);
+  symbolStack.back()["putfarray"] = func;
+  // _sysy_starttime
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "lineno", vector<int>());
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["starttime"] = func;
+  // _sysy_stoptime
+  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "lineno", vector<int>());
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_stoptime",
+                    vector<Symbol *>{param1});
+  symbols.push_back(func);
+  symbolStack.back()["stoptime"] = func;
+}
+
 Symbol *SyntaxParser::lastSymbol(string &name) {
   for (int i = symbolStack.size() - 1; i >= 0; i--)
     if (symbolStack[i].find(name) != symbolStack[i].end())
       return symbolStack[i][name];
+  cerr << "no such function: " << name << endl;
+  exit(-1);
   return nullptr;
 }
 
@@ -302,9 +378,7 @@ AST *SyntaxParser::parseFuncCall() {
     head++;
   }
   head++;
-  Symbol *symbol = lastSymbol(func);
-  return symbol ? new AST(AST::FUNC_CALL, symbol, {params})
-                : new AST(AST::FUNC_CALL, func, {params});
+  return new AST(AST::FUNC_CALL, lastSymbol(func), {params});
 }
 
 AST *SyntaxParser::parseFuncDef() {
@@ -723,6 +797,7 @@ void SyntaxParser::parseRoot() {
   if (isProcessed)
     return;
   isProcessed = true;
+  initSymbols();
   vector<AST *> items;
   while (head < tokens.size()) {
     switch (tokens[head]->type) {

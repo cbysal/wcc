@@ -2,6 +2,8 @@ CC = g++
 CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
 
+TEST_CASES=$(patsubst %.sy,%,$(wildcard ./test_case/functional/*.sy))
+
 compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASMItem.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IRParser.o \
 	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
@@ -48,6 +50,9 @@ $(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)
 
+testbench: tools/testbench.cpp
+	$(CC) $(CFLAGS) tools/testbench.cpp -o testbench
+
 clean:
 	rm target -rf
-	rm compiler -f
+	rm compiler testbench test test.c test.s -f

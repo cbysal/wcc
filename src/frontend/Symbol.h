@@ -18,20 +18,22 @@ public:
   string name;
   vector<Symbol *> params;
   vector<int> dimensions;
-  float fVal;
-  int iVal;
+  union {
+    float fVal;
+    int iVal;
+  };
   unordered_map<int, float> fMap;
   unordered_map<int, int> iMap;
 
-  Symbol(SymbolType, DataType, string &);
-  Symbol(SymbolType, DataType, string &, float);
-  Symbol(SymbolType, DataType, string &, int);
-  Symbol(SymbolType, DataType, string &, vector<Symbol *> &);
-  Symbol(SymbolType, DataType, string &, vector<int> &);
-  Symbol(SymbolType, DataType, string &, vector<int> &,
-         unordered_map<int, float> &);
-  Symbol(SymbolType, DataType, string &, vector<int> &,
-         unordered_map<int, int> &);
+  Symbol(SymbolType, DataType, const string &);
+  Symbol(SymbolType, DataType, const string &, float);
+  Symbol(SymbolType, DataType, const string &, int);
+  Symbol(SymbolType, DataType, const string &, const vector<Symbol *> &);
+  Symbol(SymbolType, DataType, const string &, const vector<int> &);
+  Symbol(SymbolType, DataType, const string &, const vector<int> &,
+         const unordered_map<int, float> &);
+  Symbol(SymbolType, DataType, const string &, const vector<int> &,
+         const unordered_map<int, int> &);
   ~Symbol();
 
   string toString();

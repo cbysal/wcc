@@ -20,8 +20,10 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::CALL, "CALL"},
     {IR::CONTINUE, "CONTINUE"},
     {IR::DIV, "DIV"},
+    {IR::F2I, "F2I"},
     {IR::FUNC_END, "FUNC_END"},
     {IR::GOTO, "GOTO"},
+    {IR::I2F, "I2F"},
     {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
     {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
     {IR::LOAD, "LOAD"},
@@ -64,7 +66,13 @@ string IR::toString() {
     case IRItem::FLOAT:
       s += to_string(item->fVal);
       break;
+    case IRItem::FTEMP:
+      s += to_string(item->iVal);
+      break;
     case IRItem::INT:
+      s += to_string(item->iVal);
+      break;
+    case IRItem::ITEMP:
       s += to_string(item->iVal);
       break;
     case IRItem::IR_T:
@@ -75,9 +83,6 @@ string IR::toString() {
       break;
     case IRItem::SYMBOL:
       s += item->symbol->name;
-      break;
-    case IRItem::TEMP:
-      s += to_string(item->iVal);
       break;
     default:
       break;

@@ -6,15 +6,11 @@
 using namespace std;
 
 unordered_map<IRItem::IRItemType, string> irItemTypeStr = {
-    {IRItem::FLOAT, "FLOAT"},
-    {IRItem::INT, "INT"},
-    {IRItem::IR_OFFSET, "IR_OFFSET"},
-    {IRItem::IR_T, "IR_T"},
-    {IRItem::PLT, "PLT"},
-    {IRItem::RETURN, "RETURN"},
-    {IRItem::SYMBOL, "SYMBOL"},
-    {IRItem::TEMP, "TEMP"},
-    {IRItem::VAL, "VAL"}};
+    {IRItem::FLOAT, "FLOAT"},   {IRItem::FTEMP, "FTEMP"},
+    {IRItem::INT, "INT"},       {IRItem::IR_OFFSET, "IR_OFFSET"},
+    {IRItem::IR_T, "IR_T"},     {IRItem::ITEMP, "ITEMP"},
+    {IRItem::PLT, "PLT"},       {IRItem::RETURN, "RETURN"},
+    {IRItem::SYMBOL, "SYMBOL"}, {IRItem::VAL, "VAL"}};
 
 IRItem::IRItem(IRItemType type) {
   this->type = type;

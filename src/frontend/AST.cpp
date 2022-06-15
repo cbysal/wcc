@@ -39,13 +39,6 @@ AST::AST(ASTType astType, Symbol *symbol, const vector<AST *> &nodes) {
   this->nodes = nodes;
 }
 
-AST::AST(ASTType astType, const string &name, const vector<AST *> &nodes) {
-  this->symbol = nullptr;
-  this->astType = astType;
-  this->name = name;
-  this->nodes = nodes;
-}
-
 AST::AST(float fVal) {
   this->symbol = nullptr;
   this->astType = FLOAT_LITERAL;
@@ -219,7 +212,7 @@ void AST::print(int depth) {
     cout << fVal;
     break;
   case FUNC_CALL: {
-    cout << (symbol ? symbol->name : name) << "(";
+    cout << symbol->name << "(";
     for (AST *node : nodes) {
       if (!first)
         cout << ", ";
@@ -248,7 +241,7 @@ void AST::print(int depth) {
       if (!first)
         cout << ", ";
       cout << (symbol->params[i]->dataType == Symbol::INT ? "int" : "float")
-           << " " << name;
+           << " " << symbol->params[i]->name;
       for (unsigned j = 0; j < symbol->params[i]->dimensions.size(); j++) {
         cout << "[";
         if (symbol->params[i]->dimensions[j] != -1)
@@ -275,7 +268,7 @@ void AST::print(int depth) {
     cout << iVal;
     break;
   case L_VAL:
-    cout << (symbol ? symbol->name : name);
+    cout << symbol->name;
     for (AST *node : nodes) {
       cout << "[";
       node->print(depth);
