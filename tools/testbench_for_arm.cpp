@@ -9,15 +9,13 @@
 using namespace std;
 using namespace std::filesystem;
 
-bool flag;
-
 void my_system(const char *cmd) {
   FILE *fp;
   char buf[1024];
   fp = popen(cmd, "r");
   ofstream ofs;
   ofs.open("out", ios::out);
-  flag = false;
+  bool flag = false;
   while (fgets(buf, sizeof(buf), fp)) {
     ofs << buf;
     flag = true;
@@ -33,15 +31,12 @@ void test(const string &syFile) {
   cout << "testing: " << file << endl;
   if (system(string("./compiler -S -o test.s " + file + ".sy").data()))
     exit(-1);
-  if (system("arm-linux-gnueabihf-gcc test.s runtime/sylib.h runtime/sylib.c "
-             "-o test"))
+  if (system("gcc test.s runtime/sylib.h runtime/sylib.c -o test"))
     exit(-1);
   if (exists(status(file + ".in")))
-    my_system(
-        string("qemu-arm -L /usr/arm-linux-gnueabihf/ test < " + file + ".in")
-            .data());
+    my_system(string("./test < " + file + ".in").data());
   else
-    my_system(string("qemu-arm -L /usr/arm-linux-gnueabihf/ test").data());
+    my_system(string("./test").data());
   if (system(string("diff out " + file + ".out").data()))
     exit(-1);
   cout << endl;

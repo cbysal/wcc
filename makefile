@@ -1,6 +1,7 @@
 CC = g++
 CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
+ARCH = $(shell uname -m)
 
 TEST_CASES=$(patsubst %.sy,%,$(wildcard ./test_case/functional/*.sy))
 
@@ -50,8 +51,9 @@ $(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)
 
-testbench: tools/testbench.cpp
-	$(CC) $(CFLAGS) tools/testbench.cpp -o testbench
+testbench:
+	$(shell if [ $(ARCH) = "x86_64" ]; then $(CC) $(CFLAGS) tools/testbench_for_x86.cpp -o testbench; fi)
+	$(shell if [ $(ARCH) = "armv7l" ]; then $(CC) $(CFLAGS) tools/testbench_for_arm.cpp -o testbench; fi)
 
 clean:
 	rm target -rf
