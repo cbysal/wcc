@@ -73,8 +73,11 @@ ASMItem::RegType ASMParser::getVReg(int tempId) {
 
 void ASMParser::parse() {
   preProcess();
-  for (const pair<Symbol *, vector<IR *>> &funcIR : funcIRs)
-    funcASMs.emplace_back(funcIR.first, parseFunc(funcIR.first, funcIR.second));
+  for (const pair<Symbol *, vector<IR *>> &funcIR : funcIRs) {
+    vector<ASM *> asms = parseFunc(funcIR.first, funcIR.second);
+    removeUnusedLabels(asms);
+    funcASMs.emplace_back(funcIR.first, asms);
+  }
 }
 
 void ASMParser::parseAdd(vector<ASM *> &asms, IR *ir) {
@@ -333,6 +336,163 @@ void ASMParser::parseB(vector<ASM *> &asms, IR *ir) {
   }
 }
 
+void ASMParser::parseCmp(vector<ASM *> &asms, IR *ir) {
+  ASMItem::RegType reg = getVReg(ir->items[0]->iVal);
+  if ((ir->items[1]->type == IRItem::INT ||
+       ir->items[1]->type == IRItem::ITEMP) &&
+      (ir->items[2]->type == IRItem::INT ||
+       ir->items[2]->type == IRItem::ITEMP)) {
+    asms.push_back(
+        new ASM(ASM::CMP, {ir->items[1]->type == IRItem::INT
+                               ? new ASMItem(ir->items[1]->iVal)
+                               : new ASMItem(temp2Reg[ir->items[1]->iVal]),
+                           ir->items[2]->type == IRItem::INT
+                               ? new ASMItem(ir->items[2]->iVal)
+                               : new ASMItem(temp2Reg[ir->items[2]->iVal])}));
+    switch (ir->type) {
+    case IR::EQ:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::EQ, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::NE, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    case IR::GE:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::GE, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::LT, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    case IR::GT:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::GT, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::LE, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    case IR::LE:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::LE, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::GT, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    case IR::LT:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::LT, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::GE, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    case IR::NE:
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::NE, {new ASMItem(reg), new ASMItem(1)}));
+      asms.push_back(
+          new ASM(ASM::MOV, ASM::EQ, {new ASMItem(reg), new ASMItem(0)}));
+      break;
+    default:
+      break;
+    }
+  } else {
+    switch (ir->items[1]->type) {
+    case IRItem::FLOAT:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A3),
+                             new ASMItem(ir->items[1]->iVal % ZERO16)}));
+      asms.push_back(
+          new ASM(ASM::MOVT, {new ASMItem(ASMItem::A3),
+                              new ASMItem(ir->items[1]->iVal / ZERO16)}));
+      break;
+    case IRItem::FTEMP:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A3),
+                             new ASMItem(temp2Reg[ir->items[1]->iVal])}));
+      break;
+    case IRItem::INT:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                             new ASMItem(ir->items[1]->iVal % ZERO16)}));
+      asms.push_back(
+          new ASM(ASM::MOVT, {new ASMItem(ASMItem::A1),
+                              new ASMItem(ir->items[1]->iVal / ZERO16)}));
+      asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_i2f")}));
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A3), new ASMItem(ASMItem::A1)}));
+      break;
+    case IRItem::ITEMP:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                             new ASMItem(temp2Reg[ir->items[1]->iVal])}));
+      asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_i2f")}));
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A3), new ASMItem(ASMItem::A1)}));
+      break;
+    default:
+      break;
+    }
+    switch (ir->items[2]->type) {
+    case IRItem::FLOAT:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A4),
+                             new ASMItem(ir->items[2]->iVal % ZERO16)}));
+      asms.push_back(
+          new ASM(ASM::MOVT, {new ASMItem(ASMItem::A4),
+                              new ASMItem(ir->items[2]->iVal / ZERO16)}));
+      break;
+    case IRItem::FTEMP:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A4),
+                             new ASMItem(temp2Reg[ir->items[2]->iVal])}));
+      break;
+    case IRItem::INT:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                             new ASMItem(ir->items[2]->iVal % ZERO16)}));
+      asms.push_back(
+          new ASM(ASM::MOVT, {new ASMItem(ASMItem::A1),
+                              new ASMItem(ir->items[2]->iVal / ZERO16)}));
+      asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_i2f")}));
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::A1)}));
+      break;
+    case IRItem::ITEMP:
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                             new ASMItem(temp2Reg[ir->items[2]->iVal])}));
+      asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_i2f")}));
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::A1)}));
+      break;
+    default:
+      break;
+    }
+    asms.push_back(new ASM(
+        ASM::MOV, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A3)}));
+    asms.push_back(new ASM(
+        ASM::MOV, {new ASMItem(ASMItem::A2), new ASMItem(ASMItem::A4)}));
+    switch (ir->type) {
+    case IR::EQ:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmpeq")}));
+      break;
+    case IR::GE:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmpge")}));
+      break;
+    case IR::GT:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmpgt")}));
+      break;
+    case IR::LE:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmple")}));
+      break;
+    case IR::LT:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmplt")}));
+      break;
+    case IR::NE:
+      asms.push_back(new ASM(ASM::BL, {new ASMItem(" __aeabi_fcmpun")}));
+      break;
+    default:
+      break;
+    }
+    asms.push_back(
+        new ASM(ASM::MOV, {new ASMItem(reg), new ASMItem(ASMItem::A1)}));
+  }
+}
+
 void ASMParser::parseDiv(vector<ASM *> &asms, IR *ir) {
   ASMItem::RegType reg = getVReg(ir->items[0]->iVal);
   bool isFloat = false;
@@ -505,13 +665,27 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
     }
     offsets[localVarSymbol] = -localVarOffset - top4Param * 4 - 24;
   }
-  for (int i = 0; i < localVarOffset / MAX_IMM8; i++)
+  if (localVarOffset <= MAX_IMM8 * 3) {
+    for (int i = 0; i < localVarOffset / MAX_IMM8; i++)
+      asms.push_back(
+          new ASM(ASM::SUB, {new ASMItem(ASMItem::SP), new ASMItem(ASMItem::SP),
+                             new ASMItem(MAX_IMM8)}));
     asms.push_back(
         new ASM(ASM::SUB, {new ASMItem(ASMItem::SP), new ASMItem(ASMItem::SP),
-                           new ASMItem(MAX_IMM8)}));
-  asms.push_back(
-      new ASM(ASM::SUB, {new ASMItem(ASMItem::SP), new ASMItem(ASMItem::SP),
-                         new ASMItem(localVarOffset % MAX_IMM8)}));
+                           new ASMItem(localVarOffset % MAX_IMM8)}));
+  } else {
+    ASMItem::RegType reg = popVReg();
+    asms.push_back(
+        new ASM(ASM::MOV, {new ASMItem(reg),
+                           new ASMItem((unsigned)localVarOffset % ZERO16)}));
+    asms.push_back(
+        new ASM(ASM::MOVT, {new ASMItem(reg),
+                            new ASMItem((unsigned)localVarOffset / ZERO16)}));
+    asms.push_back(
+        new ASM(ASM::SUB, {new ASMItem(ASMItem::SP), new ASMItem(ASMItem::SP),
+                           new ASMItem(reg)}));
+    pushReg(reg);
+  }
   for (unsigned i = 0; i < irs.size(); i++) {
     irId = i;
     bool flag = false;
@@ -584,6 +758,14 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       break;
     case IR::DIV:
       parseDiv(asms, irs[i]);
+      break;
+    case IR::EQ:
+    case IR::GE:
+    case IR::GT:
+    case IR::LE:
+    case IR::LT:
+    case IR::NE:
+      parseCmp(asms, irs[i]);
       break;
     case IR::F2I:
       asms.push_back(
@@ -837,17 +1019,34 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
     case Symbol::PARAM:
       if (offsets[ir->items[1]->symbol] >= 0) {
         if (offsets[ir->items[1]->symbol] > MAX_IMM8) {
-          asms.push_back(
-              new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(ASMItem::FP),
-                                 new ASMItem(MAX_IMM8)}));
-          for (int j = 1; j < offsets[ir->items[1]->symbol] / MAX_IMM8; j++)
+          if (offsets[ir->items[1]->symbol] <= MAX_IMM8 * 3) {
+            asms.push_back(
+                new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(ASMItem::FP),
+                                   new ASMItem(MAX_IMM8)}));
+            for (int j = 1; j < offsets[ir->items[1]->symbol] / MAX_IMM8; j++)
+              asms.push_back(
+                  new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(reg),
+                                     new ASMItem(MAX_IMM8)}));
+            asms.push_back(new ASM(
+                ASM::ADD,
+                {new ASMItem(reg), new ASMItem(reg),
+                 new ASMItem(offsets[ir->items[1]->symbol] % MAX_IMM8)}));
+          } else {
+            ASMItem::RegType reg1 = popVReg();
+            asms.push_back(new ASM(
+                ASM::MOV, {new ASMItem(reg1),
+                           new ASMItem((unsigned)offsets[ir->items[1]->symbol] %
+                                       ZERO16)}));
+            asms.push_back(
+                new ASM(ASM::MOVT,
+                        {new ASMItem(reg1),
+                         new ASMItem((unsigned)offsets[ir->items[1]->symbol] /
+                                     ZERO16)}));
             asms.push_back(
                 new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(reg),
-                                   new ASMItem(MAX_IMM8)}));
-          asms.push_back(
-              new ASM(ASM::ADD,
-                      {new ASMItem(reg), new ASMItem(reg),
-                       new ASMItem(offsets[ir->items[1]->symbol] % MAX_IMM8)}));
+                                   new ASMItem(reg1)}));
+            pushReg(reg1);
+          }
         } else {
           asms.push_back(
               new ASM(ASM::ADD,
@@ -856,17 +1055,36 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
         }
       } else {
         if (-offsets[ir->items[1]->symbol] > MAX_IMM8) {
-          asms.push_back(
-              new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(ASMItem::FP),
-                                 new ASMItem(MAX_IMM8)}));
-          for (int j = 1; j < (-offsets[ir->items[1]->symbol]) / MAX_IMM8; j++)
+          if (-offsets[ir->items[1]->symbol] <= MAX_IMM8 * 3) {
+            asms.push_back(
+                new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(ASMItem::FP),
+                                   new ASMItem(MAX_IMM8)}));
+            for (int j = 1; j < (-offsets[ir->items[1]->symbol]) / MAX_IMM8;
+                 j++)
+              asms.push_back(
+                  new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(reg),
+                                     new ASMItem(MAX_IMM8)}));
+            asms.push_back(new ASM(
+                ASM::SUB,
+                {new ASMItem(reg), new ASMItem(reg),
+                 new ASMItem((-offsets[ir->items[1]->symbol]) % MAX_IMM8)}));
+          } else {
+            ASMItem::RegType reg1 = popVReg();
+            asms.push_back(new ASM(
+                ASM::MOV,
+                {new ASMItem(reg1),
+                 new ASMItem((unsigned)(-offsets[ir->items[1]->symbol]) %
+                             ZERO16)}));
+            asms.push_back(new ASM(
+                ASM::MOVT,
+                {new ASMItem(reg1),
+                 new ASMItem((unsigned)(-offsets[ir->items[1]->symbol]) /
+                             ZERO16)}));
             asms.push_back(
                 new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(reg),
-                                   new ASMItem(MAX_IMM8)}));
-          asms.push_back(new ASM(
-              ASM::SUB,
-              {new ASMItem(reg), new ASMItem(reg),
-               new ASMItem((-offsets[ir->items[1]->symbol]) % MAX_IMM8)}));
+                                   new ASMItem(reg1)}));
+            pushReg(reg1);
+          }
         } else {
           asms.push_back(new ASM(
               ASM::SUB,
@@ -1183,6 +1401,23 @@ void ASMParser::preProcess() {
 }
 
 void ASMParser::pushReg(ASMItem::RegType reg) { reg2Temp.erase(reg); }
+
+void ASMParser::removeUnusedLabels(vector<ASM *> &asms) {
+  unordered_set<string> usedLabels;
+  for (ASM *a : asms)
+    if (a->type != ASM::LABEL)
+      for (ASMItem *item : a->items)
+        if (item->type == ASMItem::LABEL)
+          usedLabels.insert(item->sVal);
+  int size = 0;
+  for (ASM *a : asms)
+    if (a->type == ASM::LABEL &&
+        usedLabels.find(a->items[0]->sVal) == usedLabels.end())
+      delete a;
+    else
+      asms[size++] = a;
+  asms.resize(size);
+}
 
 void ASMParser::writeASMFile() {
   parse();

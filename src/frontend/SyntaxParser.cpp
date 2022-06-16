@@ -91,15 +91,13 @@ void SyntaxParser::initSymbols() {
   symbols.push_back(func);
   symbolStack.back()["putfarray"] = func;
   // _sysy_starttime
-  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "lineno", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",
-                    vector<Symbol *>{param1});
+                    vector<Symbol *>());
   symbols.push_back(func);
   symbolStack.back()["starttime"] = func;
   // _sysy_stoptime
-  param1 = new Symbol(Symbol::PARAM, Symbol::INT, "lineno", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_stoptime",
-                    vector<Symbol *>{param1});
+                    vector<Symbol *>());
   symbols.push_back(func);
   symbolStack.back()["stoptime"] = func;
 }

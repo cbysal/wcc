@@ -33,6 +33,7 @@ public:
   void parse();
   void parseAdd(vector<ASM *> &, IR *);
   void parseB(vector<ASM *> &, IR *);
+  void parseCmp(vector<ASM *> &, IR *);
   void parseDiv(vector<ASM *> &, IR *);
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
   void parseMod(vector<ASM *> &, IR *);
@@ -44,6 +45,7 @@ public:
   ASMItem::RegType popVReg();
   void preProcess();
   void pushReg(ASMItem::RegType);
+  void removeUnusedLabels(vector<ASM *> &);
   void writeASMFile();
 
   ASMParser(string &, vector<pair<Symbol *, vector<IR *>>> &,

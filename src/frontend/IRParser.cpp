@@ -186,34 +186,29 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
   IR::IRType type = IR::BGE;
   switch (root->opType) {
   case AST::EQ:
-    type = IR::BEQ;
+    type = IR::EQ;
     break;
   case AST::GE:
-    type = IR::BGE;
+    type = IR::GE;
     break;
   case AST::GT:
-    type = IR::BGT;
+    type = IR::GT;
     break;
   case AST::LE:
-    type = IR::BLE;
+    type = IR::LE;
     break;
   case AST::LT:
-    type = IR::BLT;
+    type = IR::LT;
     break;
   case AST::NE:
-    type = IR::BNE;
+    type = IR::NE;
     break;
   default:
     break;
   }
-  irs3.push_back(new IR(type, {new IRItem(IRItem::IR_OFFSET, 3),
+  irs3.push_back(new IR(type, {new IRItem(IRItem::ITEMP, tempId++),
                                new IRItem(irs1.back()->items[0]->type, t1),
                                new IRItem(irs2.back()->items[0]->type, t2)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
-                                  new IRItem(IRItem::INT, 0)}));
-  irs3.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
-                                  new IRItem(IRItem::INT, 1)}));
   return irs3;
 }
 
@@ -505,19 +500,17 @@ vector<IR *> IRParser::parseWhileStmt(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseAST(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
-  irs3.reserve(irs1.size() + irs2.size() + 5);
   irs3.push_back(new IR(IR::LABEL_WHILE_BEGIN));
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
-  irs3.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 2),
-                                  new IRItem(irs1.back()->items[0]->type,
-                                             irs1.back()->items[0]->iVal),
-                                  new IRItem(IRItem::INT, 0)}));
-  irs3.push_back(
-      new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 3)}));
+  irs3.push_back(new IR(
+      IR::BEQ,
+      {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
+       new IRItem(irs1.back()->items[0]->type, irs1.back()->items[0]->iVal),
+       new IRItem(IRItem::INT, 0)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(
       new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET,
-                                   -(int)irs1.size() - (int)irs2.size() - 2)}));
+                                   -(int)irs1.size() - (int)irs2.size() - 1)}));
   irs3.push_back(new IR(IR::LABEL_WHILE_END));
   return irs3;
 }

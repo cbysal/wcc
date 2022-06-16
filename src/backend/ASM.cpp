@@ -106,7 +106,30 @@ string ASM::toString() {
     s += "]";
     break;
   case MOV:
-    s += "mov " + regTypeStr[items[0]->reg] + ", ";
+    s += "mov";
+    switch (cond) {
+    case EQ:
+      s += "eq";
+      break;
+    case GE:
+      s += "ge";
+      break;
+    case GT:
+      s += "gt";
+      break;
+    case LE:
+      s += "le";
+      break;
+    case LT:
+      s += "lt";
+      break;
+    case NE:
+      s += "ne";
+      break;
+    default:
+      break;
+    }
+    s += " " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
     case ASMItem::IMM:
       s += "#" + to_string(items[1]->iVal);
