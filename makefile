@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
+CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror -O2
 TARGET_DIR = target
 ARCH = $(shell uname -m)
 
@@ -55,6 +55,9 @@ testbench:
 	$(shell if [ $(ARCH) = "x86_64" ]; then $(CC) $(CFLAGS) tools/testbench_for_x86.cpp -o testbench; fi)
 	$(shell if [ $(ARCH) = "armv7l" ]; then $(CC) $(CFLAGS) tools/testbench_for_arm.cpp -o testbench; fi)
 
+splitter: tools/splitter.cpp
+	$(CC) $(CFLAGS) tools/splitter.cpp -o splitter
+
 clean:
 	rm target -rf
-	rm compiler testbench test test.c test.s out -f
+	rm compiler testbench splitter test test.c test.s out -f

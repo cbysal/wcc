@@ -2,6 +2,7 @@
 *.sh
 target
 compiler
+splitter
 testbench
 out
 test
