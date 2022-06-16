@@ -678,9 +678,10 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
     asms.push_back(
         new ASM(ASM::MOV, {new ASMItem(reg),
                            new ASMItem((unsigned)localVarOffset % ZERO16)}));
-    asms.push_back(
-        new ASM(ASM::MOVT, {new ASMItem(reg),
-                            new ASMItem((unsigned)localVarOffset / ZERO16)}));
+    if (localVarOffset > MAX_IMM16)
+      asms.push_back(
+          new ASM(ASM::MOVT, {new ASMItem(reg),
+                              new ASMItem((unsigned)localVarOffset / ZERO16)}));
     asms.push_back(
         new ASM(ASM::SUB, {new ASMItem(ASMItem::SP), new ASMItem(ASMItem::SP),
                            new ASMItem(reg)}));
@@ -799,6 +800,9 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
           new ASM(ASM::MOV, {new ASMItem(temp2Reg[irs[i]->items[1]->iVal]),
                              new ASMItem(ASMItem::A1)}));
       break;
+    case IR::L_NOT:
+      parseLNot(asms, irs[i]);
+      break;
     case IR::LOAD:
       reg = getVReg(irs[i]->items[0]->iVal);
       asms.push_back(
@@ -807,18 +811,35 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       break;
     case IR::MEMSET_ZERO: {
       if (-offsets[irs[i]->items[0]->symbol] > MAX_IMM8) {
-        asms.push_back(new ASM(ASM::SUB, {new ASMItem(ASMItem::A1),
-                                          new ASMItem(ASMItem::FP),
-                                          new ASMItem(MAX_IMM8)}));
-        for (int j = 1; j < (-offsets[irs[i]->items[0]->symbol]) / MAX_IMM8;
-             j++)
+        if ((unsigned)(-offsets[irs[i]->items[0]->symbol]) <= MAX_IMM8 * 3) {
           asms.push_back(new ASM(ASM::SUB, {new ASMItem(ASMItem::A1),
-                                            new ASMItem(ASMItem::A1),
+                                            new ASMItem(ASMItem::FP),
                                             new ASMItem(MAX_IMM8)}));
-        asms.push_back(new ASM(
-            ASM::SUB,
-            {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A1),
-             new ASMItem((-offsets[irs[i]->items[0]->symbol]) % MAX_IMM8)}));
+          for (int j = 1; j < (-offsets[irs[i]->items[0]->symbol]) / MAX_IMM8;
+               j++)
+            asms.push_back(new ASM(ASM::SUB, {new ASMItem(ASMItem::A1),
+                                              new ASMItem(ASMItem::A1),
+                                              new ASMItem(MAX_IMM8)}));
+          asms.push_back(new ASM(
+              ASM::SUB,
+              {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A1),
+               new ASMItem((-offsets[irs[i]->items[0]->symbol]) % MAX_IMM8)}));
+        } else {
+          asms.push_back(new ASM(
+              ASM::MOV,
+              {new ASMItem(ASMItem::A2),
+               new ASMItem((unsigned)(-offsets[irs[i]->items[0]->symbol]) %
+                           ZERO16)}));
+          if (-offsets[irs[i]->items[0]->symbol] > MAX_IMM16)
+            asms.push_back(new ASM(
+                ASM::MOVT,
+                {new ASMItem(ASMItem::A2),
+                 new ASMItem((unsigned)(-offsets[irs[i]->items[0]->symbol]) /
+                             ZERO16)}));
+          asms.push_back(new ASM(ASM::SUB, {new ASMItem(ASMItem::A1),
+                                            new ASMItem(ASMItem::FP),
+                                            new ASMItem(ASMItem::A2)}));
+        }
       } else {
         asms.push_back(new ASM(
             ASM::SUB,
@@ -890,6 +911,28 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
     }
   }
   return asms;
+}
+
+void ASMParser::parseLNot(vector<ASM *> &asms, IR *ir) {
+  ASMItem::RegType reg = getVReg(ir->items[0]->iVal);
+  if (ir->items[1]->type == IRItem::INT ||
+      ir->items[1]->type == IRItem::ITEMP) {
+    asms.push_back(new ASM(
+        ASM::CMP, {new ASMItem(temp2Reg[ir->items[1]->iVal]), new ASMItem(0)}));
+    asms.push_back(
+        new ASM(ASM::MOV, ASM::EQ, {new ASMItem(reg), new ASMItem(1)}));
+    asms.push_back(
+        new ASM(ASM::MOV, ASM::NE, {new ASMItem(reg), new ASMItem(0)}));
+  } else {
+    asms.push_back(
+        new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                           new ASMItem(temp2Reg[ir->items[1]->iVal])}));
+    asms.push_back(
+        new ASM(ASM::MOV, {new ASMItem(ASMItem::A2), new ASMItem(0)}));
+    asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_fcmpeq")}));
+    asms.push_back(
+        new ASM(ASM::MOV, {new ASMItem(reg), new ASMItem(ASMItem::A1)}));
+  }
 }
 
 void ASMParser::parseMod(vector<ASM *> &asms, IR *ir) {
@@ -1037,21 +1080,21 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
                 ASM::MOV, {new ASMItem(reg1),
                            new ASMItem((unsigned)offsets[ir->items[1]->symbol] %
                                        ZERO16)}));
+            if (offsets[ir->items[1]->symbol] > MAX_IMM16)
+              asms.push_back(
+                  new ASM(ASM::MOVT,
+                          {new ASMItem(reg1),
+                           new ASMItem((unsigned)offsets[ir->items[1]->symbol] /
+                                       ZERO16)}));
             asms.push_back(
-                new ASM(ASM::MOVT,
-                        {new ASMItem(reg1),
-                         new ASMItem((unsigned)offsets[ir->items[1]->symbol] /
-                                     ZERO16)}));
-            asms.push_back(
-                new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(reg),
+                new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(ASMItem::FP),
                                    new ASMItem(reg1)}));
             pushReg(reg1);
           }
         } else {
           asms.push_back(
-              new ASM(ASM::ADD,
-                      {new ASMItem(reg), new ASMItem(ASMItem::FP),
-                       new ASMItem(offsets[ir->items[1]->symbol] % MAX_IMM8)}));
+              new ASM(ASM::ADD, {new ASMItem(reg), new ASMItem(ASMItem::FP),
+                                 new ASMItem(offsets[ir->items[1]->symbol])}));
         }
       } else {
         if (-offsets[ir->items[1]->symbol] > MAX_IMM8) {
@@ -1075,21 +1118,21 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
                 {new ASMItem(reg1),
                  new ASMItem((unsigned)(-offsets[ir->items[1]->symbol]) %
                              ZERO16)}));
-            asms.push_back(new ASM(
-                ASM::MOVT,
-                {new ASMItem(reg1),
-                 new ASMItem((unsigned)(-offsets[ir->items[1]->symbol]) /
-                             ZERO16)}));
+            if (-offsets[ir->items[1]->symbol] > MAX_IMM16)
+              asms.push_back(new ASM(
+                  ASM::MOVT,
+                  {new ASMItem(reg1),
+                   new ASMItem((unsigned)(-offsets[ir->items[1]->symbol]) /
+                               ZERO16)}));
             asms.push_back(
-                new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(reg),
+                new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(ASMItem::FP),
                                    new ASMItem(reg1)}));
             pushReg(reg1);
           }
         } else {
-          asms.push_back(new ASM(
-              ASM::SUB,
-              {new ASMItem(reg), new ASMItem(ASMItem::FP),
-               new ASMItem((-offsets[ir->items[1]->symbol]) % MAX_IMM8)}));
+          asms.push_back(
+              new ASM(ASM::SUB, {new ASMItem(reg), new ASMItem(ASMItem::FP),
+                                 new ASMItem(-offsets[ir->items[1]->symbol])}));
         }
       }
       break;
@@ -1373,7 +1416,8 @@ ASMItem::RegType ASMParser::popSReg() {
 
 ASMItem::RegType ASMParser::popVReg() {
   const vector<ASMItem::RegType> regs = {ASMItem::V1, ASMItem::V2, ASMItem::V3,
-                                         ASMItem::V4, ASMItem::V5, ASMItem::V6};
+                                         ASMItem::V4, ASMItem::V5, ASMItem::V6,
+                                         ASMItem::V7};
   for (ASMItem::RegType reg : regs)
     if (reg2Temp.find(reg) == reg2Temp.end()) {
       reg2Temp[reg] = -1;
@@ -1461,5 +1505,6 @@ void ASMParser::writeASMFile() {
     for (unsigned i = 0; i < funcASM.second.size(); i++)
       fprintf(file, "%s\n", funcASM.second[i]->toString().data());
   }
+  fprintf(file, "\t.section .note.GNU-stack,\"\",%%progbits\n");
   fclose(file);
 }

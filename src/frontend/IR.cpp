@@ -27,6 +27,7 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::GOTO, "GOTO"},
     {IR::GT, "GT"},
     {IR::I2F, "I2F"},
+    {IR::L_NOT, "L_NOT"},
     {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
     {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
     {IR::LE, "LE"},

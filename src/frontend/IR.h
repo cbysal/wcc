@@ -30,6 +30,7 @@ public:
     GOTO,
     GT,
     I2F,
+    L_NOT,
     LABEL_WHILE_BEGIN,
     LABEL_WHILE_END,
     LE,

@@ -473,16 +473,9 @@ vector<IR *> IRParser::parseUnaryExp(AST *root, Symbol *func) {
   vector<IR *> irs = parseAST(root->nodes[0], func);
   switch (root->opType) {
   case AST::L_NOT:
-    irs.reserve(irs.size() + 4);
-    irs.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 3),
-                                   new IRItem(irs.back()->items[0]->type,
-                                              irs.back()->items[0]->iVal),
-                                   new IRItem(IRItem::INT, 0)}));
-    irs.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
-                                   new IRItem(IRItem::INT, 1)}));
-    irs.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
-    irs.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
-                                   new IRItem(IRItem::INT, 0)}));
+    irs.push_back(new IR(IR::L_NOT, {new IRItem(IRItem::ITEMP, tempId++),
+                                     new IRItem(irs.back()->items[0]->type,
+                                                irs.back()->items[0]->iVal)}));
     break;
   case AST::NEG:
     irs.push_back(new IR(

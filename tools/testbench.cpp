@@ -4,8 +4,10 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 using namespace std;
+using namespace std::filesystem;
 
 bool flag;
 
@@ -34,7 +36,7 @@ void test(const string &syFile) {
   if (system("arm-linux-gnueabihf-gcc test.s runtime/sylib.h runtime/sylib.c "
              "-o test"))
     exit(-1);
-  if (filesystem::exists(filesystem::status(file + ".in")))
+  if (exists(status(file + ".in")))
     my_system(
         string("qemu-arm -L /usr/arm-linux-gnueabihf/ test < " + file + ".in")
             .data());
@@ -62,7 +64,6 @@ int main(int argc, char *argv[]) {
     if (!entry.path().extension().compare(".sy"))
       files.push_back(entry.path());
   sort(files.begin(), files.end());
-  system("make");
   for (string file : files)
     test(file);
   return 0;

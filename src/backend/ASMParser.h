@@ -36,6 +36,7 @@ public:
   void parseCmp(vector<ASM *> &, IR *);
   void parseDiv(vector<ASM *> &, IR *);
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
+  void parseLNot(vector<ASM *> &, IR *);
   void parseMod(vector<ASM *> &, IR *);
   void parseMov(vector<ASM *> &, IR *, IR *);
   void parseMul(vector<ASM *> &, IR *);
