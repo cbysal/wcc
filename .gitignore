@@ -3,3 +3,6 @@
 target
 compiler
 out
+test
+test.s
+test.c

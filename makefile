@@ -55,4 +55,4 @@ testbench: tools/testbench.cpp
 
 clean:
 	rm target -rf
-	rm compiler testbench test test.c test.s -f
+	rm compiler testbench test test.c test.s out -f

@@ -108,7 +108,20 @@ Token *LexicalParser::nextToken() {
       head = content.find("*/", head + 2) + 2;
       return nextToken();
     case '/': {
-      head = content.find('\n', head + 2) + 1;
+      head = content.find('\n', head + 2);
+      if (head == string::npos) {
+        head = content.length();
+        return nextToken();
+      }
+      head++;
+      while (content[head - 2] == '\\') {
+        head = content.find('\n', head);
+        if (head == string::npos) {
+          head = content.length();
+          return nextToken();
+        }
+        head++;
+      }
       return nextToken();
     }
     default:

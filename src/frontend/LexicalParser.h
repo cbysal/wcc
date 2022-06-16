@@ -11,7 +11,7 @@ class LexicalParser {
 private:
   string fileName;
   bool isProcessed;
-  unsigned head;
+  unsigned long head;
   string content;
   vector<Token *> tokens;
 
