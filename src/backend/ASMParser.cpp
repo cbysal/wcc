@@ -1468,6 +1468,7 @@ void ASMParser::writeASMFile() {
   FILE *file = fopen(asmFile.data(), "w");
   fprintf(file, "\t.arch armv7-a\n");
   fprintf(file, "\t.fpu vfpv4\n");
+  fprintf(file, "\t.arm\n");
   fprintf(file, "\t.data\n");
   for (Symbol *symbol : consts) {
     int size = 4;

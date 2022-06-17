@@ -51,7 +51,7 @@ $(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)
 
-testbench:
+testbench: tools/testbench_for_x86.cpp tools/testbench_for_arm.cpp
 	$(shell if [ $(ARCH) = "x86_64" ]; then $(CC) $(CFLAGS) tools/testbench_for_x86.cpp -o testbench; fi)
 	$(shell if [ $(ARCH) = "armv7l" ]; then $(CC) $(CFLAGS) tools/testbench_for_arm.cpp -o testbench; fi)
 

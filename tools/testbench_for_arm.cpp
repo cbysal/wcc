@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     test(argv[1]);
     return 0;
   }
+  system("make");
   string dir1 = "test_case/functional";
   string dir2 = "test_case/performance";
   vector<string> files;

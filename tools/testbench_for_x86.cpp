@@ -31,8 +31,8 @@ void test(const string &syFile) {
   cout << "testing: " << file << endl;
   if (system(string("./compiler -S -o test.s " + file + ".sy").data()))
     exit(-1);
-  if (system("arm-linux-gnueabihf-gcc test.s runtime/sylib.h runtime/sylib.c "
-             "-o test"))
+  if (system("arm-linux-gnueabihf-gcc -march=armv7 test.s runtime/sylib.a -o "
+             "test"))
     exit(-1);
   if (exists(status(file + ".in")))
     my_system(
@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
     test(argv[1]);
     return 0;
   }
+  system("make");
   string dir1 = "test_case/functional";
   string dir2 = "test_case/performance";
   vector<string> files;
