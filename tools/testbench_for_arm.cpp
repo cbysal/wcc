@@ -31,7 +31,7 @@ void test(const string &syFile) {
   cout << "testing: " << file << endl;
   if (system(string("./compiler -S -o test.s " + file + ".sy").data()))
     exit(-1);
-  if (system("gcc test.s runtime/sylib.a -o test"))
+  if (system("gcc test.s runtime/libsysy.a -o test"))
     exit(-1);
   if (exists(status(file + ".in")))
     my_system(string("./test < " + file + ".in").data());
