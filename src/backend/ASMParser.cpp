@@ -10,7 +10,7 @@ using namespace std;
 #define MAX_IMM16 0xffff
 #define ZERO16 0x10000
 
-ASMParser::ASMParser(string &asmFile,
+ASMParser::ASMParser(const string &asmFile, pair<unsigned, unsigned> lineno,
                      vector<pair<Symbol *, vector<IR *>>> &funcIRs,
                      vector<Symbol *> &consts, vector<Symbol *> &globalVars,
                      unordered_map<Symbol *, vector<Symbol *>> &localVars) {
@@ -20,9 +20,15 @@ ASMParser::ASMParser(string &asmFile,
   this->consts = consts;
   this->globalVars = globalVars;
   this->localVars = localVars;
+  this->startLineno = lineno.first;
+  this->stopLineno = lineno.second;
 }
 
-ASMParser::~ASMParser() {}
+ASMParser::~ASMParser() {
+  for (const pair<Symbol *, vector<ASM *>> &funcASM : funcASMs)
+    for (ASM *a : funcASM.second)
+      delete a;
+}
 
 void ASMParser::allocReg(const vector<IR *> &irs) {
   regEnds.clear();
@@ -718,6 +724,22 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
             ASM::POP, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A2),
                        new ASMItem(ASMItem::A3), new ASMItem(ASMItem::A4)}));
         break;
+      }
+      if (!irs[i]->items[0]->symbol->name.compare("_sysy_starttime")) {
+        asms.push_back(new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                                          new ASMItem(startLineno % ZERO16)}));
+        if (startLineno >= ZERO16)
+          asms.push_back(
+              new ASM(ASM::MOVT, {new ASMItem(ASMItem::A1),
+                                  new ASMItem(startLineno / ZERO16)}));
+      }
+      if (!irs[i]->items[0]->symbol->name.compare("_sysy_stoptime")) {
+        asms.push_back(new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                                          new ASMItem(stopLineno % ZERO16)}));
+        if (startLineno >= ZERO16)
+          asms.push_back(
+              new ASM(ASM::MOVT, {new ASMItem(ASMItem::A1),
+                                  new ASMItem(stopLineno / ZERO16)}));
       }
       asms.push_back(
           new ASM(ASM::BL, {new ASMItem(irs[i]->items[0]->symbol->name)}));

@@ -26,6 +26,8 @@ public:
   unordered_map<unsigned, ASMItem::RegType> temp2Reg;
   unordered_map<Symbol *, int> offsets;
   unordered_map<int, unsigned> regEnds;
+  int startLineno;
+  int stopLineno;
 
   void allocReg(const vector<IR *> &);
   ASMItem::RegType getSReg(int);
@@ -49,9 +51,9 @@ public:
   void removeUnusedLabels(vector<ASM *> &);
   void writeASMFile();
 
-  ASMParser(string &, vector<pair<Symbol *, vector<IR *>>> &,
-            vector<Symbol *> &, vector<Symbol *> &,
-            unordered_map<Symbol *, vector<Symbol *>> &);
+  ASMParser(const string &, pair<unsigned, unsigned>,
+            vector<pair<Symbol *, vector<IR *>>> &, vector<Symbol *> &,
+            vector<Symbol *> &, unordered_map<Symbol *, vector<Symbol *>> &);
   ~ASMParser();
 };
 

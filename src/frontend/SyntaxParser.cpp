@@ -46,6 +46,7 @@ void SyntaxParser::initSymbols() {
   func = new Symbol(Symbol::FUNC, Symbol::INT, "getarray",
                     vector<Symbol *>{param1});
   symbols.push_back(func);
+  symbols.push_back(param1);
   symbolStack.back()["getarray"] = func;
   // getfloat
   func =
@@ -57,18 +58,21 @@ void SyntaxParser::initSymbols() {
   func = new Symbol(Symbol::FUNC, Symbol::INT, "getfarray",
                     vector<Symbol *>{param1});
   symbols.push_back(func);
+  symbols.push_back(param1);
   symbolStack.back()["getfarray"] = func;
   // putint
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putint",
                     vector<Symbol *>{param1});
   symbols.push_back(func);
+  symbols.push_back(param1);
   symbolStack.back()["putint"] = func;
   // putch
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
   func =
       new Symbol(Symbol::FUNC, Symbol::VOID, "putch", vector<Symbol *>{param1});
   symbols.push_back(func);
+  symbols.push_back(param1);
   symbolStack.back()["putch"] = func;
   // putarray
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "n", vector<int>());
@@ -76,12 +80,15 @@ void SyntaxParser::initSymbols() {
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putarray",
                     vector<Symbol *>{param1, param2});
   symbols.push_back(func);
+  symbols.push_back(param1);
+  symbols.push_back(param2);
   symbolStack.back()["putarray"] = func;
   // putfloat
   param1 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfloat",
                     vector<Symbol *>{param1});
   symbols.push_back(func);
+  symbols.push_back(param1);
   symbolStack.back()["putfloat"] = func;
   // putfarray
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "n", vector<int>());
@@ -89,6 +96,8 @@ void SyntaxParser::initSymbols() {
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfarray",
                     vector<Symbol *>{param1, param2});
   symbols.push_back(func);
+  symbols.push_back(param1);
+  symbols.push_back(param2);
   symbolStack.back()["putfarray"] = func;
   // _sysy_starttime
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",

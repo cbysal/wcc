@@ -19,6 +19,7 @@ bool printTokens = false;
 bool printFormat = false;
 bool printSymbols = false;
 bool printIR = false;
+bool compileOrNot = false;
 
 int item = -1;
 
@@ -30,6 +31,7 @@ int main(int argc, char *argv[]) {
     string source = argv[4];
     string target = argv[3];
     LexicalParser *lexicalParser = new LexicalParser(source);
+    pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
     vector<Token *> tokens = lexicalParser->getTokens();
     SyntaxParser *syntaxparser = new SyntaxParser(tokens);
     vector<Symbol *> symbols = syntaxparser->getSymbolTable();
@@ -41,7 +43,7 @@ int main(int argc, char *argv[]) {
         irParser->getLocalVars();
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
     ASMParser *asmParser =
-        new ASMParser(target, funcs, consts, globalVars, localVars);
+        new ASMParser(target, lineno, funcs, consts, globalVars, localVars);
     asmParser->writeASMFile();
     delete asmParser;
     delete irParser;
@@ -51,6 +53,9 @@ int main(int argc, char *argv[]) {
     int len = strlen(argv[1]);
     for (int i = 0; i < len; i++) {
       switch (argv[1][i]) {
+      case 'c':
+        compileOrNot = true;
+        break;
       case 'd':
         debug = true;
         break;
@@ -92,11 +97,20 @@ int main(int argc, char *argv[]) {
         continue;
       cout << file << endl;
       LexicalParser *lexicalParser = new LexicalParser(file);
+      pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
       vector<Token *> tokens = lexicalParser->getTokens();
       SyntaxParser *syntaxparser = new SyntaxParser(tokens);
       vector<Symbol *> symbols = syntaxparser->getSymbolTable();
       AST *root = syntaxparser->getAST();
       IRParser *irParser = new IRParser(root, symbols);
+      vector<Symbol *> consts = irParser->getConsts();
+      vector<Symbol *> globalVars = irParser->getGlobalVars();
+      unordered_map<Symbol *, vector<Symbol *>> localVars =
+          irParser->getLocalVars();
+      vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+      ASMParser *asmParser =
+          new ASMParser("test.s", lineno, funcs, consts, globalVars, localVars);
+      asmParser->writeASMFile();
       if (printSource) {
         cout << "--------------------------------------------------------------"
                 "--"
@@ -134,6 +148,7 @@ int main(int argc, char *argv[]) {
              << endl;
         irParser->printIRs();
       }
+      delete asmParser;
       delete irParser;
       delete syntaxparser;
       delete lexicalParser;

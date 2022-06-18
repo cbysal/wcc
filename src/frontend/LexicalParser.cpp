@@ -27,6 +27,7 @@ LexicalParser::LexicalParser(const string &fileName) {
   this->fileName = fileName;
   this->isProcessed = false;
   this->head = 0;
+  this->lineno = 1;
 }
 
 LexicalParser::~LexicalParser() {
@@ -56,8 +57,11 @@ Token *LexicalParser::nextToken() {
   Token *token;
   if (head == content.length())
     return nullptr;
-  while (head < content.length() && isspace(content[head]))
+  while (head < content.length() && isspace(content[head])) {
+    if (content[head] == '\n')
+      lineno++;
     head++;
+  }
   if (head == content.length())
     return nullptr;
   switch (content[head]) {
@@ -109,6 +113,7 @@ Token *LexicalParser::nextToken() {
       return nextToken();
     case '/': {
       head = content.find('\n', head + 2);
+      lineno++;
       if (head == string::npos) {
         head = content.length();
         return nextToken();
@@ -116,6 +121,7 @@ Token *LexicalParser::nextToken() {
       head++;
       while (content[head - 2] == '\\') {
         head = content.find('\n', head);
+        lineno++;
         if (head == string::npos) {
           head = content.length();
           return nextToken();
@@ -189,6 +195,10 @@ Token *LexicalParser::nextToken() {
       head = tail;
       if (KEYWORDS.find(tokenStr) != KEYWORDS.end())
         return new Token(KEYWORDS[tokenStr]);
+      if (!tokenStr.compare("starttime"))
+        startLineno = lineno;
+      if (!tokenStr.compare("stoptime"))
+        stopLineno = lineno;
       return new Token(tokenStr);
     }
     tail = head;
@@ -233,7 +243,17 @@ Token *LexicalParser::nextToken() {
   return nullptr;
 }
 
-string &LexicalParser::getContent() { return content; }
+string &LexicalParser::getContent() {
+  if (!isProcessed)
+    parse();
+  return content;
+}
+
+pair<unsigned, unsigned> LexicalParser::getLineno() {
+  if (!isProcessed)
+    parse();
+  return {startLineno, stopLineno};
+}
 
 vector<Token *> &LexicalParser::getTokens() {
   if (!isProcessed)

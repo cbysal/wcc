@@ -14,6 +14,9 @@ private:
   unsigned long head;
   string content;
   vector<Token *> tokens;
+  unsigned lineno;
+  unsigned startLineno;
+  unsigned stopLineno;
 
   void readFile();
   Token *nextToken();
@@ -24,6 +27,7 @@ public:
   ~LexicalParser();
 
   string &getContent();
+  pair<unsigned, unsigned> getLineno();
   vector<Token *> &getTokens();
 };
 
