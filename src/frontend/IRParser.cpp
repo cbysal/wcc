@@ -214,7 +214,7 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
 
 vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
   vector<IR *> irs;
-  for (int i = root->nodes.size() - 1; i >= 0; i--) {
+  for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
     if (root->nodes[i]->astType != AST::L_VAL ||

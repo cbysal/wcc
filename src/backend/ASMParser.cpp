@@ -40,13 +40,10 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
 
 ASMItem::RegType ASMParser::getSReg(int tempId) {
   const vector<ASMItem::RegType> regs = {
-      ASMItem::S0,  ASMItem::S1,  ASMItem::S2,  ASMItem::S3,  ASMItem::S4,
-      ASMItem::S5,  ASMItem::S6,  ASMItem::S7,  ASMItem::S8,  ASMItem::S9,
-      ASMItem::S10, ASMItem::S11, ASMItem::S12, ASMItem::S13, ASMItem::S14,
-      ASMItem::S15, ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
-      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23, ASMItem::S24,
-      ASMItem::S25, ASMItem::S26, ASMItem::S27, ASMItem::S28, ASMItem::S29,
-      ASMItem::S30, ASMItem::S31};
+      ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
+      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23,
+      ASMItem::S24, ASMItem::S25, ASMItem::S26, ASMItem::S27,
+      ASMItem::S28, ASMItem::S29, ASMItem::S30, ASMItem::S31};
   if (temp2Reg.find(tempId) != temp2Reg.end())
     return temp2Reg[tempId];
   for (ASMItem::RegType reg : regs)
@@ -701,8 +698,35 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       parseB(asms, irs[i]);
       break;
     case IR::CALL:
-      switch (irs[i]->items[0]->symbol ? irs[i]->items[0]->symbol->params.size()
-                                       : irs[i]->items[0]->iVal) {
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A3), new ASMItem(ASMItem::SP)}));
+      asms.push_back(new ASM(
+          ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP)}));
+      asms.push_back(new ASM(
+          ASM::MOV,
+          {new ASMItem(ASMItem::A1),
+           new ASMItem((irs[i]->items[0]->symbol->params.size() - 1) * 4)}));
+      asms.push_back(
+          new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::A4),
+                             new ASMItem(ASMItem::A1)}));
+      for (unsigned j = 0; j < irs[i]->items[0]->symbol->params.size() / 2;
+           j++) {
+        asms.push_back(new ASM(
+            ASM::LDR, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A3)}));
+        asms.push_back(new ASM(
+            ASM::LDR, {new ASMItem(ASMItem::A2), new ASMItem(ASMItem::A4)}));
+        asms.push_back(new ASM(
+            ASM::STR, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A4)}));
+        asms.push_back(new ASM(
+            ASM::STR, {new ASMItem(ASMItem::A2), new ASMItem(ASMItem::A3)}));
+        asms.push_back(
+            new ASM(ASM::ADD, {new ASMItem(ASMItem::A3),
+                               new ASMItem(ASMItem::A3), new ASMItem(4)}));
+        asms.push_back(
+            new ASM(ASM::SUB, {new ASMItem(ASMItem::A4),
+                               new ASMItem(ASMItem::A4), new ASMItem(4)}));
+      }
+      switch (irs[i]->items[0]->symbol->params.size()) {
       case 0:
         break;
       case 1:
@@ -1388,13 +1412,10 @@ void ASMParser::parseSub(vector<ASM *> &asms, IR *ir) {
 
 ASMItem::RegType ASMParser::popSReg() {
   const vector<ASMItem::RegType> regs = {
-      ASMItem::S15, ASMItem::S14, ASMItem::S13, ASMItem::S12, ASMItem::S11,
-      ASMItem::S10, ASMItem::S9,  ASMItem::S8,  ASMItem::S0,  ASMItem::S1,
-      ASMItem::S2,  ASMItem::S3,  ASMItem::S4,  ASMItem::S5,  ASMItem::S6,
-      ASMItem::S7,  ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
-      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23, ASMItem::S24,
-      ASMItem::S25, ASMItem::S26, ASMItem::S27, ASMItem::S28, ASMItem::S29,
-      ASMItem::S30, ASMItem::S31};
+      ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
+      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23,
+      ASMItem::S24, ASMItem::S25, ASMItem::S26, ASMItem::S27,
+      ASMItem::S28, ASMItem::S29, ASMItem::S30, ASMItem::S31};
   for (ASMItem::RegType reg : regs)
     if (reg2Temp.find(reg) == reg2Temp.end()) {
       reg2Temp[reg] = -1;

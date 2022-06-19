@@ -228,7 +228,7 @@ string ASM::toString() {
     s += "]";
     break;
   case VMOV:
-    s += "vmov.32 " + regTypeStr[items[0]->reg] + ", " +
+    s += "vmov.f32 " + regTypeStr[items[0]->reg] + ", " +
          regTypeStr[items[1]->reg];
     break;
   default:
