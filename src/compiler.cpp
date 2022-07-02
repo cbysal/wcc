@@ -11,22 +11,8 @@
 
 using namespace std;
 
-char mode = 'A';
-
-bool debug = false;
-bool printSource = false;
-bool printTokens = false;
-bool printFormat = false;
-bool printSymbols = false;
-bool printIR = false;
-bool compileOrNot = false;
-
-int item = -1;
-
 int main(int argc, char *argv[]) {
   clock_t beginTime = clock();
-  if (argc < 3)
-    return -1;
   if (argc > 3) {
     string source = argv[4];
     string target = argv[3];
@@ -50,35 +36,7 @@ int main(int argc, char *argv[]) {
     delete syntaxparser;
     delete lexicalParser;
   } else {
-    int len = strlen(argv[1]);
-    for (int i = 0; i < len; i++) {
-      switch (argv[1][i]) {
-      case 'c':
-        compileOrNot = true;
-        break;
-      case 'd':
-        debug = true;
-        break;
-      case 'f':
-        printFormat = true;
-        break;
-      case 'i':
-        printIR = true;
-        break;
-      case 's':
-        printSource = true;
-        break;
-      case 't':
-        printTokens = true;
-        break;
-      case 'y':
-        printSymbols = true;
-        break;
-      default:
-        break;
-      }
-    }
-    item = stoi(argv[2]);
+    int item = stoi(argv[1]);
     int id = 0;
     string dir1 = "test_case/functional";
     string dir2 = "test_case/performance";
@@ -111,43 +69,12 @@ int main(int argc, char *argv[]) {
       ASMParser *asmParser =
           new ASMParser("test.s", lineno, funcs, consts, globalVars, localVars);
       asmParser->writeASMFile();
-      if (printSource) {
-        cout << "--------------------------------------------------------------"
-                "--"
-                "----------------"
-             << endl;
-        cout << lexicalParser->getContent() << endl;
-      }
-      if (printTokens) {
-        cout << "--------------------------------------------------------------"
-                "--"
-                "----------------"
-             << endl;
-        for (Token *token : tokens)
-          cout << token->toString() << endl;
-      }
-      if (printFormat) {
-        cout << "--------------------------------------------------------------"
-                "--"
-                "----------------"
-             << endl;
-        root->print(0);
-      }
-      if (printSymbols) {
-        cout << "--------------------------------------------------------------"
-                "--"
-                "----------------"
-             << endl;
-        for (Symbol *symbol : symbols)
-          cout << symbol->toString() << endl;
-      }
-      if (printIR) {
-        cout << "--------------------------------------------------------------"
-                "--"
-                "----------------"
-             << endl;
-        irParser->printIRs();
-      }
+      for (Symbol *symbol : symbols)
+        cout << symbol->toString() << endl;
+      cout << "----------------------------------------------------------------"
+              "----------------"
+           << endl;
+      irParser->printIRs();
       delete asmParser;
       delete irParser;
       delete syntaxparser;

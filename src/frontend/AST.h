@@ -77,8 +77,6 @@ public:
   AST(float);
   AST(int);
   ~AST();
-
-  void print(int);
 };
 
 #endif

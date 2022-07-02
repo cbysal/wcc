@@ -57,8 +57,6 @@ public:
   Token(int);
   Token(string &);
   ~Token();
-
-  string toString();
 };
 
 #endif
