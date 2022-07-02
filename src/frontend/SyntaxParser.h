@@ -25,7 +25,7 @@ private:
   Symbol *lastSymbol(string &);
   AST *parseAddExp();
   AST *parseAssignStmt();
-  AST *parseBlock();
+  AST *parseBlock(Symbol *);
   vector<AST *> parseConstDef();
   template <typename T>
   void parseConstInitVal(vector<int>, unordered_map<int, T> &, int, AST *);
@@ -35,7 +35,7 @@ private:
   AST *parseFuncDef();
   Symbol *parseFuncParam();
   vector<AST *> parseGlobalVarDef();
-  AST *parseIfStmt();
+  AST *parseIfStmt(Symbol *);
   AST *parseInitVal();
   AST *parseLAndExp();
   AST *parseLOrExp();
@@ -44,11 +44,11 @@ private:
   void allocInitVal(vector<int>, unordered_map<int, AST *> &, int, AST *);
   AST *parseMulExp();
   AST *parseRelExp();
-  AST *parseReturnStmt();
+  AST *parseReturnStmt(Symbol *);
   void parseRoot();
-  AST *parseStmt();
+  AST *parseStmt(Symbol *);
   AST *parseUnaryExp();
-  AST *parseWhileStmt();
+  AST *parseWhileStmt(Symbol *);
 
 public:
   SyntaxParser(vector<Token *> &tokens);

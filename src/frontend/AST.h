@@ -40,12 +40,16 @@ public:
     WHILE_STMT
   };
 
+  enum DataType { FLOAT, INT, VOID };
+
   enum OPType {
     ADD,
     DIV,
     EQ,
+    F2I,
     GE,
     GT,
+    I2F,
     LE,
     LT,
     L_AND,
@@ -60,6 +64,7 @@ public:
   };
 
   ASTType astType;
+  DataType dataType;
   OPType opType;
   Symbol *symbol;
   union {
@@ -68,12 +73,9 @@ public:
   };
   vector<AST *> nodes;
 
-  AST(ASTType);
-  AST(ASTType, const vector<AST *> &);
-  AST(ASTType, OPType);
-  AST(ASTType, OPType, const vector<AST *> &);
-  AST(ASTType, Symbol *);
-  AST(ASTType, Symbol *, const vector<AST *> &);
+  AST(ASTType, DataType, OPType, const vector<AST *> &);
+  AST(ASTType, DataType, Symbol *, const vector<AST *> &);
+  AST(ASTType, DataType, const vector<AST *> &);
   AST(float);
   AST(int);
   ~AST();

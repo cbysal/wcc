@@ -120,16 +120,6 @@ vector<IR *> IRParser::parseAlgoExp(AST *root, Symbol *func) {
 vector<IR *> IRParser::parseAssignStmt(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseLVal(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
-  if (root->nodes[0]->symbol->dataType == Symbol::INT &&
-      irs2.back()->items[0]->type == IRItem::FTEMP)
-    irs2.push_back(new IR(
-        IR::F2I, {new IRItem(IRItem::ITEMP, tempId++),
-                  new IRItem(IRItem::FTEMP, irs2.back()->items[0]->iVal)}));
-  else if (root->nodes[0]->symbol->dataType == Symbol::FLOAT &&
-           irs2.back()->items[0]->type == IRItem::ITEMP)
-    irs2.push_back(new IR(
-        IR::I2F, {new IRItem(IRItem::FTEMP, tempId++),
-                  new IRItem(IRItem::ITEMP, irs2.back()->items[0]->iVal)}));
   vector<IR *> irs3;
   int t1 = irs1.back()->items[0]->iVal;
   int t2 = irs2.back()->items[0]->iVal;
@@ -217,20 +207,6 @@ vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
-    if (root->nodes[i]->astType != AST::L_VAL ||
-        root->nodes[i]->nodes.size() ==
-            root->symbol->params[i]->dimensions.size()) {
-      if (irs.back()->items[0]->type == IRItem::ITEMP &&
-          root->symbol->params[i]->dataType == Symbol::FLOAT)
-        irs.push_back(new IR(
-            IR::I2F, {new IRItem(IRItem::FTEMP, tempId++),
-                      new IRItem(IRItem::ITEMP, irs.back()->items[0]->iVal)}));
-      else if (irs.back()->items[0]->type == IRItem::FTEMP &&
-               root->symbol->params[i]->dataType == Symbol::INT)
-        irs.push_back(new IR(
-            IR::F2I, {new IRItem(IRItem::ITEMP, tempId++),
-                      new IRItem(IRItem::FTEMP, irs.back()->items[0]->iVal)}));
-    }
     irs.push_back(new IR(IR::ARG, {new IRItem(moreIRs.back()->items[0]->type,
                                               irs.back()->items[0]->iVal)}));
   }
@@ -517,6 +493,16 @@ void IRParser::parseRoot(AST *root) {
 vector<IR *> IRParser::parseUnaryExp(AST *root, Symbol *func) {
   vector<IR *> irs = parseAST(root->nodes[0], func);
   switch (root->opType) {
+  case AST::F2I:
+    irs.push_back(new IR(
+        IR::F2I, {new IRItem(IRItem::ITEMP, tempId++),
+                  new IRItem(IRItem::FTEMP, irs.back()->items[0]->iVal)}));
+    break;
+  case AST::I2F:
+    irs.push_back(new IR(
+        IR::I2F, {new IRItem(IRItem::FTEMP, tempId++),
+                  new IRItem(IRItem::ITEMP, irs.back()->items[0]->iVal)}));
+    break;
   case AST::L_NOT:
     irs.push_back(new IR(IR::L_NOT, {new IRItem(IRItem::ITEMP, tempId++),
                                      new IRItem(irs.back()->items[0]->type,
