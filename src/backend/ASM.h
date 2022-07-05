@@ -28,8 +28,20 @@ public:
     STR,
     SUB,
     TAG,
+    VADD,
+    VCMP,
+    VCVTFS,
+    VCVTSF,
+    VDIV,
     VLDR,
-    VMOV
+    VMOV,
+    VMRS,
+    VMUL,
+    VNEG,
+    VPOP,
+    VPUSH,
+    VSTR,
+    VSUB
   };
   enum CondType {
     AL,

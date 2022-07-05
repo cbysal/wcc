@@ -106,14 +106,10 @@ vector<IR *> IRParser::parseAlgoExp(AST *root, Symbol *func) {
   default:
     break;
   }
-  irs3.push_back(new IR(
-      type, {new IRItem(irs1.back()->items[0]->type == IRItem::ITEMP &&
-                                irs2.back()->items[0]->type == IRItem::ITEMP
-                            ? IRItem::ITEMP
-                            : IRItem::FTEMP,
-                        tempId++),
-             new IRItem(irs1.back()->items[0]->type, t1),
-             new IRItem(irs2.back()->items[0]->type, t2)}));
+  irs3.push_back(
+      new IR(type, {new IRItem(irs1.back()->items[0]->type, tempId++),
+                    new IRItem(irs1.back()->items[0]->type, t1),
+                    new IRItem(irs2.back()->items[0]->type, t2)}));
   return irs3;
 }
 
@@ -204,13 +200,27 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
 
 vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
   vector<IR *> irs;
+  IR *callIR = new IR(IR::CALL, {new IRItem(IRItem::SYMBOL, root->symbol)});
+  int iCnt = 0, fCnt = 0;
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
     irs.push_back(new IR(IR::ARG, {new IRItem(moreIRs.back()->items[0]->type,
-                                              irs.back()->items[0]->iVal)}));
+                                              irs.back()->items[0]->iVal),
+                                   new IRItem(IRItem::SYMBOL, root->symbol),
+                                   new IRItem(IRItem::INT, (int)i)}));
+    if (moreIRs.back()->items[0]->type == IRItem::ITEMP && iCnt < 4) {
+      callIR->items.push_back(
+          new IRItem(IRItem::ITEMP, irs.back()->items[0]->iVal));
+      iCnt++;
+    }
+    if (moreIRs.back()->items[0]->type == IRItem::FTEMP && fCnt < 16) {
+      callIR->items.push_back(
+          new IRItem(IRItem::FTEMP, irs.back()->items[0]->iVal));
+      fCnt++;
+    }
   }
-  irs.push_back(new IR(IR::CALL, {new IRItem(IRItem::SYMBOL, root->symbol)}));
+  irs.push_back(callIR);
   if (root->symbol->dataType != Symbol::VOID)
     irs.push_back(new IR(
         IR::MOV,
@@ -241,7 +251,9 @@ vector<IR *> IRParser::parseIfStmt(AST *root, Symbol *func) {
     irs4.push_back(
         new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
                          new IRItem(irs1.back()->items[0]->type, t1),
-                         new IRItem(IRItem::INT, 0)}));
+                         irs1.back()->items[0]->type == IRItem::ITEMP
+                             ? new IRItem(IRItem::INT, 0)
+                             : new IRItem(IRItem::FLOAT, 0)}));
     irs4.insert(irs4.end(), irs2.begin(), irs2.end());
     vector<IR *> irs3 = parseAST(root->nodes[2], func);
     irs4.push_back(new IR(
@@ -251,7 +263,9 @@ vector<IR *> IRParser::parseIfStmt(AST *root, Symbol *func) {
     irs4.push_back(
         new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 1),
                          new IRItem(irs1.back()->items[0]->type, t1),
-                         new IRItem(IRItem::INT, 0)}));
+                         irs1.back()->items[0]->type == IRItem::ITEMP
+                             ? new IRItem(IRItem::INT, 0)
+                             : new IRItem(IRItem::FLOAT, 0)}));
     irs4.insert(irs4.end(), irs2.begin(), irs2.end());
   }
   return irs4;
@@ -267,11 +281,15 @@ vector<IR *> IRParser::parseLAndExp(AST *root, Symbol *func) {
   irs3.push_back(
       new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
                        new IRItem(irs1.back()->items[0]->type, t1),
-                       new IRItem(IRItem::INT, 0)}));
+                       irs1.back()->items[0]->type == IRItem::ITEMP
+                           ? new IRItem(IRItem::INT, 0)
+                           : new IRItem(IRItem::FLOAT, 0)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 3),
                                   new IRItem(irs2.back()->items[0]->type, t2),
-                                  new IRItem(IRItem::INT, 0)}));
+                                  irs1.back()->items[0]->type == IRItem::ITEMP
+                                      ? new IRItem(IRItem::INT, 0)
+                                      : new IRItem(IRItem::FLOAT, 0)}));
   irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
                                   new IRItem(IRItem::INT, 0)}));
   irs3.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
@@ -290,11 +308,15 @@ vector<IR *> IRParser::parseLOrExp(AST *root, Symbol *func) {
   irs3.push_back(
       new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 4),
                        new IRItem(irs1.back()->items[0]->type, t1),
-                       new IRItem(IRItem::INT, 0)}));
+                       irs1.back()->items[0]->type == IRItem::ITEMP
+                           ? new IRItem(IRItem::INT, 0)
+                           : new IRItem(IRItem::FLOAT, 0)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 3),
                                   new IRItem(irs2.back()->items[0]->type, t2),
-                                  new IRItem(IRItem::INT, 0)}));
+                                  irs2.back()->items[0]->type == IRItem::ITEMP
+                                      ? new IRItem(IRItem::INT, 0)
+                                      : new IRItem(IRItem::FLOAT, 0)}));
   irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
                                   new IRItem(IRItem::INT, 0)}));
   irs3.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
@@ -530,7 +552,9 @@ vector<IR *> IRParser::parseWhileStmt(AST *root, Symbol *func) {
       IR::BEQ,
       {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
        new IRItem(irs1.back()->items[0]->type, irs1.back()->items[0]->iVal),
-       new IRItem(IRItem::INT, 0)}));
+       irs1.back()->items[0]->type == IRItem::ITEMP
+           ? new IRItem(IRItem::INT, 0)
+           : new IRItem(IRItem::FLOAT, 0)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(
       new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET,

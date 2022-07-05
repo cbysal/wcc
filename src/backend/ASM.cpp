@@ -5,6 +5,13 @@
 
 using namespace std;
 
+unordered_map<ASM::CondType, string> condTypeStr = {
+    {ASM::AL, "al"}, {ASM::CC, "cc"}, {ASM::LO, "lo"}, {ASM::CS, "cs"},
+    {ASM::HS, "hs"}, {ASM::EQ, "eq"}, {ASM::GE, "ge"}, {ASM::GT, "gt"},
+    {ASM::HI, "hi"}, {ASM::LE, "le"}, {ASM::LS, "ls"}, {ASM::LT, "lt"},
+    {ASM::MI, "mi"}, {ASM::NE, "ne"}, {ASM::PL, "pl"}, {ASM::VC, "vc"},
+    {ASM::VS, "vs"}};
+
 ASM::ASM(ASMOpType type, const vector<ASMItem *> &items) {
   this->type = type;
   this->cond = AL;
@@ -43,28 +50,8 @@ string ASM::toString() {
     break;
   case B:
     s += "b";
-    switch (cond) {
-    case EQ:
-      s += "eq";
-      break;
-    case GE:
-      s += "ge";
-      break;
-    case GT:
-      s += "gt";
-      break;
-    case LE:
-      s += "le";
-      break;
-    case LT:
-      s += "lt";
-      break;
-    case NE:
-      s += "ne";
-      break;
-    default:
-      break;
-    }
+    if (cond != ASM::AL)
+      s += condTypeStr[cond];
     s += " " + items[0]->sVal;
     break;
   case BL:
@@ -107,28 +94,8 @@ string ASM::toString() {
     break;
   case MOV:
     s += "mov";
-    switch (cond) {
-    case EQ:
-      s += "eq";
-      break;
-    case GE:
-      s += "ge";
-      break;
-    case GT:
-      s += "gt";
-      break;
-    case LE:
-      s += "le";
-      break;
-    case LT:
-      s += "lt";
-      break;
-    case NE:
-      s += "ne";
-      break;
-    default:
-      break;
-    }
+    if (cond != ASM::AL)
+      s += condTypeStr[cond];
     s += " " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
     case ASMItem::IMM:
@@ -196,7 +163,7 @@ string ASM::toString() {
   case STR:
     s += "str " + regTypeStr[items[0]->reg] + ", [" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
-      s += ", #" + to_string(items[1]->iVal);
+      s += ", #" + to_string(items[2]->iVal);
     s += "]";
     break;
   case SUB:
@@ -216,8 +183,28 @@ string ASM::toString() {
   case TAG:
     s += ".word " + items[0]->sVal + "-" + items[1]->sVal + "-8";
     break;
+  case VADD:
+    s += "vadd.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
+    break;
+  case VCMP:
+    s += "vcmp.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg];
+    break;
+  case VCVTFS:
+    s += "vcvt.s32.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg];
+    break;
+  case VCVTSF:
+    s += "vcvt.f32.s32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg];
+    break;
+  case VDIV:
+    s += "vdiv.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
+    break;
   case VLDR:
-    s += "vldr.32 " + regTypeStr[items[0]->reg] + ", ";
+    s += "vldr.f32 " + regTypeStr[items[0]->reg] + ", ";
     if (items[1]->type == ASMItem::LABEL) {
       s += items[1]->sVal;
       break;
@@ -230,6 +217,48 @@ string ASM::toString() {
   case VMOV:
     s += "vmov.f32 " + regTypeStr[items[0]->reg] + ", " +
          regTypeStr[items[1]->reg];
+    break;
+  case VMRS:
+    s += "vmrs APSR_nzcv, FPSCR";
+    break;
+  case VMUL:
+    s += "vmul.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
+    break;
+  case VNEG:
+    s += "vneg.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg];
+    break;
+  case VPOP:
+    s += "vpop.f32 {";
+    for (ASMItem *item : items) {
+      if (!first)
+        s += ", ";
+      s += regTypeStr[item->reg];
+      first = false;
+    }
+    s += "}";
+    break;
+  case VPUSH:
+    s += "vpush.f32 {";
+    for (ASMItem *item : items) {
+      if (!first)
+        s += ", ";
+      s += regTypeStr[item->reg];
+      first = false;
+    }
+    s += "}";
+    break;
+  case VSTR:
+    s += "vstr.f32 " + regTypeStr[items[0]->reg] + ", [" +
+         regTypeStr[items[1]->reg];
+    if (items.size() == 3)
+      s += ", #" + to_string(items[2]->iVal);
+    s += "]";
+    break;
+  case VSUB:
+    s += "vsub.f32 " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;
   default:
     return "";

@@ -9,7 +9,7 @@ unordered_map<ASMItem::RegType, string> regTypeStr = {
     {ASMItem::A1, "a1"},   {ASMItem::A2, "a2"},   {ASMItem::A3, "a3"},
     {ASMItem::A4, "a4"},   {ASMItem::V1, "v1"},   {ASMItem::V2, "v2"},
     {ASMItem::V3, "v3"},   {ASMItem::V4, "v4"},   {ASMItem::V5, "v5"},
-    {ASMItem::V6, "v6"},   {ASMItem::V7, "v7"},   {ASMItem::FP, "fp"},
+    {ASMItem::V6, "v6"},   {ASMItem::V7, "v7"},   {ASMItem::V8, "v8"},
     {ASMItem::IP, "ip"},   {ASMItem::SP, "sp"},   {ASMItem::LR, "lr"},
     {ASMItem::PC, "pc"},   {ASMItem::S0, "s0"},   {ASMItem::S1, "s1"},
     {ASMItem::S2, "s2"},   {ASMItem::S3, "s3"},   {ASMItem::S4, "s4"},
