@@ -1080,7 +1080,9 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
         items.push_back(new AST(AST::MEMSET_ZERO, AST::VOID, symbol, {}));
         unordered_map<int, AST *> exps;
         allocInitVal(dimensions, exps, 0, val);
-        for (pair<int, AST *> exp : exps) {
+        vector<pair<int, AST *>> orderedExps(exps.begin(), exps.end());
+        sort(orderedExps.begin(), orderedExps.end());
+        for (pair<int, AST *> exp : orderedExps) {
           vector<AST *> dimensionASTs(dimensions.size());
           int t = exp.first;
           for (int j = dimensions.size() - 1; j >= 0; j--) {

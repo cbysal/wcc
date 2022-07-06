@@ -202,6 +202,7 @@ void ASMParser::parseAdd(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseArg(vector<ASM *> &asms, IR *ir) {
+  bool flag = false;
   int iCnt = 0, fCnt = 0;
   for (int i = 0; i < ir->items[2]->iVal; i++) {
     if (!ir->items[1]->symbol->params[i]->dimensions.empty() ||
@@ -213,17 +214,39 @@ void ASMParser::parseArg(vector<ASM *> &asms, IR *ir) {
   if (ir->items[0]->type == IRItem::ITEMP) {
     if (iCnt < 4)
       return;
-    asms.push_back(new ASM(
-        ASM::STR,
-        {new ASMItem(itemp2Reg[ir->items[0]->iVal]), new ASMItem(ASMItem::SP),
-         new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
+    if (itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end())
+      flag = true;
+    if (flag) {
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::SP),
+                             new ASMItem(spillOffsets[ir->items[0]->iVal])}));
+      asms.push_back(
+          new ASM(ASM::STR,
+                  {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::SP),
+                   new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
+    } else
+      asms.push_back(new ASM(
+          ASM::STR,
+          {new ASMItem(itemp2Reg[ir->items[0]->iVal]), new ASMItem(ASMItem::SP),
+           new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
   } else {
     if (fCnt < 16)
       return;
-    asms.push_back(new ASM(
-        ASM::VSTR,
-        {new ASMItem(ftemp2Reg[ir->items[0]->iVal]), new ASMItem(ASMItem::SP),
-         new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
+    if (ftemp2Reg.find(ir->items[0]->iVal) == ftemp2Reg.end())
+      flag = true;
+    if (flag) {
+      asms.push_back(new ASM(
+          ASM::VLDR, {new ASMItem(ASMItem::S0), new ASMItem(ASMItem::SP),
+                      new ASMItem(spillOffsets[ir->items[0]->iVal])}));
+      asms.push_back(
+          new ASM(ASM::VSTR,
+                  {new ASMItem(ASMItem::S0), new ASMItem(ASMItem::SP),
+                   new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
+    } else
+      asms.push_back(new ASM(
+          ASM::VSTR,
+          {new ASMItem(ftemp2Reg[ir->items[0]->iVal]), new ASMItem(ASMItem::SP),
+           new ASMItem(((max(iCnt - 4, 0) + max(fCnt - 16, 0)) * 4))}));
   }
 }
 

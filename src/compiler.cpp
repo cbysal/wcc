@@ -35,6 +35,33 @@ int main(int argc, char *argv[]) {
     delete irParser;
     delete syntaxparser;
     delete lexicalParser;
+  } else if (argc == 3) {
+    LexicalParser *lexicalParser = new LexicalParser(argv[2]);
+    pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
+    vector<Token *> tokens = lexicalParser->getTokens();
+    SyntaxParser *syntaxparser = new SyntaxParser(tokens);
+    vector<Symbol *> symbols = syntaxparser->getSymbolTable();
+    AST *root = syntaxparser->getAST();
+    IRParser *irParser = new IRParser(root, symbols);
+    vector<Symbol *> consts = irParser->getConsts();
+    vector<Symbol *> globalVars = irParser->getGlobalVars();
+    unordered_map<Symbol *, vector<Symbol *>> localVars =
+        irParser->getLocalVars();
+    vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    ASMParser *asmParser =
+        new ASMParser("test.s", lineno, funcs, consts, globalVars, localVars);
+    asmParser->writeASMFile();
+    for (Symbol *symbol : symbols)
+      cout << symbol->toString() << endl;
+    cout << "----------------------------------------------------------------"
+            "----------------"
+         << endl;
+    irParser->printIRs();
+    delete asmParser;
+    delete irParser;
+    delete syntaxparser;
+    delete lexicalParser;
+    cout << endl;
   } else {
     int item = stoi(argv[1]);
     int id = 0;
@@ -71,7 +98,8 @@ int main(int argc, char *argv[]) {
       asmParser->writeASMFile();
       for (Symbol *symbol : symbols)
         cout << symbol->toString() << endl;
-      cout << "----------------------------------------------------------------"
+      cout << "--------------------------------------------------------------"
+              "--"
               "----------------"
            << endl;
       irParser->printIRs();
