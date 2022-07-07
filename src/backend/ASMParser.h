@@ -25,7 +25,7 @@ public:
   unordered_map<ASMItem::RegType, unsigned> reg2Temp;
   unordered_map<unsigned, ASMItem::RegType> ftemp2Reg;
   unordered_map<unsigned, ASMItem::RegType> itemp2Reg;
-  int spillSize;
+  unsigned spillSize;
   unordered_map<unsigned, int> temp2SpillReg;
   unordered_map<unsigned, int> spillOffsets;
   unordered_map<Symbol *, int> offsets;

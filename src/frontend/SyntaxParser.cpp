@@ -171,14 +171,35 @@ AST *SyntaxParser::parseAddExp() {
       ops[i] = ops[i] == AST::ADD ? AST::SUB : AST::ADD;
     }
   AST *root = items[0];
-  for (unsigned i = 0; i < ops.size(); i++) {
-    AST *left = root;
-    AST *right = items[i + 1];
-    if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-      left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-    if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-      right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-    root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+  if (root->astType == AST::L_VAL &&
+      root->nodes.size() < root->symbol->dimensions.size()) {
+    int multisize = 4;
+    for (unsigned i = root->nodes.size() + 1;
+         i < root->symbol->dimensions.size(); i++)
+      multisize *= root->symbol->dimensions[i];
+    for (unsigned i = 0; i < ops.size(); i++) {
+      AST *left = root;
+      AST *right = items[i + 1];
+      if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
+        left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
+      if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
+        right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
+      right = new AST(AST::BINARY_EXP, left->dataType, AST::MUL,
+                      {right, left->dataType == AST::INT
+                                  ? new AST(multisize)
+                                  : new AST((float)multisize)});
+      root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+    }
+  } else {
+    for (unsigned i = 0; i < ops.size(); i++) {
+      AST *left = root;
+      AST *right = items[i + 1];
+      if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
+        left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
+      if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
+        right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
+      root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+    }
   }
   return root;
 }
