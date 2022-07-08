@@ -1091,13 +1091,17 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
     if (tokens[head]->type == Token::ASSIGN) {
       head++;
       AST *val = parseInitVal();
-      if (dimensions.empty())
+      if (dimensions.empty()) {
+        if (type == Symbol::INT && val->dataType == AST::FLOAT)
+          val = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {val});
+        if (type == Symbol::FLOAT && val->dataType == AST::INT)
+          val = new AST(AST::UNARY_EXP, AST::FLOAT, AST::F2I, {val});
         items.push_back(new AST(
             AST::ASSIGN_STMT, AST::VOID,
             {new AST(AST::L_VAL, type == Symbol::INT ? AST::INT : AST::FLOAT,
                      symbol, {}),
              val}));
-      else {
+      } else {
         items.push_back(new AST(AST::MEMSET_ZERO, AST::VOID, symbol, {}));
         unordered_map<int, AST *> exps;
         allocInitVal(dimensions, exps, 0, val);
@@ -1110,11 +1114,16 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
             dimensionASTs[j] = new AST(t % dimensions[j]);
             t /= dimensions[j];
           }
+          AST *expVal = exp.second;
+          if (type == Symbol::INT && expVal->dataType == AST::FLOAT)
+            expVal = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {expVal});
+          if (type == Symbol::FLOAT && expVal->dataType == AST::INT)
+            expVal = new AST(AST::UNARY_EXP, AST::FLOAT, AST::F2I, {expVal});
           items.push_back(new AST(
               AST::ASSIGN_STMT, AST::VOID,
               {new AST(AST::L_VAL, type == Symbol::INT ? AST::INT : AST::FLOAT,
                        symbol, dimensionASTs),
-               exp.second}));
+               expVal}));
         }
         deleteInitVal(val);
       }
