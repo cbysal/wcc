@@ -47,7 +47,7 @@ public:
   void parseLNot(vector<ASM *> &, IR *);
   void parseLoad(vector<ASM *> &, IR *);
   void parseMod(vector<ASM *> &, IR *);
-  void parseMov(vector<ASM *> &, IR *, IR *);
+  void parseMov(vector<ASM *> &, IR *);
   void parseMul(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
   void parseSub(vector<ASM *> &, IR *);

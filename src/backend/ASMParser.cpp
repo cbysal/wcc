@@ -48,7 +48,7 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
     for (IRItem *item : irs[i]->items)
       if (item->type == IRItem::FTEMP || item->type == IRItem::ITEMP)
         lifespan[item->iVal] = i;
-  unordered_set<int> freeSpillRegs;
+  unordered_set<int> usedSpillRegs;
   for (unsigned i = 0; i < irs.size(); i++) {
     vector<unsigned> removeList;
     for (const pair<unsigned, ASMItem::RegType> reg : tempVReg)
@@ -69,24 +69,27 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
     removeList.clear();
     for (const pair<unsigned, int> reg : tempSpillReg)
       if (i > lifespan[reg.first]) {
-        freeSpillRegs.erase(reg.first);
+        usedSpillRegs.erase(reg.second);
         removeList.push_back(reg.first);
       }
     for (unsigned id : removeList)
       tempSpillReg.erase(id);
     for (IRItem *item : irs[i]->items) {
       if (item->type == IRItem::ITEMP &&
-          tempVReg.find(item->iVal) == tempVReg.end()) {
+          tempVReg.find(item->iVal) == tempVReg.end() &&
+          tempSpillReg.find(item->iVal) == tempSpillReg.end()) {
         if (freeVRegs.empty()) {
-          if (freeSpillRegs.size() == spillSize) {
+          if (usedSpillRegs.size() == spillSize) {
             tempSpillReg[item->iVal] = spillSize;
             temp2SpillReg[item->iVal] = spillSize;
+            usedSpillRegs.insert(spillSize);
             spillSize++;
           } else {
             for (unsigned j = 0; j < spillSize; j++)
-              if (freeSpillRegs.find(j) == freeSpillRegs.end()) {
+              if (usedSpillRegs.find(j) == usedSpillRegs.end()) {
                 tempSpillReg[item->iVal] = j;
                 temp2SpillReg[item->iVal] = j;
+                usedSpillRegs.insert(j);
                 break;
               }
           }
@@ -97,17 +100,20 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
         }
       }
       if (item->type == IRItem::FTEMP &&
-          tempSReg.find(item->iVal) == tempSReg.end()) {
+          tempSReg.find(item->iVal) == tempSReg.end() &&
+          tempSpillReg.find(item->iVal) == tempSpillReg.end()) {
         if (freeSRegs.empty()) {
-          if (freeSpillRegs.size() == spillSize) {
+          if (usedSpillRegs.size() == spillSize) {
             tempSpillReg[item->iVal] = spillSize;
             temp2SpillReg[item->iVal] = spillSize;
+            usedSpillRegs.insert(spillSize);
             spillSize++;
           } else {
             for (unsigned j = 0; j < spillSize; j++)
-              if (freeSpillRegs.find(j) == freeSpillRegs.end()) {
+              if (usedSpillRegs.find(j) == usedSpillRegs.end()) {
                 tempSpillReg[item->iVal] = j;
                 temp2SpillReg[item->iVal] = j;
+                usedSpillRegs.insert(j);
                 break;
               }
           }
@@ -765,7 +771,7 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       parseMod(asms, irs[i]);
       break;
     case IR::MOV:
-      parseMov(asms, irs[i], irs[i + 1]);
+      parseMov(asms, irs[i]);
       break;
     case IR::MUL:
       parseMul(asms, irs[i]);
@@ -958,7 +964,7 @@ void ASMParser::parseMod(vector<ASM *> &asms, IR *ir) {
                            new ASMItem(ASMItem::A2)}));
 }
 
-void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
+void ASMParser::parseMov(vector<ASM *> &asms, IR *ir) {
   bool flag1 = false, flag2 = false;
   switch (ir->items[1]->type) {
   case IRItem::FLOAT:
@@ -1097,12 +1103,15 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir, IR *nextIr) {
           {new ASMItem(flag1 ? ASMItem::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(ASMItem::PC),
            new ASMItem(flag1 ? ASMItem::A1 : itemp2Reg[ir->items[0]->iVal])}));
-      asms.push_back(new ASM(ASM::B, {new ASMItem(irLabels[nextIr])}));
+      asms.push_back(
+          new ASM(ASM::B, {new ASMItem("l" + to_string(labelId + 2))}));
       asms.push_back(
           new ASM(ASM::LABEL, {new ASMItem("l" + to_string(labelId++))}));
       asms.push_back(
           new ASM(ASM::TAG, {new ASMItem(ir->items[1]->symbol->name),
                              new ASMItem("l" + to_string(labelId++))}));
+      asms.push_back(
+          new ASM(ASM::LABEL, {new ASMItem("l" + to_string(labelId++))}));
       if (flag1)
         asms.push_back(new ASM(
             ASM::STR, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::SP),
