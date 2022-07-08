@@ -1095,7 +1095,7 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
         if (type == Symbol::INT && val->dataType == AST::FLOAT)
           val = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {val});
         if (type == Symbol::FLOAT && val->dataType == AST::INT)
-          val = new AST(AST::UNARY_EXP, AST::FLOAT, AST::F2I, {val});
+          val = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {val});
         items.push_back(new AST(
             AST::ASSIGN_STMT, AST::VOID,
             {new AST(AST::L_VAL, type == Symbol::INT ? AST::INT : AST::FLOAT,
