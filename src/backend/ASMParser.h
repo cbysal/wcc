@@ -22,18 +22,16 @@ public:
   vector<pair<Symbol *, vector<IR *>>> funcIRs;
   unordered_map<IR *, string> irLabels;
   vector<pair<Symbol *, vector<ASM *>>> funcASMs;
-  unordered_map<ASMItem::RegType, unsigned> reg2Temp;
   unordered_map<unsigned, ASMItem::RegType> ftemp2Reg;
   unordered_map<unsigned, ASMItem::RegType> itemp2Reg;
   unsigned spillSize;
   unordered_map<unsigned, int> temp2SpillReg;
   unordered_map<unsigned, int> spillOffsets;
   unordered_map<Symbol *, int> offsets;
-  unordered_map<int, unsigned> regEnds;
   int startLineno;
   int stopLineno;
 
-  void allocReg(const vector<IR *> &);
+  pair<int, int> allocReg(const vector<IR *> &);
   int calcArgs(const vector<IR *> &);
   void parse();
   void parseAdd(vector<ASM *> &, IR *);

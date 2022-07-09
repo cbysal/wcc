@@ -28,11 +28,12 @@ ASMParser::~ASMParser() {
       delete a;
 }
 
-void ASMParser::allocReg(const vector<IR *> &irs) {
+pair<int, int> ASMParser::allocReg(const vector<IR *> &irs) {
   itemp2Reg.clear();
   ftemp2Reg.clear();
   temp2SpillReg.clear();
   spillSize = 0;
+  int iUsed = 0, fUsed = 0;
   vector<ASMItem::RegType> freeVRegs = {ASMItem::V8, ASMItem::V7, ASMItem::V6,
                                         ASMItem::V5, ASMItem::V4, ASMItem::V3,
                                         ASMItem::V2, ASMItem::V1};
@@ -97,6 +98,7 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
           tempVReg[item->iVal] = freeVRegs.back();
           itemp2Reg[item->iVal] = freeVRegs.back();
           freeVRegs.pop_back();
+          iUsed = max<int>(iUsed, 8 - freeVRegs.size());
         }
       }
       if (item->type == IRItem::FTEMP &&
@@ -121,11 +123,13 @@ void ASMParser::allocReg(const vector<IR *> &irs) {
           tempSReg[item->iVal] = freeSRegs.back();
           ftemp2Reg[item->iVal] = freeSRegs.back();
           freeSRegs.pop_back();
+          fUsed = max<int>(fUsed, 16 - freeSRegs.size());
         }
       }
     }
   }
   spillSize *= 4;
+  return {iUsed, fUsed};
 }
 
 int ASMParser::calcArgs(const vector<IR *> &irs) {
@@ -513,30 +517,32 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       ASMItem::S4,  ASMItem::S5,  ASMItem::S6,  ASMItem::S7,
       ASMItem::S8,  ASMItem::S9,  ASMItem::S10, ASMItem::S11,
       ASMItem::S12, ASMItem::S13, ASMItem::S14, ASMItem::S15};
-  reg2Temp.clear();
-  ftemp2Reg.clear();
-  itemp2Reg.clear();
-  allocReg(irs);
+  pair<int, int> regUsed = allocReg(irs);
   int argsSize = calcArgs(irs);
   for (unordered_map<unsigned, int>::iterator it = temp2SpillReg.begin();
        it != temp2SpillReg.end(); it++)
     spillOffsets[it->first] = argsSize + it->second * 4;
   vector<ASM *> asms;
-  asms.push_back(
-      new ASM(ASM::PUSH, {new ASMItem(ASMItem::V1), new ASMItem(ASMItem::V2),
-                          new ASMItem(ASMItem::V3), new ASMItem(ASMItem::V4),
-                          new ASMItem(ASMItem::V5), new ASMItem(ASMItem::V6),
-                          new ASMItem(ASMItem::V7), new ASMItem(ASMItem::V8),
-                          new ASMItem(ASMItem::LR)}));
-  asms.push_back(new ASM(
-      ASM::VPUSH, {new ASMItem(ASMItem::S16), new ASMItem(ASMItem::S17),
-                   new ASMItem(ASMItem::S18), new ASMItem(ASMItem::S19),
-                   new ASMItem(ASMItem::S20), new ASMItem(ASMItem::S21),
-                   new ASMItem(ASMItem::S22), new ASMItem(ASMItem::S23),
-                   new ASMItem(ASMItem::S24), new ASMItem(ASMItem::S25),
-                   new ASMItem(ASMItem::S26), new ASMItem(ASMItem::S27),
-                   new ASMItem(ASMItem::S28), new ASMItem(ASMItem::S29),
-                   new ASMItem(ASMItem::S30), new ASMItem(ASMItem::S31)}));
+  const vector<ASMItem::RegType> vRegs = {ASMItem::V1, ASMItem::V2, ASMItem::V3,
+                                          ASMItem::V4, ASMItem::V5, ASMItem::V6,
+                                          ASMItem::V7, ASMItem::V8};
+  const vector<ASMItem::RegType> sRegs = {
+      ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
+      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23,
+      ASMItem::S24, ASMItem::S25, ASMItem::S26, ASMItem::S27,
+      ASMItem::S28, ASMItem::S29, ASMItem::S30, ASMItem::S31};
+  ASM *tempASM = new ASM(ASM::PUSH, {});
+  for (int i = 0; i < regUsed.first; i++)
+    tempASM->items.push_back(new ASMItem(vRegs[i]));
+  tempASM->items.push_back(new ASMItem(ASMItem::LR));
+  asms.push_back(tempASM);
+  tempASM = new ASM(ASM::VPUSH, {});
+  for (int i = 0; i < regUsed.second; i++)
+    tempASM->items.push_back(new ASMItem(sRegs[i]));
+  if (tempASM->items.empty())
+    delete tempASM;
+  else
+    asms.push_back(tempASM);
   offsets.clear();
   int offset = 0;
   int iCnt = 0, fCnt = 0;
@@ -549,7 +555,8 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
         offsets[symbol->params[i]] = -4 * (min(iCnt, 4) + min(fCnt, 16));
         savedRegSize += 4;
       } else {
-        offsets[symbol->params[i]] = offset + 100;
+        offsets[symbol->params[i]] =
+            offset + (regUsed.first + regUsed.second + 1) * 4;
         offset += 4;
       }
     } else {
@@ -558,7 +565,8 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
         offsets[symbol->params[i]] = -4 * (min(iCnt, 4) + min(fCnt, 16));
         savedRegSize += 4;
       } else {
-        offsets[symbol->params[i]] = offset + 100;
+        offsets[symbol->params[i]] =
+            offset + (regUsed.first + regUsed.second + 1) * 4;
         offset += 4;
       }
     }
@@ -577,7 +585,7 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
     offsets[localVarSymbol] = -localVarSize - savedRegSize;
   }
   int frameSize = argsSize + spillSize + localVarSize + savedRegSize;
-  if (frameSize % 8 == 0)
+  if ((frameSize + (regUsed.first + regUsed.second) * 4) % 8 == 0)
     frameSize += 4;
   for (unordered_map<Symbol *, int>::iterator it = offsets.begin();
        it != offsets.end(); it++)
@@ -685,21 +693,18 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
                                           new ASMItem(ASMItem::SP),
                                           new ASMItem(ASMItem::A2)}));
       }
-      asms.push_back(new ASM(
-          ASM::VPOP, {new ASMItem(ASMItem::S16), new ASMItem(ASMItem::S17),
-                      new ASMItem(ASMItem::S18), new ASMItem(ASMItem::S19),
-                      new ASMItem(ASMItem::S20), new ASMItem(ASMItem::S21),
-                      new ASMItem(ASMItem::S22), new ASMItem(ASMItem::S23),
-                      new ASMItem(ASMItem::S24), new ASMItem(ASMItem::S25),
-                      new ASMItem(ASMItem::S26), new ASMItem(ASMItem::S27),
-                      new ASMItem(ASMItem::S28), new ASMItem(ASMItem::S29),
-                      new ASMItem(ASMItem::S30), new ASMItem(ASMItem::S31)}));
-      asms.push_back(
-          new ASM(ASM::POP, {new ASMItem(ASMItem::V1), new ASMItem(ASMItem::V2),
-                             new ASMItem(ASMItem::V3), new ASMItem(ASMItem::V4),
-                             new ASMItem(ASMItem::V5), new ASMItem(ASMItem::V6),
-                             new ASMItem(ASMItem::V7), new ASMItem(ASMItem::V8),
-                             new ASMItem(ASMItem::PC)}));
+      tempASM = new ASM(ASM::VPOP, {});
+      for (int i = 0; i < regUsed.second; i++)
+        tempASM->items.push_back(new ASMItem(sRegs[i]));
+      if (tempASM->items.empty())
+        delete tempASM;
+      else
+        asms.push_back(tempASM);
+      tempASM = new ASM(ASM::POP, {});
+      for (int i = 0; i < regUsed.first; i++)
+        tempASM->items.push_back(new ASMItem(vRegs[i]));
+      tempASM->items.push_back(new ASMItem(ASMItem::PC));
+      asms.push_back(tempASM);
       break;
     case IR::GOTO:
       asms.push_back(
@@ -807,15 +812,6 @@ vector<ASM *> ASMParser::parseFunc(Symbol *symbol, const vector<IR *> &irs) {
       break;
     default:
       break;
-    }
-    vector<pair<ASMItem::RegType, unsigned>> toRemoveRegs;
-    for (const pair<ASMItem::RegType, unsigned> p : reg2Temp)
-      if (i >= regEnds[p.second])
-        toRemoveRegs.push_back(p);
-    for (pair<ASMItem::RegType, unsigned> toRemoveReg : toRemoveRegs) {
-      reg2Temp.erase(toRemoveReg.first);
-      ftemp2Reg.erase(toRemoveReg.second);
-      itemp2Reg.erase(toRemoveReg.second);
     }
   }
   return asms;
