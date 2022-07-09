@@ -5,12 +5,14 @@ ARCH = $(shell uname -m)
 
 TEST_CASES=$(patsubst %.sy,%,$(wildcard ./test_case/functional/*.sy))
 
-compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASMItem.o \
-	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IRParser.o \
-	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASMItem.o \
-	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IRParser.o \
-	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
+compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
+	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/compiler.o: src/compiler.cpp src
 	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
@@ -21,17 +23,29 @@ $(TARGET_DIR)/ASM.o: src/backend/ASM.cpp src/backend/ASM.h
 $(TARGET_DIR)/ASMItem.o: src/backend/ASMItem.cpp src/backend/ASMItem.h
 	$(CC) $(CFLAGS) -c src/backend/ASMItem.cpp -o $(TARGET_DIR)/ASMItem.o
 
+$(TARGET_DIR)/ASMOptimizer.o: src/backend/ASMOptimizer.cpp src/backend/ASMOptimizer.h
+	$(CC) $(CFLAGS) -c src/backend/ASMOptimizer.cpp -o $(TARGET_DIR)/ASMOptimizer.o
+
 $(TARGET_DIR)/ASMParser.o: src/backend/ASMParser.cpp src/backend/ASMParser.h
 	$(CC) $(CFLAGS) -c src/backend/ASMParser.cpp -o $(TARGET_DIR)/ASMParser.o
 
+$(TARGET_DIR)/ASMWriter.o: src/backend/ASMWriter.cpp src/backend/ASMWriter.h
+	$(CC) $(CFLAGS) -c src/backend/ASMWriter.cpp -o $(TARGET_DIR)/ASMWriter.o
+
 $(TARGET_DIR)/AST.o: src/frontend/AST.cpp src/frontend/AST.h
 	$(CC) $(CFLAGS) -c src/frontend/AST.cpp -o $(TARGET_DIR)/AST.o
+
+$(TARGET_DIR)/ASTOptimizer.o: src/frontend/ASTOptimizer.cpp src/frontend/ASTOptimizer.h
+	$(CC) $(CFLAGS) -c src/frontend/ASTOptimizer.cpp -o $(TARGET_DIR)/ASTOptimizer.o
 
 $(TARGET_DIR)/IR.o: src/frontend/IR.cpp src/frontend/IR.h
 	$(CC) $(CFLAGS) -c src/frontend/IR.cpp -o $(TARGET_DIR)/IR.o
 
 $(TARGET_DIR)/IRItem.o: src/frontend/IRItem.cpp src/frontend/IRItem.h
 	$(CC) $(CFLAGS) -c src/frontend/IRItem.cpp -o $(TARGET_DIR)/IRItem.o
+
+$(TARGET_DIR)/IROptimizer.o: src/frontend/IROptimizer.cpp src/frontend/IROptimizer.h
+	$(CC) $(CFLAGS) -c src/frontend/IROptimizer.cpp -o $(TARGET_DIR)/IROptimizer.o
 
 $(TARGET_DIR)/IRParser.o: src/frontend/IRParser.cpp src/frontend/IRParser.h
 	$(CC) $(CFLAGS) -c src/frontend/IRParser.cpp -o $(TARGET_DIR)/IRParser.o

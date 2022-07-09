@@ -40,8 +40,6 @@ public:
     WHILE_STMT
   };
 
-  enum DataType { FLOAT, INT, VOID };
-
   enum OPType {
     ADD,
     DIV,
@@ -64,7 +62,7 @@ public:
   };
 
   ASTType astType;
-  DataType dataType;
+  bool isFloat;
   OPType opType;
   Symbol *symbol;
   union {
@@ -73,9 +71,9 @@ public:
   };
   vector<AST *> nodes;
 
-  AST(ASTType, DataType, OPType, const vector<AST *> &);
-  AST(ASTType, DataType, Symbol *, const vector<AST *> &);
-  AST(ASTType, DataType, const vector<AST *> &);
+  AST(ASTType, bool, OPType, const vector<AST *> &);
+  AST(ASTType, bool, Symbol *, const vector<AST *> &);
+  AST(ASTType, bool, const vector<AST *> &);
   AST(float);
   AST(int);
   ~AST();

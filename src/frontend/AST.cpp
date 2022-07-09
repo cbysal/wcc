@@ -4,40 +4,40 @@
 
 using namespace std;
 
-AST::AST(ASTType astType, DataType dataType, OPType opType,
+AST::AST(ASTType astType, bool isFloat, OPType opType,
          const vector<AST *> &nodes) {
   this->astType = astType;
-  this->dataType = dataType;
+  this->isFloat = isFloat;
   this->opType = opType;
   this->nodes = nodes;
   this->symbol = nullptr;
 }
 
-AST::AST(ASTType astType, DataType dataType, Symbol *symbol,
+AST::AST(ASTType astType, bool isFloat, Symbol *symbol,
          const vector<AST *> &nodes) {
   this->astType = astType;
-  this->dataType = dataType;
+  this->isFloat = isFloat;
   this->symbol = symbol;
   this->nodes = nodes;
 }
 
-AST::AST(ASTType astType, DataType dataType, const vector<AST *> &nodes) {
+AST::AST(ASTType astType, bool isFloat, const vector<AST *> &nodes) {
   this->astType = astType;
-  this->dataType = dataType;
+  this->isFloat = isFloat;
   this->nodes = nodes;
   this->symbol = nullptr;
 }
 
 AST::AST(float fVal) {
   this->astType = FLOAT_LITERAL;
-  this->dataType = FLOAT;
+  this->isFloat = true;
   this->fVal = fVal;
   this->symbol = nullptr;
 }
 
 AST::AST(int iVal) {
   this->astType = INT_LITERAL;
-  this->dataType = INT;
+  this->isFloat = false;
   this->iVal = iVal;
   this->symbol = nullptr;
 }

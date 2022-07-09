@@ -52,7 +52,7 @@ string ASM::toString() {
     s += "b";
     if (cond != ASM::AL)
       s += condTypeStr[cond];
-    s += " " + items[0]->sVal;
+    s += " l" + to_string(items[0]->iVal);
     break;
   case BL:
     s += "bl " + items[0]->sVal + "(PLT)";
@@ -79,12 +79,12 @@ string ASM::toString() {
     }
     break;
   case LABEL:
-    s = items[0]->sVal + ":";
+    s = "l" + to_string(items[0]->iVal) + ":";
     break;
   case LDR:
     s += "ldr " + regTypeStr[items[0]->reg] + ", ";
-    if (items[1]->type == ASMItem::LABEL) {
-      s += items[1]->sVal;
+    if (items[1]->type != ASMItem::REG) {
+      s += "l" + to_string(items[1]->iVal);
       break;
     }
     s += "[" + regTypeStr[items[1]->reg];
@@ -181,7 +181,7 @@ string ASM::toString() {
     }
     break;
   case TAG:
-    s += ".word " + items[0]->sVal + "-" + items[1]->sVal + "-8";
+    s += ".word " + items[0]->sVal + "-l" + to_string(items[1]->iVal) + "-8";
     break;
   case VADD:
     s += "vadd.f32 " + regTypeStr[items[0]->reg] + ", " +
@@ -205,8 +205,8 @@ string ASM::toString() {
     break;
   case VLDR:
     s += "vldr.f32 " + regTypeStr[items[0]->reg] + ", ";
-    if (items[1]->type == ASMItem::LABEL) {
-      s += items[1]->sVal;
+    if (items[1]->type != ASMItem::REG) {
+      s += "l" + to_string(items[1]->iVal);
       break;
     }
     s += "[" + regTypeStr[items[1]->reg];

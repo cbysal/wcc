@@ -4,7 +4,11 @@
 #include <iostream>
 #include <unistd.h>
 
+#include "backend/ASMOptimizer.h"
 #include "backend/ASMParser.h"
+#include "backend/ASMWriter.h"
+#include "frontend/ASTOptimizer.h"
+#include "frontend/IROptimizer.h"
 #include "frontend/IRParser.h"
 #include "frontend/LexicalParser.h"
 #include "frontend/SyntaxParser.h"
@@ -22,17 +26,30 @@ int main(int argc, char *argv[]) {
     SyntaxParser *syntaxparser = new SyntaxParser(tokens);
     vector<Symbol *> symbols = syntaxparser->getSymbolTable();
     AST *root = syntaxparser->getAST();
+    ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
+    root = astOptimizer->getAST();
     IRParser *irParser = new IRParser(root, symbols);
     vector<Symbol *> consts = irParser->getConsts();
     vector<Symbol *> globalVars = irParser->getGlobalVars();
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    IROptimizer *irOptimizer =
+        new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+    funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
-        new ASMParser(target, lineno, funcs, consts, globalVars, localVars);
-    asmParser->writeASMFile();
+        new ASMParser(lineno, funcs, consts, globalVars, localVars);
+    vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+    ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
+    funcASMs = asmOptimizer->getFuncASMs();
+    ASMWriter *asmWriter = new ASMWriter(target, consts, globalVars, funcASMs);
+    asmWriter->write();
+    delete asmWriter;
+    delete asmOptimizer;
     delete asmParser;
+    delete irOptimizer;
     delete irParser;
+    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
   } else if (argc == 3) {
@@ -42,26 +59,39 @@ int main(int argc, char *argv[]) {
     SyntaxParser *syntaxparser = new SyntaxParser(tokens);
     vector<Symbol *> symbols = syntaxparser->getSymbolTable();
     AST *root = syntaxparser->getAST();
+    ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
+    root = astOptimizer->getAST();
     IRParser *irParser = new IRParser(root, symbols);
     vector<Symbol *> consts = irParser->getConsts();
     vector<Symbol *> globalVars = irParser->getGlobalVars();
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    IROptimizer *irOptimizer =
+        new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+    funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
-        new ASMParser("test.s", lineno, funcs, consts, globalVars, localVars);
-    asmParser->writeASMFile();
+        new ASMParser(lineno, funcs, consts, globalVars, localVars);
+    vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+    ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
+    funcASMs = asmOptimizer->getFuncASMs();
+    ASMWriter *asmWriter =
+        new ASMWriter("test.s", consts, globalVars, funcASMs);
+    asmWriter->write();
     for (Symbol *symbol : symbols)
       cout << symbol->toString() << endl;
     cout << "----------------------------------------------------------------"
             "----------------"
          << endl;
     irParser->printIRs();
+    delete asmWriter;
+    delete asmOptimizer;
     delete asmParser;
+    delete irOptimizer;
     delete irParser;
+    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
-    cout << endl;
   } else {
     int item = stoi(argv[1]);
     int id = 0;
@@ -87,27 +117,40 @@ int main(int argc, char *argv[]) {
       SyntaxParser *syntaxparser = new SyntaxParser(tokens);
       vector<Symbol *> symbols = syntaxparser->getSymbolTable();
       AST *root = syntaxparser->getAST();
+      ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
+      root = astOptimizer->getAST();
       IRParser *irParser = new IRParser(root, symbols);
       vector<Symbol *> consts = irParser->getConsts();
       vector<Symbol *> globalVars = irParser->getGlobalVars();
       unordered_map<Symbol *, vector<Symbol *>> localVars =
           irParser->getLocalVars();
       vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+      IROptimizer *irOptimizer =
+          new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+      funcs = irOptimizer->getFuncs();
       ASMParser *asmParser =
-          new ASMParser("test.s", lineno, funcs, consts, globalVars, localVars);
-      asmParser->writeASMFile();
+          new ASMParser(lineno, funcs, consts, globalVars, localVars);
+      vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+      ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
+      funcASMs = asmOptimizer->getFuncASMs();
+      ASMWriter *asmWriter =
+          new ASMWriter("test.s", consts, globalVars, funcASMs);
+      asmWriter->write();
       for (Symbol *symbol : symbols)
         cout << symbol->toString() << endl;
-      cout << "--------------------------------------------------------------"
-              "--"
+      cout << "----------------------------------------------------------------"
               "----------------"
            << endl;
       irParser->printIRs();
+      cout << endl;
+      delete asmWriter;
+      delete asmOptimizer;
       delete asmParser;
+      delete irOptimizer;
       delete irParser;
+      delete astOptimizer;
       delete syntaxparser;
       delete lexicalParser;
-      cout << endl;
     }
   }
   clock_t endTime = clock();

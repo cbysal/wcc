@@ -180,25 +180,24 @@ AST *SyntaxParser::parseAddExp() {
     for (unsigned i = 0; i < ops.size(); i++) {
       AST *left = root;
       AST *right = items[i + 1];
-      if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-        left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-      if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-        right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-      right = new AST(AST::BINARY_EXP, left->dataType, AST::MUL,
-                      {right, left->dataType == AST::INT
-                                  ? new AST(multisize)
-                                  : new AST((float)multisize)});
-      root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+      if (!left->isFloat && right->isFloat)
+        left = new AST(AST::UNARY_EXP, true, AST::I2F, {left});
+      if (left->isFloat && !right->isFloat)
+        right = new AST(AST::UNARY_EXP, true, AST::I2F, {right});
+      right = new AST(AST::BINARY_EXP, left->isFloat, AST::MUL,
+                      {right, left->isFloat ? new AST((float)multisize)
+                                            : new AST(multisize)});
+      root = new AST(AST::BINARY_EXP, left->isFloat, ops[i], {left, right});
     }
   } else {
     for (unsigned i = 0; i < ops.size(); i++) {
       AST *left = root;
       AST *right = items[i + 1];
-      if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-        left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-      if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-        right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-      root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+      if (!left->isFloat && right->isFloat)
+        left = new AST(AST::UNARY_EXP, true, AST::I2F, {left});
+      if (left->isFloat && !right->isFloat)
+        right = new AST(AST::UNARY_EXP, true, AST::I2F, {right});
+      root = new AST(AST::BINARY_EXP, left->isFloat, ops[i], {left, right});
     }
   }
   return root;
@@ -209,11 +208,11 @@ AST *SyntaxParser::parseAssignStmt() {
   head++;
   AST *rVal = parseAddExp();
   head++;
-  if (lVal->dataType == AST::INT && rVal->dataType == AST::FLOAT)
-    rVal = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {rVal});
-  if (lVal->dataType == AST::FLOAT && rVal->dataType == AST::INT)
-    rVal = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {rVal});
-  return new AST(AST::ASSIGN_STMT, AST::VOID, {lVal, rVal});
+  if (!lVal->isFloat && rVal->isFloat)
+    rVal = new AST(AST::UNARY_EXP, false, AST::F2I, {rVal});
+  if (lVal->isFloat && !rVal->isFloat)
+    rVal = new AST(AST::UNARY_EXP, true, AST::I2F, {rVal});
+  return new AST(AST::ASSIGN_STMT, false, {lVal, rVal});
 }
 
 AST *SyntaxParser::parseBlock(Symbol *func) {
@@ -247,7 +246,7 @@ AST *SyntaxParser::parseBlock(Symbol *func) {
     }
   }
   head++;
-  return new AST(AST::BLOCK, AST::VOID, items);
+  return new AST(AST::BLOCK, false, items);
 }
 
 vector<AST *> SyntaxParser::parseConstDef() {
@@ -289,7 +288,7 @@ vector<AST *> SyntaxParser::parseConstDef() {
     symbols.push_back(symbol);
     symbolStack.back()[name] = symbol;
     delete val;
-    consts.push_back(new AST(AST::CONST_DEF, AST::VOID, symbol, {}));
+    consts.push_back(new AST(AST::CONST_DEF, false, symbol, {}));
     if (tokens[head]->type == Token::SEMICOLON)
       break;
     head++;
@@ -398,11 +397,11 @@ AST *SyntaxParser::parseEqExp() {
   for (unsigned i = 0; i < ops.size(); i++) {
     AST *left = root;
     AST *right = items[i + 1];
-    if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-      left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-    if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-      right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-    root = new AST(AST::BINARY_EXP, AST::INT, ops[i], {left, right});
+    if (!left->isFloat && right->isFloat)
+      left = new AST(AST::UNARY_EXP, true, AST::I2F, {left});
+    if (left->isFloat && !right->isFloat)
+      right = new AST(AST::UNARY_EXP, true, AST::I2F, {right});
+    root = new AST(AST::BINARY_EXP, false, ops[i], {left, right});
   }
   return root;
 }
@@ -410,42 +409,29 @@ AST *SyntaxParser::parseEqExp() {
 AST *SyntaxParser::parseExpStmt() {
   AST *exp = parseAddExp();
   head++;
-  return new AST(AST::EXP_STMT, AST::VOID, {exp});
+  return new AST(AST::EXP_STMT, false, {exp});
 }
 
 AST *SyntaxParser::parseFuncCall() {
   Symbol *symbol = lastSymbol(tokens[head]->sVal);
-  AST::DataType type = AST::VOID;
-  switch (symbol->dataType) {
-  case Symbol::FLOAT:
-    type = AST::FLOAT;
-    break;
-  case Symbol::INT:
-    type = AST::INT;
-    break;
-  case Symbol::VOID:
-    type = AST::VOID;
-    break;
-  default:
-    break;
-  }
   head += 2;
   vector<AST *> params;
   while (tokens[head]->type != Token::RP) {
     AST *param = parseAddExp();
     if (symbol->params[params.size()]->dataType == Symbol::INT &&
-        param->dataType == AST::FLOAT)
-      param = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {param});
+        param->isFloat)
+      param = new AST(AST::UNARY_EXP, false, AST::F2I, {param});
     if (symbol->params[params.size()]->dataType == Symbol::FLOAT &&
-        param->dataType == AST::INT)
-      param = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {param});
+        !param->isFloat)
+      param = new AST(AST::UNARY_EXP, true, AST::I2F, {param});
     params.push_back(param);
     if (tokens[head]->type == Token::RP)
       break;
     head++;
   }
   head++;
-  return new AST(AST::FUNC_CALL, type, symbol, {params});
+  return new AST(AST::FUNC_CALL, symbol->dataType == Symbol::FLOAT, symbol,
+                 {params});
 }
 
 AST *SyntaxParser::parseFuncDef() {
@@ -483,7 +469,7 @@ AST *SyntaxParser::parseFuncDef() {
     symbolStack.back()[param->name] = param;
   AST *body = parseBlock(symbol);
   symbolStack.pop_back();
-  return new AST(AST::FUNC_DEF, AST::VOID, symbol, {body});
+  return new AST(AST::FUNC_DEF, false, symbol, {body});
 }
 
 Symbol *SyntaxParser::parseFuncParam() {
@@ -551,7 +537,7 @@ vector<AST *> SyntaxParser::parseGlobalVarDef() {
     }
     symbols.push_back(symbol);
     symbolStack.back()[name] = symbol;
-    consts.push_back(new AST(AST::GLOBAL_VAR_DEF, AST::VOID, symbol, {}));
+    consts.push_back(new AST(AST::GLOBAL_VAR_DEF, false, symbol, {}));
     if (tokens[head]->type == Token::SEMICOLON)
       break;
     head++;
@@ -580,7 +566,7 @@ AST *SyntaxParser::parseIfStmt(Symbol *func) {
     if (depthInc)
       symbolStack.pop_back();
   }
-  return new AST(AST::IF_STMT, AST::VOID, {cond, stmt1, stmt2});
+  return new AST(AST::IF_STMT, false, {cond, stmt1, stmt2});
 }
 
 AST *SyntaxParser::parseInitVal() {
@@ -595,7 +581,7 @@ AST *SyntaxParser::parseInitVal() {
     head++;
   }
   head++;
-  return new AST(AST::INIT_VAL, AST::VOID, items);
+  return new AST(AST::INIT_VAL, false, items);
 }
 
 AST *SyntaxParser::parseLAndExp() {
@@ -631,7 +617,7 @@ AST *SyntaxParser::parseLAndExp() {
   }
   AST *root = items[0];
   for (unsigned i = 1; i < items.size(); i++)
-    root = new AST(AST::BINARY_EXP, AST::VOID, AST::L_AND, {root, items[i]});
+    root = new AST(AST::BINARY_EXP, false, AST::L_AND, {root, items[i]});
   return root;
 }
 
@@ -668,7 +654,7 @@ AST *SyntaxParser::parseLOrExp() {
   }
   AST *root = items[0];
   for (unsigned i = 1; i < items.size(); i++)
-    root = new AST(AST::BINARY_EXP, AST::VOID, AST::L_OR, {root, items[i]});
+    root = new AST(AST::BINARY_EXP, false, AST::L_OR, {root, items[i]});
   return root;
 }
 
@@ -704,21 +690,8 @@ AST *SyntaxParser::parseLVal() {
                          ? 0
                          : symbol->fMap[offset]);
   }
-  AST::DataType type = AST::VOID;
-  switch (symbol->dataType) {
-  case Symbol::FLOAT:
-    type = AST::FLOAT;
-    break;
-  case Symbol::INT:
-    type = AST::INT;
-    break;
-  case Symbol::VOID:
-    type = AST::VOID;
-    break;
-  default:
-    break;
-  }
-  return new AST(AST::L_VAL, type, symbol, dimensions);
+  return new AST(AST::L_VAL, symbol->dataType == Symbol::FLOAT, symbol,
+                 dimensions);
 }
 
 AST *SyntaxParser::parseMulExp() {
@@ -787,11 +760,11 @@ AST *SyntaxParser::parseMulExp() {
   for (unsigned i = 0; i < ops.size(); i++) {
     AST *left = root;
     AST *right = items[i + 1];
-    if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-      left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-    if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-      right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-    root = new AST(AST::BINARY_EXP, left->dataType, ops[i], {left, right});
+    if (!left->isFloat && right->isFloat)
+      left = new AST(AST::UNARY_EXP, true, AST::I2F, {left});
+    if (left->isFloat && !right->isFloat)
+      right = new AST(AST::UNARY_EXP, true, AST::I2F, {right});
+    root = new AST(AST::BINARY_EXP, left->isFloat, ops[i], {left, right});
   }
   return root;
 }
@@ -868,11 +841,11 @@ AST *SyntaxParser::parseRelExp() {
   for (unsigned i = 0; i < ops.size(); i++) {
     AST *left = root;
     AST *right = items[i + 1];
-    if (left->dataType == AST::INT && right->dataType == AST::FLOAT)
-      left = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {left});
-    if (left->dataType == AST::FLOAT && right->dataType == AST::INT)
-      right = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {right});
-    root = new AST(AST::BINARY_EXP, AST::INT, ops[i], {left, right});
+    if (!left->isFloat && right->isFloat)
+      left = new AST(AST::UNARY_EXP, true, AST::I2F, {left});
+    if (left->isFloat && !right->isFloat)
+      right = new AST(AST::UNARY_EXP, true, AST::I2F, {right});
+    root = new AST(AST::BINARY_EXP, false, ops[i], {left, right});
   }
   return root;
 }
@@ -881,15 +854,15 @@ AST *SyntaxParser::parseReturnStmt(Symbol *func) {
   head++;
   if (tokens[head]->type == Token::SEMICOLON) {
     head++;
-    return new AST(AST::RETURN_STMT, AST::VOID, {});
+    return new AST(AST::RETURN_STMT, false, {});
   }
   AST *val = parseAddExp();
   head++;
-  if (func->dataType == Symbol::INT && val->dataType == AST::FLOAT)
-    val = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {val});
-  if (func->dataType == Symbol::FLOAT && val->dataType == AST::INT)
-    val = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {val});
-  return new AST(AST::RETURN_STMT, AST::VOID, {val});
+  if (func->dataType == Symbol::INT && val->isFloat)
+    val = new AST(AST::UNARY_EXP, false, AST::F2I, {val});
+  if (func->dataType == Symbol::FLOAT && !val->isFloat)
+    val = new AST(AST::UNARY_EXP, true, AST::I2F, {val});
+  return new AST(AST::RETURN_STMT, false, {val});
 }
 
 void SyntaxParser::parseRoot() {
@@ -930,17 +903,17 @@ void SyntaxParser::parseRoot() {
       break;
     }
   }
-  rootAST = new AST(AST::ROOT, AST::VOID, items);
+  rootAST = new AST(AST::ROOT, false, items);
 }
 
 AST *SyntaxParser::parseStmt(Symbol *func) {
   switch (tokens[head]->type) {
   case Token::BREAK:
     head += 2;
-    return new AST(AST::BREAK_STMT, AST::VOID, {});
+    return new AST(AST::BREAK_STMT, false, {});
   case Token::CONTINUE:
     head += 2;
-    return new AST(AST::CONTINUE_STMT, AST::VOID, {});
+    return new AST(AST::CONTINUE_STMT, false, {});
   case Token::ID:
     switch (tokens[head + 1]->type) {
     case Token::ASSIGN:
@@ -973,7 +946,7 @@ AST *SyntaxParser::parseStmt(Symbol *func) {
     return parseReturnStmt(func);
   case Token::SEMICOLON:
     head++;
-    return new AST(AST::BLANK_STMT, AST::VOID, {});
+    return new AST(AST::BLANK_STMT, false, {});
   case Token::WHILE:
     return parseWhileStmt(func);
   default:
@@ -1035,7 +1008,7 @@ AST *SyntaxParser::parseUnaryExp() {
     default:
       break;
     }
-    return new AST(AST::UNARY_EXP, AST::INT, AST::L_NOT, {val});
+    return new AST(AST::UNARY_EXP, false, AST::L_NOT, {val});
   }
   case Token::MINUS: {
     head++;
@@ -1058,7 +1031,7 @@ AST *SyntaxParser::parseUnaryExp() {
     default:
       break;
     }
-    return new AST(AST::UNARY_EXP, val->dataType, AST::NEG, {val});
+    return new AST(AST::UNARY_EXP, val->isFloat, AST::NEG, {val});
   }
   case Token::PLUS: {
     head++;
@@ -1087,22 +1060,20 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
       head++;
     }
     Symbol *symbol = new Symbol(Symbol::LOCAL_VAR, type, name, dimensions);
-    items.push_back(new AST(AST::LOCAL_VAR_DEF, AST::VOID, symbol, {}));
+    items.push_back(new AST(AST::LOCAL_VAR_DEF, false, symbol, {}));
     if (tokens[head]->type == Token::ASSIGN) {
       head++;
       AST *val = parseInitVal();
       if (dimensions.empty()) {
-        if (type == Symbol::INT && val->dataType == AST::FLOAT)
-          val = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {val});
-        if (type == Symbol::FLOAT && val->dataType == AST::INT)
-          val = new AST(AST::UNARY_EXP, AST::FLOAT, AST::I2F, {val});
+        if (type == Symbol::INT && val->isFloat)
+          val = new AST(AST::UNARY_EXP, false, AST::F2I, {val});
+        if (type == Symbol::FLOAT && !val->isFloat)
+          val = new AST(AST::UNARY_EXP, true, AST::I2F, {val});
         items.push_back(new AST(
-            AST::ASSIGN_STMT, AST::VOID,
-            {new AST(AST::L_VAL, type == Symbol::INT ? AST::INT : AST::FLOAT,
-                     symbol, {}),
-             val}));
+            AST::ASSIGN_STMT, false,
+            {new AST(AST::L_VAL, type == Symbol::FLOAT, symbol, {}), val}));
       } else {
-        items.push_back(new AST(AST::MEMSET_ZERO, AST::VOID, symbol, {}));
+        items.push_back(new AST(AST::MEMSET_ZERO, false, symbol, {}));
         unordered_map<int, AST *> exps;
         allocInitVal(dimensions, exps, 0, val);
         vector<pair<int, AST *>> orderedExps(exps.begin(), exps.end());
@@ -1115,15 +1086,14 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
             t /= dimensions[j];
           }
           AST *expVal = exp.second;
-          if (type == Symbol::INT && expVal->dataType == AST::FLOAT)
-            expVal = new AST(AST::UNARY_EXP, AST::INT, AST::F2I, {expVal});
-          if (type == Symbol::FLOAT && expVal->dataType == AST::INT)
-            expVal = new AST(AST::UNARY_EXP, AST::FLOAT, AST::F2I, {expVal});
-          items.push_back(new AST(
-              AST::ASSIGN_STMT, AST::VOID,
-              {new AST(AST::L_VAL, type == Symbol::INT ? AST::INT : AST::FLOAT,
-                       symbol, dimensionASTs),
-               expVal}));
+          if (type == Symbol::INT && expVal->isFloat)
+            expVal = new AST(AST::UNARY_EXP, false, AST::F2I, {expVal});
+          if (type == Symbol::FLOAT && !expVal->isFloat)
+            expVal = new AST(AST::UNARY_EXP, true, AST::F2I, {expVal});
+          items.push_back(new AST(AST::ASSIGN_STMT, false,
+                                  {new AST(AST::L_VAL, type == Symbol::FLOAT,
+                                           symbol, dimensionASTs),
+                                   expVal}));
         }
         deleteInitVal(val);
       }
@@ -1191,7 +1161,7 @@ AST *SyntaxParser::parseWhileStmt(Symbol *func) {
   AST *body = parseStmt(func);
   if (depthInc)
     symbolStack.pop_back();
-  return new AST(AST::WHILE_STMT, AST::VOID, {cond, body});
+  return new AST(AST::WHILE_STMT, false, {cond, body});
 }
 
 AST *SyntaxParser::getAST() {
