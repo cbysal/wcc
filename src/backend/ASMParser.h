@@ -59,7 +59,6 @@ private:
   void makeFrame(vector<ASM *> &, const vector<IR *> &, Symbol *);
   void parse();
   void parseAdd(vector<ASM *> &, IR *);
-  void parseArg(vector<ASM *> &, IR *);
   void parseB(vector<ASM *> &, IR *);
   void parseCall(vector<ASM *> &, IR *);
   void parseCmp(vector<ASM *> &, IR *);
@@ -80,7 +79,7 @@ private:
   void parseSub(vector<ASM *> &, IR *);
   void popArgs(vector<ASM *> &);
   void preProcess();
-  void pushArgs(vector<ASM *> &);
+  void saveUsedRegs(vector<ASM *> &);
   void removeUnusedLabels(vector<ASM *> &);
   void saveArgRegs(vector<ASM *> &, Symbol *);
 

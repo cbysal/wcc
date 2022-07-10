@@ -201,24 +201,11 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
 vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
   vector<IR *> irs;
   IR *callIR = new IR(IR::CALL, {new IRItem(IRItem::SYMBOL, root->symbol)});
-  int iCnt = 0, fCnt = 0;
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
-    irs.push_back(new IR(IR::ARG, {new IRItem(moreIRs.back()->items[0]->type,
-                                              irs.back()->items[0]->iVal),
-                                   new IRItem(IRItem::SYMBOL, root->symbol),
-                                   new IRItem(IRItem::INT, (int)i)}));
-    if (moreIRs.back()->items[0]->type == IRItem::ITEMP && iCnt < 4) {
-      callIR->items.push_back(
-          new IRItem(IRItem::ITEMP, irs.back()->items[0]->iVal));
-      iCnt++;
-    }
-    if (moreIRs.back()->items[0]->type == IRItem::FTEMP && fCnt < 16) {
-      callIR->items.push_back(
-          new IRItem(IRItem::FTEMP, irs.back()->items[0]->iVal));
-      fCnt++;
-    }
+    callIR->items.push_back(
+        new IRItem(moreIRs.back()->items[0]->type, irs.back()->items[0]->iVal));
   }
   irs.push_back(callIR);
   if (root->symbol->dataType != Symbol::VOID)

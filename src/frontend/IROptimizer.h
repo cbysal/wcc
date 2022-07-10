@@ -23,6 +23,7 @@ public:
               const vector<pair<Symbol *, vector<IR *>>> &);
   ~IROptimizer();
 
+  void deleteDeadCode();
   vector<pair<Symbol *, vector<IR *>>> getFuncs();
   void optimize();
 };

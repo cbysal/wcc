@@ -12,7 +12,6 @@ class IR {
 public:
   enum IRType {
     ADD,
-    ARG,
     BEQ,
     BGE,
     BGT,
@@ -42,9 +41,7 @@ public:
     MUL,
     NE,
     NEG,
-    PLT,
     POP,
-    POS,
     PUSH,
     RETURN,
     STORE,
