@@ -101,6 +101,9 @@ string ASM::toString() {
     case ASMItem::IMM:
       s += "#" + to_string(items[1]->iVal);
       break;
+    case ASMItem::TAG:
+      s += items[1]->sVal;
+      break;
     case ASMItem::REG:
       s += regTypeStr[items[1]->reg];
       break;
@@ -109,8 +112,30 @@ string ASM::toString() {
     }
     break;
   case MOVT:
-    s +=
-        "movt " + regTypeStr[items[0]->reg] + ", #" + to_string(items[1]->iVal);
+    s += "movt " + regTypeStr[items[0]->reg] + ", ";
+    switch (items[1]->type) {
+    case ASMItem::IMM:
+      s += "#" + to_string(items[1]->iVal);
+      break;
+    case ASMItem::TAG:
+      s += items[1]->sVal;
+      break;
+    default:
+      break;
+    }
+    break;
+  case MOVW:
+    s += "movw " + regTypeStr[items[0]->reg] + ", ";
+    switch (items[1]->type) {
+    case ASMItem::IMM:
+      s += "#" + to_string(items[1]->iVal);
+      break;
+    case ASMItem::TAG:
+      s += items[1]->sVal;
+      break;
+    default:
+      break;
+    }
     break;
   case MUL:
     s += "mul " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +

@@ -4,7 +4,7 @@
 
 using namespace std;
 
-ASMParser::ASMParser( pair<unsigned, unsigned> lineno,
+ASMParser::ASMParser(pair<unsigned, unsigned> lineno,
                      vector<pair<Symbol *, vector<IR *>>> &funcIRs,
                      vector<Symbol *> &consts, vector<Symbol *> &globalVars,
                      unordered_map<Symbol *, vector<Symbol *>> &localVars) {
@@ -1000,44 +1000,25 @@ void ASMParser::parseMov(vector<ASM *> &asms, IR *ir) {
     case Symbol::GLOBAL_VAR:
       if (itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end()) {
         asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(ASMItem::A1),
-                               new ASMItem(ASMItem::LABEL, labelId)}));
+            new ASM(ASM::MOVW,
+                    {new ASMItem(ASMItem::A1),
+                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
         asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId + 1)}));
-        asms.push_back(new ASM(ASM::ADD, {new ASMItem(ASMItem::A1),
-                                          new ASMItem(ASMItem::PC),
-                                          new ASMItem(ASMItem::A1)}));
-        asms.push_back(
-            new ASM(ASM::B, {new ASMItem(ASMItem::LABEL, labelId + 2)}));
-        asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId++)}));
-        asms.push_back(
-            new ASM(ASM::TAG, {new ASMItem(ir->items[1]->symbol->name),
-                               new ASMItem(ASMItem::LABEL, labelId++)}));
-        asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId++)}));
+            new ASM(ASM::MOVT,
+                    {new ASMItem(ASMItem::A1),
+                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
         asms.push_back(new ASM(
             ASM::STR, {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::SP),
                        new ASMItem(spillOffsets[ir->items[0]->iVal])}));
       } else {
         asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                               new ASMItem(ASMItem::LABEL, labelId)}));
+            new ASM(ASM::MOVW,
+                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
         asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId + 1)}));
-        asms.push_back(
-            new ASM(ASM::ADD, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                               new ASMItem(ASMItem::PC),
-                               new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
-        asms.push_back(
-            new ASM(ASM::B, {new ASMItem(ASMItem::LABEL, labelId + 2)}));
-        asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId++)}));
-        asms.push_back(
-            new ASM(ASM::TAG, {new ASMItem(ir->items[1]->symbol->name),
-                               new ASMItem(ASMItem::LABEL, labelId++)}));
-        asms.push_back(
-            new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, labelId++)}));
+            new ASM(ASM::MOVT,
+                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
       }
       break;
     case Symbol::LOCAL_VAR:

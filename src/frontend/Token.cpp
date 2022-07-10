@@ -14,7 +14,7 @@ Token::Token(int iVal) {
   this->iVal = iVal;
 }
 
-Token::Token(string &sVal) {
+Token::Token(const string &sVal) {
   this->type = ID;
   this->sVal = sVal;
 }

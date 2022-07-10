@@ -69,9 +69,6 @@ testbench: tools/testbench_for_x86.cpp tools/testbench_for_arm.cpp
 	$(shell if [ $(ARCH) = "x86_64" ]; then $(CC) $(CFLAGS) tools/testbench_for_x86.cpp -o testbench; fi)
 	$(shell if [ $(ARCH) = "armv7l" ]; then $(CC) $(CFLAGS) tools/testbench_for_arm.cpp -o testbench; fi)
 
-splitter: tools/splitter.cpp
-	$(CC) $(CFLAGS) tools/splitter.cpp -o splitter
-
 clean:
 	rm target -rf
-	rm compiler testbench splitter test test.c test.s out -f
+	rm compiler testbench test test.c test.s out -f

@@ -48,14 +48,16 @@ public:
   };
 
   Type type;
-  int iVal;
-  float fVal;
+  union {
+    int iVal;
+    float fVal;
+  };
   string sVal;
 
   Token(Type);
   Token(float);
   Token(int);
-  Token(string &);
+  Token(const string &);
   ~Token();
 };
 

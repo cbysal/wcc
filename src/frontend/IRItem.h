@@ -40,8 +40,8 @@ public:
   IRItem(IRItemType, Symbol *);
   IRItem(IRItemType, float);
   IRItem(IRItemType, int);
-  IRItem(IRItemType, string &);
-  IRItem(IRItemType, string &, int);
+  IRItem(IRItemType, const string &);
+  IRItem(IRItemType, const string &, int);
   ~IRItem();
 };
 

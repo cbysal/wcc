@@ -13,6 +13,9 @@ using namespace std;
 
 class ASMParser {
 private:
+  const static int MAX_IMM8 = 0xff;
+  const static int MAX_IMM16 = 0xffff;
+  const static int ZERO16 = 0x10000;
   const vector<ASMItem::RegType> aIRegs = {ASMItem::A1, ASMItem::A2,
                                            ASMItem::A3, ASMItem::A4};
   const vector<ASMItem::RegType> aFRegs = {
@@ -28,11 +31,6 @@ private:
       ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23,
       ASMItem::S24, ASMItem::S25, ASMItem::S26, ASMItem::S27,
       ASMItem::S28, ASMItem::S29, ASMItem::S30, ASMItem::S31};
-
-public:
-  const static int MAX_IMM8 = 0xff;
-  const static int MAX_IMM16 = 0xffff;
-  const static int ZERO16 = 0x10000;
 
   bool isProcessed;
   unsigned labelId;
@@ -85,6 +83,8 @@ public:
   void pushArgs(vector<ASM *> &);
   void removeUnusedLabels(vector<ASM *> &);
   void saveArgRegs(vector<ASM *> &, Symbol *);
+
+public:
   vector<pair<Symbol *, vector<ASM *>>> getFuncASMs();
 
   ASMParser(pair<unsigned, unsigned>, vector<pair<Symbol *, vector<IR *>>> &,

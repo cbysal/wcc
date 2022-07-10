@@ -28,25 +28,25 @@ IRItem::IRItem(IRItemType type, Symbol *symbol) {
   this->symbol = symbol;
 }
 
-IRItem::IRItem(IRItemType type, float val) {
+IRItem::IRItem(IRItemType type, float fVal) {
   this->type = type;
-  this->fVal = val;
+  this->fVal = fVal;
   this->symbol = nullptr;
 }
 
-IRItem::IRItem(IRItemType type, int val) {
+IRItem::IRItem(IRItemType type, int iVal) {
   this->type = type;
-  this->iVal = val;
+  this->iVal = iVal;
   this->symbol = nullptr;
 }
 
-IRItem::IRItem(IRItemType type, string &val) {
+IRItem::IRItem(IRItemType type, const string &sVal) {
   this->type = type;
-  this->name = val;
+  this->name = sVal;
   this->symbol = nullptr;
 }
 
-IRItem::IRItem(IRItemType type, string &sVal, int iVal) {
+IRItem::IRItem(IRItemType type, const string &sVal, int iVal) {
   this->type = type;
   this->name = sVal;
   this->iVal = iVal;

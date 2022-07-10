@@ -55,8 +55,6 @@ void LexicalParser::parse() {
 
 Token *LexicalParser::nextToken() {
   Token *token;
-  if (head == content.length())
-    return nullptr;
   while (head < content.length() && isspace(content[head])) {
     if (content[head] == '\n')
       lineno++;
@@ -188,7 +186,8 @@ Token *LexicalParser::nextToken() {
     return token;
   default: {
     unsigned tail = head;
-    while (isalnum(content[tail]) || content[tail] == '_')
+    while (tail < content.length() &&
+           (isalnum(content[tail]) || content[tail] == '_'))
       tail++;
     string tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, ID_REGEX)) {
@@ -202,11 +201,12 @@ Token *LexicalParser::nextToken() {
       return new Token(tokenStr);
     }
     tail = head;
-    while (isxdigit(content[tail]) || content[tail] == '.' ||
-           content[tail] == 'E' || content[tail] == 'e' ||
-           content[tail] == 'P' || content[tail] == 'p' ||
-           content[tail] == 'X' || content[tail] == 'x' ||
-           content[tail] == '+' || content[tail] == '-')
+    while (tail < content.length() &&
+           (isxdigit(content[tail]) || content[tail] == '.' ||
+            content[tail] == 'E' || content[tail] == 'e' ||
+            content[tail] == 'P' || content[tail] == 'p' ||
+            content[tail] == 'X' || content[tail] == 'x' ||
+            content[tail] == '+' || content[tail] == '-'))
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, FLOAT_REGEX)) {
@@ -214,8 +214,9 @@ Token *LexicalParser::nextToken() {
       return new Token(stof(tokenStr));
     }
     tail = head;
-    while (isxdigit(content[tail]) || content[tail] == 'X' ||
-           content[tail] == 'x')
+    while (tail < content.length() &&
+           (isxdigit(content[tail]) || content[tail] == 'X' ||
+            content[tail] == 'x'))
       tail++;
     tokenStr = content.substr(head, tail - head);
     if (regex_match(tokenStr, HEX_INT_REGEX)) {
@@ -238,6 +239,7 @@ Token *LexicalParser::nextToken() {
       head = tail;
       return new Token((int)stol(tokenStr, 0, 8));
     }
+    break;
   }
   }
   return nullptr;

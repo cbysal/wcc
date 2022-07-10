@@ -2,8 +2,8 @@
 *.sh
 target
 compiler
-splitter
 testbench
+in
 out
 test
 test.s

@@ -20,6 +20,7 @@ private:
   vector<Symbol *> symbols;
   vector<unordered_map<string, Symbol *>> symbolStack;
 
+  void allocInitVal(vector<int>, unordered_map<int, AST *> &, int, AST *);
   void deleteInitVal(AST *);
   void initSymbols();
   Symbol *lastSymbol(string &);
@@ -41,7 +42,6 @@ private:
   AST *parseLOrExp();
   AST *parseLVal();
   vector<AST *> parseLocalVarDef();
-  void allocInitVal(vector<int>, unordered_map<int, AST *> &, int, AST *);
   AST *parseMulExp();
   AST *parseRelExp();
   AST *parseReturnStmt(Symbol *);

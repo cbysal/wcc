@@ -21,6 +21,49 @@ SyntaxParser::~SyntaxParser() {
     delete rootAST;
 }
 
+void SyntaxParser::allocInitVal(vector<int> array,
+                                unordered_map<int, AST *> &exps, int base,
+                                AST *src) {
+  if (array.empty()) {
+    while (src && src->astType == AST::INIT_VAL)
+      src = src->nodes.empty() ? nullptr : src->nodes[0];
+    if (src)
+      exps[base] = src;
+    return;
+  }
+  vector<int> index(array.size(), 0);
+  vector<AST *> stk(src->nodes.rbegin(), src->nodes.rend());
+  while (!stk.empty()) {
+    if (stk.back()->astType != AST::INIT_VAL) {
+      int offset = 0;
+      for (unsigned i = 0; i < array.size(); i++)
+        offset = offset * array[i] + index[i];
+      if (stk.back())
+        exps[base + offset] = stk.back();
+      index.back()++;
+    } else {
+      unsigned d = array.size() - 1;
+      while (d > 0 && !index[d])
+        d--;
+      vector<int> newArray;
+      for (unsigned i = d + 1; i < array.size(); i++)
+        newArray.push_back(array[i]);
+      int offset = 0;
+      for (unsigned i = 0; i < array.size(); i++)
+        offset = offset * array[i] + (i <= d ? index[i] : 0);
+      allocInitVal(newArray, exps, base + offset, stk.back());
+      index[d]++;
+    }
+    for (int i = array.size() - 1; i >= 0 && index[i] >= array[i]; i--) {
+      index[i] = 0;
+      if (i == 0)
+        return;
+      index[i - 1]++;
+    }
+    stk.pop_back();
+  }
+}
+
 void SyntaxParser::deleteInitVal(AST *root) {
   for (unsigned i = 0; i < root->nodes.size(); i++)
     if (root->nodes[i]->astType == AST::INIT_VAL)
@@ -1106,49 +1149,6 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
   }
   head++;
   return items;
-}
-
-void SyntaxParser::allocInitVal(vector<int> array,
-                                unordered_map<int, AST *> &exps, int base,
-                                AST *src) {
-  if (array.empty()) {
-    while (src && src->astType == AST::INIT_VAL)
-      src = src->nodes.empty() ? nullptr : src->nodes[0];
-    if (src)
-      exps[base] = src;
-    return;
-  }
-  vector<int> index(array.size(), 0);
-  vector<AST *> stk(src->nodes.rbegin(), src->nodes.rend());
-  while (!stk.empty()) {
-    if (stk.back()->astType != AST::INIT_VAL) {
-      int offset = 0;
-      for (unsigned i = 0; i < array.size(); i++)
-        offset = offset * array[i] + index[i];
-      if (stk.back())
-        exps[base + offset] = stk.back();
-      index.back()++;
-    } else {
-      unsigned d = array.size() - 1;
-      while (d > 0 && !index[d])
-        d--;
-      vector<int> newArray;
-      for (unsigned i = d + 1; i < array.size(); i++)
-        newArray.push_back(array[i]);
-      int offset = 0;
-      for (unsigned i = 0; i < array.size(); i++)
-        offset = offset * array[i] + (i <= d ? index[i] : 0);
-      allocInitVal(newArray, exps, base + offset, stk.back());
-      index[d]++;
-    }
-    for (int i = array.size() - 1; i >= 0 && index[i] >= array[i]; i--) {
-      index[i] = 0;
-      if (i == 0)
-        return;
-      index[i - 1]++;
-    }
-    stk.pop_back();
-  }
 }
 
 AST *SyntaxParser::parseWhileStmt(Symbol *func) {

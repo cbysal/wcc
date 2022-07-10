@@ -1,3 +1,5 @@
+#include <unordered_set>
+
 #include "ASMWriter.h"
 
 ASMWriter::ASMWriter(const string &asmFile, const vector<Symbol *> &consts,
@@ -27,11 +29,34 @@ void ASMWriter::write() {
     fprintf(file, "%s:\n", symbol->name.data());
     if (symbol->dimensions.empty())
       fprintf(file, "\t.word %d\n", symbol->iVal);
-    else
-      for (int i = 0; i < size / 4; i++)
-        fprintf(file, "\t.word %d\n", symbol->iMap[i]);
+    else {
+      if (symbol->dataType == Symbol::FLOAT) {
+        for (int i = 0; i < size / 4; i++)
+          fprintf(file, "\t.word %d\n", *(unsigned *)(&symbol->fMap[i]));
+      } else {
+        for (int i = 0; i < size / 4; i++)
+          fprintf(file, "\t.word %d\n", symbol->iMap[i]);
+      }
+    }
   }
+  unordered_set<Symbol *> parsedGlobalVars;
+  fprintf(file, "\t.bss\n");
   for (Symbol *symbol : globalVars) {
+    if (!symbol->dimensions.empty() && symbol->fMap.empty() &&
+        symbol->iMap.empty()) {
+      int size = 4;
+      for (int dimension : symbol->dimensions)
+        size *= dimension;
+      fprintf(file, "\t.size %s, %d\n", symbol->name.data(), size);
+      fprintf(file, "%s:\n", symbol->name.data());
+      fprintf(file, "\t.space %d\n", size);
+      parsedGlobalVars.insert(symbol);
+    }
+  }
+  fprintf(file, "\t.data\n");
+  for (Symbol *symbol : globalVars) {
+    if (parsedGlobalVars.find(symbol) != parsedGlobalVars.end())
+      continue;
     int size = 4;
     for (int dimension : symbol->dimensions)
       size *= dimension;
@@ -40,11 +65,13 @@ void ASMWriter::write() {
     if (symbol->dimensions.empty())
       fprintf(file, "\t.word %d\n", symbol->iVal);
     else {
-      if (symbol->iMap.empty())
-        fprintf(file, "\t.space %d\n", size);
-      else
+      if (symbol->dataType == Symbol::FLOAT) {
+        for (int i = 0; i < size / 4; i++)
+          fprintf(file, "\t.word %d\n", *(unsigned *)(&symbol->fMap[i]));
+      } else {
         for (int i = 0; i < size / 4; i++)
           fprintf(file, "\t.word %d\n", symbol->iMap[i]);
+      }
     }
   }
   fprintf(file, "\t.text\n");

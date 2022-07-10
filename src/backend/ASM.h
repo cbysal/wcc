@@ -21,6 +21,7 @@ public:
     LDR,
     MOV,
     MOVT,
+    MOVW,
     MUL,
     POP,
     PUSH,

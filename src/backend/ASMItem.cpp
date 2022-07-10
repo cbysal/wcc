@@ -43,8 +43,8 @@ ASMItem::ASMItem(int imm) {
   this->iVal = imm;
 }
 
-ASMItem::ASMItem(string sVal) {
-  this->type = LABEL;
+ASMItem::ASMItem(const string &sVal) {
+  this->type = TAG;
   this->sVal = sVal;
 }
 
