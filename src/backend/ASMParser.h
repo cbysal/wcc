@@ -13,9 +13,6 @@ using namespace std;
 
 class ASMParser {
 private:
-  const static int MAX_IMM8 = 0xff;
-  const static int MAX_IMM16 = 0xffff;
-  const static int ZERO16 = 0x10000;
   const vector<ASMItem::RegType> aIRegs = {ASMItem::A1, ASMItem::A2,
                                            ASMItem::A3, ASMItem::A4};
   const vector<ASMItem::RegType> aFRegs = {
@@ -55,28 +52,29 @@ private:
 
   void allocReg(const vector<IR *> &);
   int calcCallArgSize(const vector<IR *> &);
+  void loadImmToReg(vector<ASM *> &, ASMItem::RegType, float);
+  void loadImmToReg(vector<ASM *> &, ASMItem::RegType, int);
+  void loadOrStoreFromSP(vector<ASM *> &, bool, ASMItem::RegType, unsigned);
   void initFrame();
+  bool isFloatReg(ASMItem::RegType);
   void makeFrame(vector<ASM *> &, const vector<IR *> &, Symbol *);
+  void moveFromSP(vector<ASM *> &, ASMItem::RegType, int);
   void parse();
-  void parseAdd(vector<ASM *> &, IR *);
+  void parseAlgo(vector<ASM *> &, ASM::ASMOpType, ASM::ASMOpType, IR *);
   void parseB(vector<ASM *> &, IR *);
   void parseCall(vector<ASM *> &, IR *);
   void parseCmp(vector<ASM *> &, IR *);
-  void parseDiv(vector<ASM *> &, IR *);
   void parseF2I(vector<ASM *> &, IR *);
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
-  void parseFuncEnd(vector<ASM *> &, IR *);
   void parseI2F(vector<ASM *> &, IR *);
   void parseLNot(vector<ASM *> &, IR *);
   void parseLoad(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
   void parseMod(vector<ASM *> &, IR *);
   void parseMov(vector<ASM *> &, IR *);
-  void parseMul(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
   void parseReturn(vector<ASM *> &, IR *, IR *);
   void parseStore(vector<ASM *> &, IR *);
-  void parseSub(vector<ASM *> &, IR *);
   void popArgs(vector<ASM *> &);
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);

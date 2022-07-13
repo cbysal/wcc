@@ -26,6 +26,7 @@ public:
     POP,
     PUSH,
     RSB,
+    SDIV,
     STR,
     SUB,
     TAG,

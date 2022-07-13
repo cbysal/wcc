@@ -80,7 +80,10 @@ public:
   RegType reg;
   OpType op;
   bool bVal;
-  int iVal;
+  union {
+    float fVal;
+    int iVal;
+  };
   string sVal;
 
   ASMItem(ASMItemType, int);

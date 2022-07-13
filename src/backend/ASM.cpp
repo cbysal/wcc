@@ -89,7 +89,16 @@ string ASM::toString() {
     }
     s += "[" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
-      s += ", #" + to_string(items[2]->iVal);
+      switch (items[2]->type) {
+      case ASMItem::IMM:
+        s += ", #" + to_string(items[2]->iVal);
+        break;
+      case ASMItem::REG:
+        s += ", " + regTypeStr[items[2]->reg];
+        break;
+      default:
+        break;
+      }
     s += "]";
     break;
   case MOV:
@@ -185,10 +194,23 @@ string ASM::toString() {
       break;
     }
     break;
+  case SDIV:
+    s += "sdiv " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
+    break;
   case STR:
     s += "str " + regTypeStr[items[0]->reg] + ", [" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
-      s += ", #" + to_string(items[2]->iVal);
+      switch (items[2]->type) {
+      case ASMItem::IMM:
+        s += ", #" + to_string(items[2]->iVal);
+        break;
+      case ASMItem::REG:
+        s += ", " + regTypeStr[items[2]->reg];
+        break;
+      default:
+        break;
+      }
     s += "]";
     break;
   case SUB:
@@ -236,12 +258,30 @@ string ASM::toString() {
     }
     s += "[" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
-      s += ", #" + to_string(items[2]->iVal);
+      switch (items[2]->type) {
+      case ASMItem::IMM:
+        s += ", #" + to_string(items[2]->iVal);
+        break;
+      case ASMItem::REG:
+        s += ", " + regTypeStr[items[2]->reg];
+        break;
+      default:
+        break;
+      }
     s += "]";
     break;
   case VMOV:
-    s += "vmov.f32 " + regTypeStr[items[0]->reg] + ", " +
-         regTypeStr[items[1]->reg];
+    s += "vmov.f32 " + regTypeStr[items[0]->reg] + ", ";
+    switch (items[1]->type) {
+    case ASMItem::IMM:
+      s += "#" + to_string(*(float *)(&items[1]->fVal));
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[1]->reg];
+      break;
+    default:
+      break;
+    }
     break;
   case VMRS:
     s += "vmrs APSR_nzcv, FPSCR";
@@ -278,7 +318,16 @@ string ASM::toString() {
     s += "vstr.f32 " + regTypeStr[items[0]->reg] + ", [" +
          regTypeStr[items[1]->reg];
     if (items.size() == 3)
-      s += ", #" + to_string(items[2]->iVal);
+      switch (items[2]->type) {
+      case ASMItem::IMM:
+        s += ", #" + to_string(items[2]->iVal);
+        break;
+      case ASMItem::REG:
+        s += ", " + regTypeStr[items[2]->reg];
+        break;
+      default:
+        break;
+      }
     s += "]";
     break;
   case VSUB:

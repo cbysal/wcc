@@ -38,9 +38,9 @@ ASMItem::ASMItem(OpType op) {
   this->op = op;
 }
 
-ASMItem::ASMItem(int imm) {
+ASMItem::ASMItem(int iVal) {
   this->type = IMM;
-  this->iVal = imm;
+  this->iVal = iVal;
 }
 
 ASMItem::ASMItem(const string &sVal) {

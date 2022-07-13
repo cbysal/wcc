@@ -16,7 +16,7 @@ ASMWriter::~ASMWriter() {}
 
 void ASMWriter::write() {
   FILE *file = fopen(asmFile.data(), "w");
-  fprintf(file, "\t.arch armv7-a\n");
+  fprintf(file, "\t.arch armv7ve\n");
   fprintf(file, "\t.fpu vfpv4\n");
   fprintf(file, "\t.arm\n");
   fprintf(file, "\t.data\n");
