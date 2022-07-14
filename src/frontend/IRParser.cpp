@@ -94,9 +94,6 @@ vector<IR *> IRParser::parseAlgoExp(AST *root, Symbol *func) {
   case AST::DIV:
     type = IR::DIV;
     break;
-  case AST::MOD:
-    type = IR::MOD;
-    break;
   case AST::MUL:
     type = IR::MUL;
     break;
@@ -131,7 +128,6 @@ vector<IR *> IRParser::parseBinaryExp(AST *root, Symbol *func) {
   switch (root->opType) {
   case AST::ADD:
   case AST::DIV:
-  case AST::MOD:
   case AST::MUL:
   case AST::SUB:
     return parseAlgoExp(root, func);
@@ -146,6 +142,8 @@ vector<IR *> IRParser::parseBinaryExp(AST *root, Symbol *func) {
     return parseLAndExp(root, func);
   case AST::L_OR:
     return parseLOrExp(root, func);
+  case AST::MOD:
+    return parseModExp(root, func);
   default:
     break;
   }
@@ -407,6 +405,32 @@ vector<IR *> IRParser::parseLVal(AST *root, Symbol *func) {
                                     new IRItem(IRItem::ITEMP, tempId - 2)}));
   }
   return irs;
+}
+
+vector<IR *> IRParser::parseModExp(AST *root, Symbol *func) {
+  vector<IR *> irs1 = parseAST(root->nodes[0], func);
+  vector<IR *> irs2 = parseAST(root->nodes[1], func);
+  vector<IR *> irs3;
+  int t1 = irs1.back()->items[0]->iVal;
+  int t2 = irs2.back()->items[0]->iVal;
+  irs3.insert(irs3.end(), irs1.begin(), irs1.end());
+  irs3.insert(irs3.end(), irs2.begin(), irs2.end());
+  int t3 = tempId++;
+  int t4 = tempId++;
+  int t5 = tempId++;
+  irs3.push_back(
+      new IR(IR::DIV, {new IRItem(irs1.back()->items[0]->type, t3),
+                       new IRItem(irs1.back()->items[0]->type, t1),
+                       new IRItem(irs2.back()->items[0]->type, t2)}));
+  irs3.push_back(
+      new IR(IR::MUL, {new IRItem(irs1.back()->items[0]->type, t4),
+                       new IRItem(irs1.back()->items[0]->type, t2),
+                       new IRItem(irs2.back()->items[0]->type, t3)}));
+  irs3.push_back(
+      new IR(IR::SUB, {new IRItem(irs1.back()->items[0]->type, t5),
+                       new IRItem(irs1.back()->items[0]->type, t1),
+                       new IRItem(irs2.back()->items[0]->type, t4)}));
+  return irs3;
 }
 
 vector<IR *> IRParser::parseReturnStmt(AST *root, Symbol *func) {

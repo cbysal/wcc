@@ -36,7 +36,6 @@ public:
     LOAD,
     LT,
     MEMSET_ZERO,
-    MOD,
     MOV,
     MUL,
     NE,

@@ -659,9 +659,6 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
     case IR::MEMSET_ZERO:
       parseMemsetZero(asms, irs[i]);
       break;
-    case IR::MOD:
-      parseMod(asms, irs[i]);
-      break;
     case IR::MOV:
       parseMov(asms, irs[i]);
       break;
@@ -767,31 +764,6 @@ void ASMParser::parseMemsetZero(vector<ASM *> &asms, IR *ir) {
     size *= dimension;
   loadImmToReg(asms, ASMItem::A3, size);
   asms.push_back(new ASM(ASM::BL, {new ASMItem("memset")}));
-}
-
-void ASMParser::parseMod(vector<ASM *> &asms, IR *ir) {
-  if (itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end())
-    loadOrStoreFromSP(asms, true, ASMItem::A1,
-                      spillOffsets[ir->items[1]->iVal]);
-  else
-    asms.push_back(
-        new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
-                           new ASMItem(itemp2Reg[ir->items[1]->iVal])}));
-  if (itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end())
-    loadOrStoreFromSP(asms, true, ASMItem::A2,
-                      spillOffsets[ir->items[2]->iVal]);
-  else
-    asms.push_back(
-        new ASM(ASM::MOV, {new ASMItem(ASMItem::A2),
-                           new ASMItem(itemp2Reg[ir->items[2]->iVal])}));
-  asms.push_back(new ASM(ASM::BL, {new ASMItem("__aeabi_idivmod")}));
-  if (itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end())
-    loadOrStoreFromSP(asms, false, ASMItem::A2,
-                      spillOffsets[ir->items[0]->iVal]);
-  else
-    asms.push_back(
-        new ASM(ASM::MOV, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                           new ASMItem(ASMItem::A2)}));
 }
 
 void ASMParser::parseMov(vector<ASM *> &asms, IR *ir) {

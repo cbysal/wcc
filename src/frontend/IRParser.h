@@ -34,6 +34,7 @@ private:
   vector<IR *> parseLAndExp(AST *, Symbol *);
   vector<IR *> parseLOrExp(AST *, Symbol *);
   vector<IR *> parseLVal(AST *, Symbol *);
+  vector<IR *> parseModExp(AST *, Symbol *);
   vector<IR *> parseReturnStmt(AST *, Symbol *);
   void parseRoot(AST *);
   vector<IR *> parseUnaryExp(AST *, Symbol *);
