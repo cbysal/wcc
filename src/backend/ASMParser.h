@@ -70,7 +70,9 @@ private:
   void parseLNot(vector<ASM *> &, IR *);
   void parseLoad(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
-  void parseMov(vector<ASM *> &, IR *);
+  void parseMovToFtemp(vector<ASM *> &, IR *);
+  void parseMovToItemp(vector<ASM *> &, IR *);
+  void parseMovToSymbol(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
   void parseReturn(vector<ASM *> &, IR *, IR *);
   void parseStore(vector<ASM *> &, IR *);

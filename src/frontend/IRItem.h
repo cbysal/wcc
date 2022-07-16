@@ -20,7 +20,6 @@ public:
     ITEMP,
     IR_OFFSET,
     IR_T,
-    PLT,
     RETURN,
     SYMBOL,
     VAL
@@ -43,6 +42,8 @@ public:
   IRItem(IRItemType, const string &);
   IRItem(IRItemType, const string &, int);
   ~IRItem();
+
+  IRItem *clone();
 };
 
 extern unordered_map<IRItem::IRItemType, string> irItemTypeStr;

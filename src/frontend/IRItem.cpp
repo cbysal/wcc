@@ -9,8 +9,8 @@ unordered_map<IRItem::IRItemType, string> irItemTypeStr = {
     {IRItem::FLOAT, "FLOAT"},   {IRItem::FTEMP, "FTEMP"},
     {IRItem::INT, "INT"},       {IRItem::IR_OFFSET, "IR_OFFSET"},
     {IRItem::IR_T, "IR_T"},     {IRItem::ITEMP, "ITEMP"},
-    {IRItem::PLT, "PLT"},       {IRItem::RETURN, "RETURN"},
-    {IRItem::SYMBOL, "SYMBOL"}, {IRItem::VAL, "VAL"}};
+    {IRItem::RETURN, "RETURN"}, {IRItem::SYMBOL, "SYMBOL"},
+    {IRItem::VAL, "VAL"}};
 
 IRItem::IRItem(IRItemType type) {
   this->type = type;
@@ -54,3 +54,12 @@ IRItem::IRItem(IRItemType type, const string &sVal, int iVal) {
 }
 
 IRItem::~IRItem() {}
+
+IRItem *IRItem::clone() {
+  IRItem *cloneItem = new IRItem(type);
+  cloneItem->ir = ir;
+  cloneItem->symbol = symbol;
+  cloneItem->iVal = iVal;
+  cloneItem->name = name;
+  return cloneItem;
+}

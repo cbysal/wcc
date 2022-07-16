@@ -60,29 +60,27 @@ IR::~IR() {
 }
 
 string IR::toString() {
-  string s = "(" + to_string(irId) + ", " + irTypeStr[type];
+  string s = to_string(irId) + "\t" + irTypeStr[type];
   for (IRItem *item : items) {
-    s += ", (" + irItemTypeStr[item->type];
-    if (item->type != IRItem::RETURN)
-      s += ", ";
+    s += ", ";
     switch (item->type) {
     case IRItem::FLOAT:
       s += to_string(item->fVal);
       break;
     case IRItem::FTEMP:
-      s += to_string(item->iVal);
+      s += "ft" + to_string(item->iVal);
       break;
     case IRItem::INT:
       s += to_string(item->iVal);
       break;
     case IRItem::ITEMP:
-      s += to_string(item->iVal);
+      s += "it" + to_string(item->iVal);
       break;
     case IRItem::IR_T:
-      s += to_string(item->ir->irId);
+      s += "ir" + to_string(item->ir->irId);
       break;
-    case IRItem::PLT:
-      s += item->name;
+    case IRItem::RETURN:
+      s += "ret";
       break;
     case IRItem::SYMBOL:
       s += item->symbol->name;
@@ -90,8 +88,6 @@ string IR::toString() {
     default:
       break;
     }
-    s += ")";
   }
-  s += ")";
   return s;
 }

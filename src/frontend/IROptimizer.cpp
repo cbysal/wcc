@@ -42,6 +42,9 @@ void IROptimizer::deleteDeadCode() {
       if (ir->type == IR::CALL)
         for (unsigned i = 1; i < ir->items.size(); i++)
           usedTemps.insert(ir->items[i]->iVal);
+      if (ir->type == IR::MOV && ir->items[0]->type == IRItem::SYMBOL &&
+          ir->items[0]->symbol->symbolType == Symbol::GLOBAL_VAR)
+        usedSymbols.insert(ir->items[0]->symbol);
       if (ir->type == IR::MOV && ir->items[1]->type == IRItem::SYMBOL &&
           ir->items[1]->symbol->symbolType == Symbol::GLOBAL_VAR)
         usedSymbols.insert(ir->items[1]->symbol);
