@@ -34,13 +34,14 @@ public:
   };
   string name;
 
+  IRItem(IR *);
   IRItem(IRItemType);
-  IRItem(IRItemType, IR *);
-  IRItem(IRItemType, Symbol *);
-  IRItem(IRItemType, float);
-  IRItem(IRItemType, int);
+  IRItem(IRItemType, unsigned);
   IRItem(IRItemType, const string &);
   IRItem(IRItemType, const string &, int);
+  IRItem(Symbol *);
+  IRItem(float);
+  IRItem(int);
   ~IRItem();
 
   IRItem *clone();

@@ -12,29 +12,18 @@ unordered_map<IRItem::IRItemType, string> irItemTypeStr = {
     {IRItem::RETURN, "RETURN"}, {IRItem::SYMBOL, "SYMBOL"},
     {IRItem::VAL, "VAL"}};
 
+IRItem::IRItem(IR *ir) {
+  this->type = IR_T;
+  this->ir = ir;
+  this->symbol = nullptr;
+}
+
 IRItem::IRItem(IRItemType type) {
   this->type = type;
   this->symbol = nullptr;
 }
 
-IRItem::IRItem(IRItemType type, IR *ir) {
-  this->type = type;
-  this->ir = ir;
-  this->symbol = nullptr;
-}
-
-IRItem::IRItem(IRItemType type, Symbol *symbol) {
-  this->type = type;
-  this->symbol = symbol;
-}
-
-IRItem::IRItem(IRItemType type, float fVal) {
-  this->type = type;
-  this->fVal = fVal;
-  this->symbol = nullptr;
-}
-
-IRItem::IRItem(IRItemType type, int iVal) {
+IRItem::IRItem(IRItemType type, unsigned iVal) {
   this->type = type;
   this->iVal = iVal;
   this->symbol = nullptr;
@@ -49,6 +38,23 @@ IRItem::IRItem(IRItemType type, const string &sVal) {
 IRItem::IRItem(IRItemType type, const string &sVal, int iVal) {
   this->type = type;
   this->name = sVal;
+  this->iVal = iVal;
+  this->symbol = nullptr;
+}
+
+IRItem::IRItem(Symbol *symbol) {
+  this->type = SYMBOL;
+  this->symbol = symbol;
+}
+
+IRItem::IRItem(float fVal) {
+  this->type = FLOAT;
+  this->fVal = fVal;
+  this->symbol = nullptr;
+}
+
+IRItem::IRItem(int iVal) {
+  this->type = INT;
   this->iVal = iVal;
   this->symbol = nullptr;
 }

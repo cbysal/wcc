@@ -68,14 +68,12 @@ private:
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
   void parseI2F(vector<ASM *> &, IR *);
   void parseLNot(vector<ASM *> &, IR *);
-  void parseLoad(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
   void parseMovToFtemp(vector<ASM *> &, IR *);
   void parseMovToItemp(vector<ASM *> &, IR *);
   void parseMovToSymbol(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
   void parseReturn(vector<ASM *> &, IR *, IR *);
-  void parseStore(vector<ASM *> &, IR *);
   void popArgs(vector<ASM *> &);
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);

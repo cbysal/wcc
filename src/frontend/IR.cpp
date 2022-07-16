@@ -30,17 +30,13 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
     {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
     {IR::LE, "LE"},
-    {IR::LOAD, "LOAD"},
     {IR::LT, "LT"},
     {IR::MEMSET_ZERO, "MEMSET_ZERO"},
     {IR::MOV, "MOV"},
     {IR::MUL, "MUL"},
     {IR::NE, "NE"},
     {IR::NEG, "NEG"},
-    {IR::POP, "POP"},
-    {IR::PUSH, "PUSH"},
     {IR::RETURN, "RETURN"},
-    {IR::STORE, "STORE"},
     {IR::SUB, "SUB"}};
 
 IR::IR(IRType type) {

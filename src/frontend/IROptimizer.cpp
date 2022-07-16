@@ -77,8 +77,7 @@ void IROptimizer::deleteDeadCode() {
           ir->type == IR::BGE || ir->type == IR::BGT || ir->type == IR::BLE ||
           ir->type == IR::BLT || ir->type == IR::BNE || ir->type == IR::CALL ||
           ir->type == IR::FUNC_END || ir->type == IR::GOTO ||
-          ir->type == IR::MEMSET_ZERO || ir->type == IR::POP ||
-          ir->type == IR::PUSH || ir->type == IR::RETURN) {
+          ir->type == IR::MEMSET_ZERO || ir->type == IR::RETURN) {
         newIRs.push_back(ir);
         continue;
       }

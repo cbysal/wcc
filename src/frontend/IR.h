@@ -33,17 +33,13 @@ public:
     LABEL_WHILE_BEGIN,
     LABEL_WHILE_END,
     LE,
-    LOAD,
     LT,
     MEMSET_ZERO,
     MOV,
     MUL,
     NE,
     NEG,
-    POP,
-    PUSH,
     RETURN,
-    STORE,
     SUB
   };
 

@@ -38,22 +38,21 @@ vector<IR *> IRParser::parseAST(AST *root, Symbol *func) {
     return parseAST(root->nodes[0], func);
   case AST::FLOAT_LITERAL:
     return {new IR(IR::MOV, {new IRItem(IRItem::FTEMP, tempId++),
-                             new IRItem(IRItem::FLOAT, root->fVal)})};
+                             new IRItem(root->fVal)})};
   case AST::FUNC_CALL:
     return parseFuncCall(root, func);
   case AST::IF_STMT:
     return parseIfStmt(root, func);
   case AST::INT_LITERAL:
     return {new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
-                             new IRItem(IRItem::INT, root->iVal)})};
+                             new IRItem(root->iVal)})};
   case AST::LOCAL_VAR_DEF:
     localVars[func].push_back(root->symbol);
     return {};
   case AST::L_VAL:
     return parseRVal(root, func);
   case AST::MEMSET_ZERO:
-    return {
-        new IR(IR::MEMSET_ZERO, {new IRItem(IRItem::SYMBOL, root->symbol)})};
+    return {new IR(IR::MEMSET_ZERO, {new IRItem(root->symbol)})};
   case AST::RETURN_STMT:
     return parseReturnStmt(root, func);
   case AST::UNARY_EXP:
@@ -70,8 +69,6 @@ vector<IR *> IRParser::parseAlgoExp(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseAST(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
-  int t1 = irs1.back()->items[0]->iVal;
-  int t2 = irs2.back()->items[0]->iVal;
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   IR::IRType type = IR::ADD;
@@ -91,10 +88,9 @@ vector<IR *> IRParser::parseAlgoExp(AST *root, Symbol *func) {
   default:
     break;
   }
-  irs3.push_back(
-      new IR(type, {new IRItem(irs1.back()->items[0]->type, tempId++),
-                    new IRItem(irs1.back()->items[0]->type, t1),
-                    new IRItem(irs2.back()->items[0]->type, t2)}));
+  irs3.push_back(new IR(
+      type, {new IRItem(irs1.back()->items[0]->type, tempId++),
+             irs1.back()->items[0]->clone(), irs2.back()->items[0]->clone()}));
   return irs3;
 }
 
@@ -148,8 +144,6 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseAST(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
-  int t1 = irs1.back()->items[0]->iVal;
-  int t2 = irs2.back()->items[0]->iVal;
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   IR::IRType type = IR::BGE;
@@ -176,19 +170,18 @@ vector<IR *> IRParser::parseCmpExp(AST *root, Symbol *func) {
     break;
   }
   irs3.push_back(new IR(type, {new IRItem(IRItem::ITEMP, tempId++),
-                               new IRItem(irs1.back()->items[0]->type, t1),
-                               new IRItem(irs2.back()->items[0]->type, t2)}));
+                               irs1.back()->items[0]->clone(),
+                               irs2.back()->items[0]->clone()}));
   return irs3;
 }
 
 vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
   vector<IR *> irs;
-  IR *callIR = new IR(IR::CALL, {new IRItem(IRItem::SYMBOL, root->symbol)});
+  IR *callIR = new IR(IR::CALL, {new IRItem(root->symbol)});
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
-    callIR->items.push_back(
-        new IRItem(moreIRs.back()->items[0]->type, irs.back()->items[0]->iVal));
+    callIR->items.push_back(moreIRs.back()->items[0]->clone());
   }
   irs.push_back(callIR);
   if (root->symbol->dataType != Symbol::VOID)
@@ -214,28 +207,29 @@ vector<IR *> IRParser::parseFuncDef(AST *root, Symbol *func) {
 vector<IR *> IRParser::parseIfStmt(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseAST(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
+  vector<IR *> irs3;
+  if (root->nodes[2])
+    irs3 = parseAST(root->nodes[2], func);
   vector<IR *> irs4;
   irs4.insert(irs4.end(), irs1.begin(), irs1.end());
-  int t1 = irs1.back()->items[0]->iVal;
   if (root->nodes[2]) {
     irs4.push_back(
         new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
-                         new IRItem(irs1.back()->items[0]->type, t1),
+                         irs1.back()->items[0]->clone(),
                          irs1.back()->items[0]->type == IRItem::ITEMP
-                             ? new IRItem(IRItem::INT, 0)
-                             : new IRItem(IRItem::FLOAT, 0)}));
+                             ? new IRItem(0)
+                             : new IRItem(0.0f)}));
     irs4.insert(irs4.end(), irs2.begin(), irs2.end());
-    vector<IR *> irs3 = parseAST(root->nodes[2], func);
     irs4.push_back(new IR(
         IR::GOTO, {new IRItem(IRItem::IR_OFFSET, (int)irs3.size() + 1)}));
     irs4.insert(irs4.end(), irs3.begin(), irs3.end());
   } else {
     irs4.push_back(
         new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 1),
-                         new IRItem(irs1.back()->items[0]->type, t1),
+                         irs1.back()->items[0]->clone(),
                          irs1.back()->items[0]->type == IRItem::ITEMP
-                             ? new IRItem(IRItem::INT, 0)
-                             : new IRItem(IRItem::FLOAT, 0)}));
+                             ? new IRItem(0)
+                             : new IRItem(0.0f)}));
     irs4.insert(irs4.end(), irs2.begin(), irs2.end());
   }
   return irs4;
@@ -246,25 +240,23 @@ vector<IR *> IRParser::parseLAndExp(AST *root, Symbol *func) {
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
-  int t1 = irs1.back()->items[0]->iVal;
-  int t2 = irs2.back()->items[0]->iVal;
   irs3.push_back(
       new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
-                       new IRItem(irs1.back()->items[0]->type, t1),
+                       irs1.back()->items[0]->clone(),
                        irs1.back()->items[0]->type == IRItem::ITEMP
-                           ? new IRItem(IRItem::INT, 0)
-                           : new IRItem(IRItem::FLOAT, 0)}));
+                           ? new IRItem(0)
+                           : new IRItem(0.0f)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 3),
-                                  new IRItem(irs2.back()->items[0]->type, t2),
+                                  irs2.back()->items[0]->clone(),
                                   irs1.back()->items[0]->type == IRItem::ITEMP
-                                      ? new IRItem(IRItem::INT, 0)
-                                      : new IRItem(IRItem::FLOAT, 0)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
-                                  new IRItem(IRItem::INT, 0)}));
+                                      ? new IRItem(0)
+                                      : new IRItem(0.0f)}));
+  irs3.push_back(
+      new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId), new IRItem(0)}));
   irs3.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
-                                  new IRItem(IRItem::INT, 1)}));
+  irs3.push_back(
+      new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++), new IRItem(1)}));
   return irs3;
 }
 
@@ -273,31 +265,29 @@ vector<IR *> IRParser::parseLOrExp(AST *root, Symbol *func) {
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
-  int t1 = irs1.back()->items[0]->iVal;
-  int t2 = irs2.back()->items[0]->iVal;
   irs3.push_back(
       new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 4),
-                       new IRItem(irs1.back()->items[0]->type, t1),
+                       irs1.back()->items[0]->clone(),
                        irs1.back()->items[0]->type == IRItem::ITEMP
-                           ? new IRItem(IRItem::INT, 0)
-                           : new IRItem(IRItem::FLOAT, 0)}));
+                           ? new IRItem(0)
+                           : new IRItem(0.0f)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(new IR(IR::BNE, {new IRItem(IRItem::IR_OFFSET, 3),
-                                  new IRItem(irs2.back()->items[0]->type, t2),
+                                  irs2.back()->items[0]->clone(),
                                   irs2.back()->items[0]->type == IRItem::ITEMP
-                                      ? new IRItem(IRItem::INT, 0)
-                                      : new IRItem(IRItem::FLOAT, 0)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId),
-                                  new IRItem(IRItem::INT, 0)}));
+                                      ? new IRItem(0)
+                                      : new IRItem(0.0f)}));
+  irs3.push_back(
+      new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId), new IRItem(0)}));
   irs3.push_back(new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET, 2)}));
-  irs3.push_back(new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
-                                  new IRItem(IRItem::INT, 1)}));
+  irs3.push_back(
+      new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++), new IRItem(1)}));
   return irs3;
 }
 
 vector<IR *> IRParser::parseLVal(AST *root, Symbol *func) {
   vector<IR *> irs;
-  IR *lastIr = new IR(IR::MOV, {new IRItem(IRItem::SYMBOL, root->symbol)});
+  IR *lastIr = new IR(IR::MOV, {new IRItem(root->symbol)});
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
@@ -311,25 +301,17 @@ vector<IR *> IRParser::parseModExp(AST *root, Symbol *func) {
   vector<IR *> irs1 = parseAST(root->nodes[0], func);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
   vector<IR *> irs3;
-  int t1 = irs1.back()->items[0]->iVal;
-  int t2 = irs2.back()->items[0]->iVal;
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
-  int t3 = tempId++;
-  int t4 = tempId++;
-  int t5 = tempId++;
-  irs3.push_back(
-      new IR(IR::DIV, {new IRItem(irs1.back()->items[0]->type, t3),
-                       new IRItem(irs1.back()->items[0]->type, t1),
-                       new IRItem(irs2.back()->items[0]->type, t2)}));
-  irs3.push_back(
-      new IR(IR::MUL, {new IRItem(irs1.back()->items[0]->type, t4),
-                       new IRItem(irs1.back()->items[0]->type, t2),
-                       new IRItem(irs2.back()->items[0]->type, t3)}));
-  irs3.push_back(
-      new IR(IR::SUB, {new IRItem(irs1.back()->items[0]->type, t5),
-                       new IRItem(irs1.back()->items[0]->type, t1),
-                       new IRItem(irs2.back()->items[0]->type, t4)}));
+  irs3.push_back(new IR(IR::DIV, {new IRItem(IRItem::ITEMP, tempId++),
+                                  irs1.back()->items[0]->clone(),
+                                  irs2.back()->items[0]->clone()}));
+  irs3.push_back(new IR(IR::MUL, {new IRItem(IRItem::ITEMP, tempId++),
+                                  irs2.back()->items[0]->clone(),
+                                  irs3.back()->items[0]->clone()}));
+  irs3.push_back(new IR(IR::SUB, {new IRItem(IRItem::ITEMP, tempId++),
+                                  irs1.back()->items[0]->clone(),
+                                  irs3.back()->items[0]->clone()}));
   return irs3;
 }
 
@@ -342,7 +324,7 @@ vector<IR *> IRParser::parseRVal(AST *root, Symbol *func) {
                       ? IRItem::FTEMP
                       : IRItem::ITEMP,
                   tempId++),
-       new IRItem(IRItem::SYMBOL, root->symbol)});
+       new IRItem(root->symbol)});
   for (unsigned i = 0; i < root->nodes.size(); i++) {
     vector<IR *> moreIRs = parseAST(root->nodes[i], func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
@@ -356,8 +338,7 @@ vector<IR *> IRParser::parseReturnStmt(AST *root, Symbol *func) {
   if (root->nodes.empty())
     return {new IR(IR::RETURN)};
   vector<IR *> irs = parseAST(root->nodes[0], func);
-  irs.push_back(new IR(IR::RETURN, {new IRItem(irs.back()->items[0]->type,
-                                               irs.back()->items[0]->iVal)}));
+  irs.push_back(new IR(IR::RETURN, {irs.back()->items[0]->clone()}));
   return irs;
 }
 
@@ -395,7 +376,7 @@ void IRParser::parseRoot(AST *root) {
                      irs[l]->type == IR::LABEL_WHILE_END)
                 l++;
               irs[j]->type = IR::GOTO;
-              irs[j]->items.push_back(new IRItem(IRItem::IR_T, irs[l]));
+              irs[j]->items.push_back(new IRItem(irs[l]));
               break;
             }
           }
@@ -413,7 +394,7 @@ void IRParser::parseRoot(AST *root) {
                      irs[l]->type == IR::LABEL_WHILE_END)
                 l++;
               irs[j]->type = IR::GOTO;
-              irs[j]->items.push_back(new IRItem(IRItem::IR_T, irs[l]));
+              irs[j]->items.push_back(new IRItem(irs[l]));
               break;
             }
           }
@@ -427,7 +408,7 @@ void IRParser::parseRoot(AST *root) {
                  irs[index]->type == IR::LABEL_WHILE_END)
             index++;
           delete irs[j]->items[0];
-          irs[j]->items[0] = new IRItem(IRItem::IR_T, irs[index]);
+          irs[j]->items[0] = new IRItem(irs[index]);
         }
         break;
       }
@@ -446,25 +427,21 @@ vector<IR *> IRParser::parseUnaryExp(AST *root, Symbol *func) {
   vector<IR *> irs = parseAST(root->nodes[0], func);
   switch (root->opType) {
   case AST::F2I:
-    irs.push_back(new IR(
-        IR::F2I, {new IRItem(IRItem::ITEMP, tempId++),
-                  new IRItem(IRItem::FTEMP, irs.back()->items[0]->iVal)}));
+    irs.push_back(new IR(IR::F2I, {new IRItem(IRItem::ITEMP, tempId++),
+                                   irs.back()->items[0]->clone()}));
     break;
   case AST::I2F:
-    irs.push_back(new IR(
-        IR::I2F, {new IRItem(IRItem::FTEMP, tempId++),
-                  new IRItem(IRItem::ITEMP, irs.back()->items[0]->iVal)}));
+    irs.push_back(new IR(IR::I2F, {new IRItem(IRItem::FTEMP, tempId++),
+                                   irs.back()->items[0]->clone()}));
     break;
   case AST::L_NOT:
     irs.push_back(new IR(IR::L_NOT, {new IRItem(IRItem::ITEMP, tempId++),
-                                     new IRItem(irs.back()->items[0]->type,
-                                                irs.back()->items[0]->iVal)}));
+                                     irs.back()->items[0]->clone()}));
     break;
   case AST::NEG:
-    irs.push_back(new IR(
-        IR::NEG,
-        {new IRItem(irs.back()->items[0]->type, tempId++),
-         new IRItem(irs.back()->items[0]->type, irs.back()->items[0]->iVal)}));
+    irs.push_back(
+        new IR(IR::NEG, {new IRItem(irs.back()->items[0]->type, tempId++),
+                         irs.back()->items[0]->clone()}));
     break;
   default:
     break;
@@ -478,13 +455,12 @@ vector<IR *> IRParser::parseWhileStmt(AST *root, Symbol *func) {
   vector<IR *> irs3;
   irs3.push_back(new IR(IR::LABEL_WHILE_BEGIN));
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
-  irs3.push_back(new IR(
-      IR::BEQ,
-      {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
-       new IRItem(irs1.back()->items[0]->type, irs1.back()->items[0]->iVal),
-       irs1.back()->items[0]->type == IRItem::ITEMP
-           ? new IRItem(IRItem::INT, 0)
-           : new IRItem(IRItem::FLOAT, 0)}));
+  irs3.push_back(
+      new IR(IR::BEQ, {new IRItem(IRItem::IR_OFFSET, (int)irs2.size() + 2),
+                       irs1.back()->items[0]->clone(),
+                       irs1.back()->items[0]->type == IRItem::ITEMP
+                           ? new IRItem(0)
+                           : new IRItem(0.0f)}));
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(
       new IR(IR::GOTO, {new IRItem(IRItem::IR_OFFSET,
