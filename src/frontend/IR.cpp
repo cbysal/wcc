@@ -21,12 +21,12 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::DIV, "DIV"},
     {IR::EQ, "EQ"},
     {IR::F2I, "F2I"},
-    {IR::FUNC_END, "FUNC_END"},
     {IR::GE, "GE"},
     {IR::GOTO, "GOTO"},
     {IR::GT, "GT"},
     {IR::I2F, "I2F"},
     {IR::L_NOT, "L_NOT"},
+    {IR::LABEL, "LABEL"},
     {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
     {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
     {IR::LE, "LE"},
@@ -64,16 +64,16 @@ string IR::toString() {
       s += to_string(item->fVal);
       break;
     case IRItem::FTEMP:
-      s += "ft" + to_string(item->iVal);
+      s += "f" + to_string(item->iVal);
       break;
     case IRItem::INT:
       s += to_string(item->iVal);
       break;
     case IRItem::ITEMP:
-      s += "it" + to_string(item->iVal);
+      s += "i" + to_string(item->iVal);
       break;
     case IRItem::IR_T:
-      s += "ir" + to_string(item->ir->irId);
+      s += to_string(item->ir->irId);
       break;
     case IRItem::RETURN:
       s += "ret";

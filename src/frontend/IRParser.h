@@ -19,8 +19,9 @@ private:
   vector<Symbol *> globalVars;
   unordered_map<Symbol *, vector<Symbol *>> localVars;
   vector<pair<Symbol *, vector<IR *>>> funcs;
-  int tempId;
+  unsigned tempId;
 
+  IRItem *lastResult(const vector<IR *> &);
   vector<IR *> parseAST(AST *, Symbol *);
   vector<IR *> parseAlgoExp(AST *, Symbol *);
   vector<IR *> parseAssignStmt(AST *, Symbol *);
@@ -46,7 +47,7 @@ public:
   vector<Symbol *> getGlobalVars();
   unordered_map<Symbol *, vector<Symbol *>> getLocalVars();
   vector<pair<Symbol *, vector<IR *>>> getFuncs();
-  void printIRs();
+  unsigned getTempId();
 
   IRParser(AST *, vector<Symbol *> &);
   ~IRParser();

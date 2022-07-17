@@ -77,7 +77,6 @@ private:
   void popArgs(vector<ASM *> &);
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);
-  void removeUnusedLabels(vector<ASM *> &);
   void saveArgRegs(vector<ASM *> &, Symbol *);
 
 public:

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <unordered_set>
 
 #include "IROptimizer.h"
@@ -8,16 +9,20 @@ IROptimizer::IROptimizer(
     const vector<Symbol *> &symbols, const vector<Symbol *> &consts,
     const vector<Symbol *> &globalVars,
     const unordered_map<Symbol *, vector<Symbol *>> &localVars,
-    const vector<pair<Symbol *, vector<IR *>>> &funcs) {
+    const vector<pair<Symbol *, vector<IR *>>> &funcs, unsigned tempId) {
   this->isProcessed = false;
   this->symbols = symbols;
   this->consts = consts;
   this->globalVars = globalVars;
   this->localVars = localVars;
   this->funcs = funcs;
+  this->tempId = tempId;
 }
 
-IROptimizer::~IROptimizer() {}
+IROptimizer::~IROptimizer() {
+  for (IR *ir : toRecycleIRs)
+    delete ir;
+}
 
 void IROptimizer::deleteDeadCode() {
   for (pair<Symbol *, vector<IR *>> &func : funcs) {
@@ -76,7 +81,7 @@ void IROptimizer::deleteDeadCode() {
       if (jumpIRs.find(ir) != jumpIRs.end() || ir->type == IR::BEQ ||
           ir->type == IR::BGE || ir->type == IR::BGT || ir->type == IR::BLE ||
           ir->type == IR::BLT || ir->type == IR::BNE || ir->type == IR::CALL ||
-          ir->type == IR::FUNC_END || ir->type == IR::GOTO ||
+          ir->type == IR::GOTO || ir->type == IR::LABEL ||
           ir->type == IR::MEMSET_ZERO || ir->type == IR::RETURN) {
         newIRs.push_back(ir);
         continue;
@@ -108,4 +113,56 @@ vector<pair<Symbol *, vector<IR *>>> IROptimizer::getFuncs() {
 void IROptimizer::optimize() {
   isProcessed = true;
   deleteDeadCode();
+  singleVar2Reg();
+  deleteDeadCode();
+}
+
+void IROptimizer::printIRs() {
+  if (!isProcessed)
+    optimize();
+  for (Symbol *cst : consts)
+    cout << cst->toString() << endl;
+  for (Symbol *cst : globalVars)
+    cout << cst->toString() << endl;
+  for (pair<Symbol *, vector<IR *>> func : funcs) {
+    cout << func.first->name << endl;
+    for (IR *ir : func.second)
+      cout << ir->toString() << endl;
+  }
+}
+
+void IROptimizer::singleVar2Reg() {
+  for (pair<Symbol *, vector<IR *>> &func : funcs) {
+    vector<IR *> irs;
+    unordered_map<Symbol *, unsigned> symbol2tempId;
+    for (Symbol *param : func.first->params) {
+      if (param->dimensions.empty()) {
+        symbol2tempId[param] = tempId++;
+        toRecycleIRs.push_back(new IR(
+            IR::MOV, {new IRItem(param->dataType == Symbol::INT ? IRItem::ITEMP
+                                                                : IRItem::FTEMP,
+                                 symbol2tempId[param]),
+                      new IRItem(param)}));
+        irs.push_back(toRecycleIRs.back());
+      }
+    }
+    for (IR *ir : func.second) {
+      for (unsigned i = 0; i < ir->items.size(); i++) {
+        if (ir->items[i]->symbol &&
+            (ir->items[i]->symbol->symbolType == Symbol::LOCAL_VAR ||
+             ir->items[i]->symbol->symbolType == Symbol::PARAM) &&
+            ir->items[i]->symbol->dimensions.empty()) {
+          if (symbol2tempId.find(ir->items[i]->symbol) == symbol2tempId.end())
+            symbol2tempId[ir->items[i]->symbol] = tempId++;
+          delete ir->items[i];
+          ir->items[i] = new IRItem(
+              ir->items[i]->symbol->dataType == Symbol::INT ? IRItem::ITEMP
+                                                            : IRItem::FTEMP,
+              symbol2tempId[ir->items[i]->symbol]);
+        }
+      }
+      irs.push_back(ir);
+    }
+    func.second = irs;
+  }
 }

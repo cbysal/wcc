@@ -34,8 +34,9 @@ int main(int argc, char *argv[]) {
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
-        new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+        new IROptimizer(symbols, consts, globalVars, localVars, funcs, tempId);
     funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -49,7 +50,6 @@ int main(int argc, char *argv[]) {
     delete asmParser;
     delete irOptimizer;
     delete irParser;
-    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
   } else if (argc == 3) {
@@ -67,8 +67,9 @@ int main(int argc, char *argv[]) {
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
-        new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+        new IROptimizer(symbols, consts, globalVars, localVars, funcs, tempId);
     funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -83,13 +84,12 @@ int main(int argc, char *argv[]) {
     cout << "----------------------------------------------------------------"
             "----------------"
          << endl;
-    irParser->printIRs();
+    irOptimizer->printIRs();
     delete asmWriter;
     delete asmOptimizer;
     delete asmParser;
     delete irOptimizer;
     delete irParser;
-    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
   } else {
@@ -125,8 +125,9 @@ int main(int argc, char *argv[]) {
       unordered_map<Symbol *, vector<Symbol *>> localVars =
           irParser->getLocalVars();
       vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
-      IROptimizer *irOptimizer =
-          new IROptimizer(symbols, consts, globalVars, localVars, funcs);
+      unsigned tempId = irParser->getTempId();
+      IROptimizer *irOptimizer = new IROptimizer(symbols, consts, globalVars,
+                                                 localVars, funcs, tempId);
       funcs = irOptimizer->getFuncs();
       ASMParser *asmParser =
           new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -141,14 +142,13 @@ int main(int argc, char *argv[]) {
       cout << "----------------------------------------------------------------"
               "----------------"
            << endl;
-      irParser->printIRs();
+      irOptimizer->printIRs();
       cout << endl;
       delete asmWriter;
       delete asmOptimizer;
       delete asmParser;
       delete irOptimizer;
       delete irParser;
-      delete astOptimizer;
       delete syntaxparser;
       delete lexicalParser;
     }
