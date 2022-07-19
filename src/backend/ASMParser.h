@@ -37,24 +37,21 @@ private:
   vector<pair<Symbol *, vector<IR *>>> funcIRs;
   unordered_map<IR *, unsigned> irLabels;
   vector<pair<Symbol *, vector<ASM *>>> funcASMs;
-  unsigned usedIRegs;
-  unsigned usedFRegs;
-  unsigned spillRegs;
+  vector<unsigned> usedRegNum;
   unsigned savedRegs;
   unsigned frameOffset;
   unordered_map<unsigned, ASMItem::RegType> ftemp2Reg;
   unordered_map<unsigned, ASMItem::RegType> itemp2Reg;
-  unordered_map<unsigned, int> temp2SpillReg;
+  unordered_map<unsigned, unsigned> temp2SpillReg;
   unordered_map<unsigned, int> spillOffsets;
   unordered_map<Symbol *, int> offsets;
   int startLineno;
   int stopLineno;
 
-  void allocReg(const vector<IR *> &);
   int calcCallArgSize(const vector<IR *> &);
+  void loadFromSP(vector<ASM *> &, ASMItem::RegType, unsigned);
   void loadImmToReg(vector<ASM *> &, ASMItem::RegType, float);
   void loadImmToReg(vector<ASM *> &, ASMItem::RegType, int);
-  void loadOrStoreFromSP(vector<ASM *> &, bool, ASMItem::RegType, unsigned);
   void initFrame();
   bool isFloatReg(ASMItem::RegType);
   void makeFrame(vector<ASM *> &, const vector<IR *> &, Symbol *);
@@ -78,6 +75,7 @@ private:
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);
   void saveArgRegs(vector<ASM *> &, Symbol *);
+  void storeFromSP(vector<ASM *> &, ASMItem::RegType, unsigned);
 
 public:
   vector<pair<Symbol *, vector<ASM *>>> getFuncASMs();

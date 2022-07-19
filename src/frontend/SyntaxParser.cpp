@@ -1140,7 +1140,11 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
         }
         deleteInitVal(val);
       }
-    }
+    } else
+      items.push_back(
+          new AST(AST::ASSIGN_STMT, type == Symbol::FLOAT,
+                  {new AST(AST::L_VAL, type == Symbol::FLOAT, symbol, {}),
+                   type == Symbol::FLOAT ? new AST(0.0f) : new AST(0)}));
     symbols.push_back(symbol);
     symbolStack.back()[name] = symbol;
     if (tokens[head]->type == Token::SEMICOLON)

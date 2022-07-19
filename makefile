@@ -8,11 +8,13 @@ TEST_CASES=$(patsubst %.sy,%,$(wildcard ./test_case/functional/*.sy))
 compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
 	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
+	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
 	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
+	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/compiler.o: src/compiler.cpp src
 	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
@@ -52,6 +54,12 @@ $(TARGET_DIR)/IRParser.o: src/frontend/IRParser.cpp src/frontend/IRParser.h
 
 $(TARGET_DIR)/LexicalParser.o: src/frontend/LexicalParser.cpp src/frontend/LexicalParser.h
 	$(CC) $(CFLAGS) -c src/frontend/LexicalParser.cpp -o $(TARGET_DIR)/LexicalParser.o
+
+$(TARGET_DIR)/RegAllocator.o: src/backend/RegAllocator.cpp src/backend/RegAllocator.h
+	$(CC) $(CFLAGS) -c src/backend/RegAllocator.cpp -o $(TARGET_DIR)/RegAllocator.o
+
+$(TARGET_DIR)/RegFile.o: src/backend/RegFile.cpp src/backend/RegFile.h
+	$(CC) $(CFLAGS) -c src/backend/RegFile.cpp -o $(TARGET_DIR)/RegFile.o
 
 $(TARGET_DIR)/Symbol.o: src/frontend/Symbol.cpp src/frontend/Symbol.h
 	$(CC) $(CFLAGS) -c src/frontend/Symbol.cpp -o $(TARGET_DIR)/Symbol.o

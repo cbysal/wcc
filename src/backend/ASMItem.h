@@ -1,6 +1,7 @@
 #ifndef __ASM_ITEM_H__
 #define __ASM_ITEM_H__
 
+#include <string>
 #include <unordered_map>
 
 using namespace std;
@@ -10,38 +11,23 @@ public:
   enum ASMItemType { COND, IMM, LABEL, OP, POSNEG, REG, TAG, WB };
   enum OpType { MINUS, PLUS };
   enum RegType {
-    R0,
-    A1 = R0,
-    R1,
-    A2 = R1,
-    R2,
-    A3 = R2,
-    R3,
-    A4 = R3,
-    R4,
-    V1 = R4,
-    R5,
-    V2 = R5,
-    R6,
-    V3 = R6,
-    R7,
-    V4 = R7,
-    R8,
-    V5 = R8,
-    R9,
-    V6 = R9,
-    R10,
-    V7 = R10,
-    R11,
-    V8 = R11,
-    R12,
-    IP = R12,
-    R13,
-    SP = R13,
-    R14,
-    LR = R14,
-    R15,
-    PC = R15,
+    SPILL,
+    A1,
+    A2,
+    A3,
+    A4,
+    V1,
+    V2,
+    V3,
+    V4,
+    V5,
+    V6,
+    V7,
+    V8,
+    IP,
+    SP,
+    LR,
+    PC,
     S0,
     S1,
     S2,
