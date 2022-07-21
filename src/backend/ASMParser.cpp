@@ -664,8 +664,7 @@ void ASMParser::parseLNot(vector<ASM *> &asms, IR *ir) {
           new ASM(ASM::VMOV, {new ASMItem(targetReg),
                               new ASMItem(ftemp2Reg[ir->items[1]->iVal])}));
     else
-      loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                 spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, targetReg, spillOffsets[ir->items[1]->iVal]);
     asms.push_back(new ASM(ASM::CMP, {new ASMItem(targetReg), new ASMItem(0)}));
   }
   asms.push_back(

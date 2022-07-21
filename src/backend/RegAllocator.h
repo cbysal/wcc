@@ -17,6 +17,16 @@ private:
   RegFile *regs;
   unordered_map<unsigned, ASMItem::RegType> itemp2Reg, ftemp2Reg;
   unordered_map<unsigned, unsigned> temp2SpillReg;
+  unordered_map<unsigned, IRItem::IRItemType> tempType;
+  unordered_map<unsigned, unordered_set<unsigned>> rMap, wMap;
+  unordered_map<unsigned, vector<unsigned>> prevMap;
+  unordered_map<unsigned, pair<unsigned, unsigned>> lifespan;
+
+  void calcLifespan();
+  void calcPrevMap();
+  void scanSpan(unsigned, unsigned, unordered_set<unsigned> &,
+                unordered_set<unsigned> &);
+  void simpleScan();
 
 public:
   RegAllocator(const vector<IR *> &);
