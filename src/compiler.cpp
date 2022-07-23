@@ -36,7 +36,9 @@ int main(int argc, char *argv[]) {
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
-        new IROptimizer(symbols, consts, globalVars, localVars, funcs, tempId);
+        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = irOptimizer->getConsts();
+    globalVars = irOptimizer->getGlobalVars();
     funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -52,8 +54,8 @@ int main(int argc, char *argv[]) {
     delete irParser;
     delete syntaxparser;
     delete lexicalParser;
-  } else if (argc == 3) {
-    LexicalParser *lexicalParser = new LexicalParser(argv[2]);
+  } else if (argc == 2) {
+    LexicalParser *lexicalParser = new LexicalParser(argv[1]);
     pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
     vector<Token *> tokens = lexicalParser->getTokens();
     SyntaxParser *syntaxparser = new SyntaxParser(tokens);
@@ -69,7 +71,9 @@ int main(int argc, char *argv[]) {
     vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
-        new IROptimizer(symbols, consts, globalVars, localVars, funcs, tempId);
+        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = irOptimizer->getConsts();
+    globalVars = irOptimizer->getGlobalVars();
     funcs = irOptimizer->getFuncs();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -93,8 +97,6 @@ int main(int argc, char *argv[]) {
     delete syntaxparser;
     delete lexicalParser;
   } else {
-    int item = stoi(argv[1]);
-    int id = 0;
     string dir1 = "test_case/functional";
     string dir2 = "test_case/performance";
     vector<string> files;
@@ -107,8 +109,6 @@ int main(int argc, char *argv[]) {
     sort(files.begin(), files.end());
     for (const string &file : files) {
       if (file.length() < 3 || file.find(".sy") != file.length() - 3)
-        continue;
-      if (item >= 0 && id++ != item)
         continue;
       cout << file << endl;
       LexicalParser *lexicalParser = new LexicalParser(file);
@@ -126,8 +126,10 @@ int main(int argc, char *argv[]) {
           irParser->getLocalVars();
       vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
       unsigned tempId = irParser->getTempId();
-      IROptimizer *irOptimizer = new IROptimizer(symbols, consts, globalVars,
-                                                 localVars, funcs, tempId);
+      IROptimizer *irOptimizer =
+          new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+      consts = irOptimizer->getConsts();
+      globalVars = irOptimizer->getGlobalVars();
       funcs = irOptimizer->getFuncs();
       ASMParser *asmParser =
           new ASMParser(lineno, funcs, consts, globalVars, localVars);
