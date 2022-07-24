@@ -5,12 +5,12 @@ using namespace std;
 Token::Token(Type type) { this->type = type; }
 
 Token::Token(float fVal) {
-  this->type = FLOAT_LITERAL;
+  this->type = FLOAT_LIT;
   this->fVal = fVal;
 }
 
 Token::Token(int iVal) {
-  this->type = INT_LITERAL;
+  this->type = INT_LIT;
   this->iVal = iVal;
 }
 

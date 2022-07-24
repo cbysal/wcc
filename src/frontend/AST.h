@@ -23,14 +23,14 @@ public:
     CONST_INIT_VAL,
     CONTINUE_STMT,
     EXP_STMT,
-    FLOAT_LITERAL,
+    FLOAT,
     FUNC_CALL,
     FUNC_DEF,
     FUNC_PARAM,
     GLOBAL_VAR_DEF,
     IF_STMT,
     INIT_VAL,
-    INT_LITERAL,
+    INT,
     LOCAL_VAR_DEF,
     L_VAL,
     MEMSET_ZERO,
@@ -41,6 +41,7 @@ public:
   };
 
   enum OPType {
+    ERR_OP,
     ADD,
     DIV,
     EQ,
@@ -69,6 +70,7 @@ public:
     int iVal;
     float fVal;
   };
+  unsigned dimension;
   vector<AST *> nodes;
 
   AST(ASTType, bool, OPType, const vector<AST *> &);
@@ -77,6 +79,8 @@ public:
   AST(float);
   AST(int);
   ~AST();
+
+  AST *transIF();
 };
 
 #endif

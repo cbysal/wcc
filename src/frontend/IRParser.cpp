@@ -43,14 +43,14 @@ vector<IR *> IRParser::parseAST(AST *root, Symbol *func) {
     return {new IR(IR::CONTINUE)};
   case AST::EXP_STMT:
     return parseAST(root->nodes[0], func);
-  case AST::FLOAT_LITERAL:
+  case AST::FLOAT:
     return {new IR(IR::MOV, {new IRItem(IRItem::FTEMP, tempId++),
                              new IRItem(root->fVal)})};
   case AST::FUNC_CALL:
     return parseFuncCall(root, func);
   case AST::IF_STMT:
     return parseIfStmt(root, func);
-  case AST::INT_LITERAL:
+  case AST::INT:
     return {new IR(IR::MOV, {new IRItem(IRItem::ITEMP, tempId++),
                              new IRItem(root->iVal)})};
   case AST::LOCAL_VAR_DEF:

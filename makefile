@@ -3,13 +3,11 @@ CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
 ARCH = $(shell uname -m)
 
-TEST_CASES=$(patsubst %.sy,%,$(wildcard ./test_case/functional/*.sy))
-
-compiler: $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
-	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
-	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o
+compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o \
+	$(TARGET_DIR)/ASMOptimizer.o $(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
+	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o \
+	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o \
+	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
 	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
