@@ -461,7 +461,7 @@ AST *SyntaxParser::parseEqExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    left = new AST(AST::BINARY_EXP, left->isFloat, type, {left, right});
+    left = new AST(AST::BINARY_EXP, false, type, {left, right});
   }
   return left;
 }
@@ -690,11 +690,7 @@ AST *SyntaxParser::parseLAndExp() {
       delete right;
       continue;
     }
-    if (!left->isFloat && right->isFloat)
-      left = left->transIF();
-    if (left->isFloat && !right->isFloat)
-      right = right->transIF();
-    left = new AST(AST::BINARY_EXP, left->isFloat, AST::L_AND, {left, right});
+    left = new AST(AST::BINARY_EXP, false, AST::L_AND, {left, right});
   }
   return left;
 }
@@ -735,11 +731,7 @@ AST *SyntaxParser::parseLOrExp() {
       delete right;
       continue;
     }
-    if (!left->isFloat && right->isFloat)
-      left = left->transIF();
-    if (left->isFloat && !right->isFloat)
-      right = right->transIF();
-    left = new AST(AST::BINARY_EXP, left->isFloat, AST::L_OR, {left, right});
+    left = new AST(AST::BINARY_EXP, false, AST::L_OR, {left, right});
   }
   return left;
 }
@@ -923,7 +915,7 @@ AST *SyntaxParser::parseRelExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    left = new AST(AST::BINARY_EXP, left->isFloat, type, {left, right});
+    left = new AST(AST::BINARY_EXP, false, type, {left, right});
   }
   return left;
 }

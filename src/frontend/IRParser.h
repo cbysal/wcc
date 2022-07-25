@@ -28,12 +28,14 @@ private:
   vector<IR *> parseBinaryExp(AST *, Symbol *);
   vector<IR *> parseBlock(AST *, Symbol *);
   vector<IR *> parseCmpExp(AST *, Symbol *);
+  vector<IR *> parseCond(AST *, Symbol *, IR *, IR *);
   vector<IR *> parseExpStmt(AST *, Symbol *);
   vector<IR *> parseFuncCall(AST *, Symbol *);
   vector<IR *> parseFuncDef(AST *, Symbol *);
   vector<IR *> parseIfStmt(AST *, Symbol *);
-  vector<IR *> parseLAndExp(AST *, Symbol *);
-  vector<IR *> parseLOrExp(AST *, Symbol *);
+  vector<IR *> parseLAndExp(AST *, Symbol *, IR *, IR *);
+  vector<IR *> parseLCmpExp(AST *, Symbol *, IR *, IR *);
+  vector<IR *> parseLOrExp(AST *, Symbol *, IR *, IR *);
   vector<IR *> parseLVal(AST *, Symbol *);
   vector<IR *> parseModExp(AST *, Symbol *);
   vector<IR *> parseRVal(AST *, Symbol *);
