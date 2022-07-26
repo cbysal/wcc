@@ -25,7 +25,7 @@ void SyntaxParser::allocInitVal(vector<int> array,
                                 unordered_map<int, AST *> &exps, int base,
                                 AST *src) {
   if (array.empty()) {
-    while (src && src->astType == AST::INIT_VAL)
+    while (src && src->type == AST::INIT_VAL)
       src = src->nodes.empty() ? nullptr : src->nodes[0];
     if (src)
       exps[base] = src;
@@ -34,7 +34,7 @@ void SyntaxParser::allocInitVal(vector<int> array,
   vector<int> index(array.size(), 0);
   vector<AST *> stk(src->nodes.rbegin(), src->nodes.rend());
   while (!stk.empty()) {
-    if (stk.back()->astType != AST::INIT_VAL) {
+    if (stk.back()->type != AST::INIT_VAL) {
       int offset = 0;
       for (unsigned i = 0; i < array.size(); i++)
         offset = offset * array[i] + index[i];
@@ -66,7 +66,7 @@ void SyntaxParser::allocInitVal(vector<int> array,
 
 void SyntaxParser::deleteInitVal(AST *root) {
   for (unsigned i = 0; i < root->nodes.size(); i++)
-    if (root->nodes[i]->astType == AST::INIT_VAL)
+    if (root->nodes[i]->type == AST::INIT_VAL)
       deleteInitVal(root->nodes[i]);
   root->nodes.clear();
   delete root;
@@ -167,39 +167,37 @@ AST *SyntaxParser::parseAddExp() {
   AST *left = parseMulExp();
   while (tokens[head]->type == Token::MINUS ||
          tokens[head]->type == Token::PLUS) {
-    AST::OPType type = AST::ERR_OP;
+    AST::ASTType type = AST::ERR_TYPE;
     switch (tokens[head]->type) {
     case Token::MINUS:
-      type = AST::SUB;
+      type = AST::SUB_EXP;
       break;
     case Token::PLUS:
-      type = AST::ADD;
+      type = AST::ADD_EXP;
       break;
     default:
       break;
     }
     head++;
     AST *right = parseMulExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       switch (type) {
-      case AST::ADD:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::ADD_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = true;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) +
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::FLOAT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) +
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::FLOAT;
         } else
           left->iVal = left->iVal + right->iVal;
         break;
-      case AST::SUB:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::SUB_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = true;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) -
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::FLOAT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) -
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::FLOAT;
         } else
           left->iVal = left->iVal - right->iVal;
         break;
@@ -214,45 +212,45 @@ AST *SyntaxParser::parseAddExp() {
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
     switch (type) {
-    case AST::ADD:
+    case AST::ADD_EXP:
       if (left->dimension) {
         unsigned dimension = left->dimension;
-        if (right->astType == AST::INT)
+        if (right->type == AST::INT)
           right->iVal = right->iVal * dimension * 4;
         else
-          right = new AST(AST::BINARY_EXP, false, AST::MUL,
+          right = new AST(AST::MUL_EXP, false,
                           {right, new AST((int)dimension * 4)});
-        left = new AST(AST::BINARY_EXP, false, type, {left, right});
+        left = new AST(AST::ADD_EXP, false, {left, right});
         left->dimension = dimension;
         continue;
       }
       if (right->dimension) {
         unsigned dimension = right->dimension;
-        if (left->astType == AST::INT)
+        if (left->type == AST::INT)
           left->iVal = left->iVal * dimension * 4;
         else
-          left = new AST(AST::BINARY_EXP, false, AST::MUL,
-                         {left, new AST((int)dimension * 4)});
-        right = new AST(AST::BINARY_EXP, false, type, {left, right});
+          left =
+              new AST(AST::MUL_EXP, false, {left, new AST((int)dimension * 4)});
+        right = new AST(AST::ADD_EXP, false, {left, right});
         right->dimension = dimension;
         continue;
       }
       break;
-    case AST::SUB:
+    case AST::SUB_EXP:
       if (left->dimension || right->dimension) {
         unsigned dimension = left->dimension;
         if (right->dimension) {
-          left = new AST(AST::BINARY_EXP, false, type, {left, right});
-          left = new AST(AST::BINARY_EXP, false, AST::DIV,
-                         {left, new AST((int)dimension * 4)});
+          left = new AST(AST::SUB_EXP, false, {left, right});
+          left =
+              new AST(AST::DIV_EXP, false, {left, new AST((int)dimension * 4)});
           continue;
         }
-        if (right->astType == AST::INT)
+        if (right->type == AST::INT)
           right->iVal = right->iVal * dimension * 4;
         else
-          right = new AST(AST::BINARY_EXP, false, AST::MUL,
+          right = new AST(AST::MUL_EXP, false,
                           {right, new AST((int)dimension * 4)});
-        left = new AST(AST::BINARY_EXP, false, type, {left, right});
+        left = new AST(AST::SUB_EXP, false, {left, right});
         left->dimension = dimension;
         continue;
       }
@@ -260,7 +258,7 @@ AST *SyntaxParser::parseAddExp() {
     default:
       break;
     }
-    left = new AST(AST::BINARY_EXP, left->isFloat, type, {left, right});
+    left = new AST(type, left->isFloat, {left, right});
   }
   return left;
 }
@@ -342,7 +340,7 @@ vector<AST *> SyntaxParser::parseConstDef() {
         symbol = new Symbol(Symbol::CONST, type, name, dimensions, iMap);
       }
     } else
-      symbol = val->astType == AST::FLOAT
+      symbol = val->type == AST::FLOAT
                    ? new Symbol(Symbol::CONST, type, name, val->fVal)
                    : new Symbol(Symbol::CONST, type, name, val->iVal);
     symbols.push_back(symbol);
@@ -362,10 +360,10 @@ void SyntaxParser::parseConstInitVal(vector<int> array,
                                      unordered_map<int, T> &tMap, int base,
                                      AST *src) {
   if (array.empty()) {
-    while (src && src->astType == AST::INIT_VAL)
+    while (src && src->type == AST::INIT_VAL)
       src = src->nodes.empty() ? nullptr : src->nodes[0];
     if (src) {
-      if (src->astType == AST::INT) {
+      if (src->type == AST::INT) {
         if (src->iVal)
           tMap[base] = src->iVal;
       } else {
@@ -378,11 +376,11 @@ void SyntaxParser::parseConstInitVal(vector<int> array,
   vector<int> index(array.size(), 0);
   vector<AST *> stk(src->nodes.rbegin(), src->nodes.rend());
   while (!stk.empty()) {
-    if (stk.back()->astType != AST::INIT_VAL) {
+    if (stk.back()->type != AST::INIT_VAL) {
       int offset = 0;
       for (unsigned i = 0; i < array.size(); i++)
         offset = offset * array[i] + index[i];
-      if (stk.back()->astType == AST::INT) {
+      if (stk.back()->type == AST::INT) {
         if (stk.back()->iVal)
           tMap[base + offset] = stk.back()->iVal;
       } else {
@@ -416,40 +414,40 @@ void SyntaxParser::parseConstInitVal(vector<int> array,
 AST *SyntaxParser::parseEqExp() {
   AST *left = parseRelExp();
   while (tokens[head]->type == Token::EQ || tokens[head]->type == Token::NE) {
-    AST::OPType type = AST::ERR_OP;
+    AST::ASTType type = AST::ERR_TYPE;
     switch (tokens[head]->type) {
     case Token::EQ:
-      type = AST::EQ;
+      type = AST::EQ_EXP;
       break;
     case Token::NE:
-      type = AST::NE;
+      type = AST::NE_EXP;
       break;
     default:
       break;
     }
     head++;
     AST *right = parseRelExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       left->isFloat = false;
       switch (type) {
-      case AST::EQ:
+      case AST::EQ_EXP:
         left->isFloat = false;
         left->iVal =
-            (left->astType == AST::FLOAT || right->astType == AST::FLOAT)
-                ? ((left->astType == AST::FLOAT ? left->fVal : left->iVal) ==
-                   (right->astType == AST::FLOAT ? right->fVal : right->iVal))
+            (left->type == AST::FLOAT || right->type == AST::FLOAT)
+                ? ((left->type == AST::FLOAT ? left->fVal : left->iVal) ==
+                   (right->type == AST::FLOAT ? right->fVal : right->iVal))
                 : (left->iVal == right->iVal);
-        left->astType = AST::INT;
+        left->type = AST::INT;
         break;
-      case AST::NE:
+      case AST::NE_EXP:
         left->isFloat = false;
         left->iVal =
-            (left->astType == AST::FLOAT || right->astType == AST::FLOAT)
-                ? ((left->astType == AST::FLOAT ? left->fVal : left->iVal) !=
-                   (right->astType == AST::FLOAT ? right->fVal : right->iVal))
+            (left->type == AST::FLOAT || right->type == AST::FLOAT)
+                ? ((left->type == AST::FLOAT ? left->fVal : left->iVal) !=
+                   (right->type == AST::FLOAT ? right->fVal : right->iVal))
                 : (left->iVal != right->iVal);
-        left->astType = AST::INT;
+        left->type = AST::INT;
         break;
       default:
         break;
@@ -461,7 +459,7 @@ AST *SyntaxParser::parseEqExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    left = new AST(AST::BINARY_EXP, false, type, {left, right});
+    left = new AST(type, false, {left, right});
   }
   return left;
 }
@@ -571,7 +569,7 @@ vector<AST *> SyntaxParser::parseGlobalVarDef() {
       head++;
       AST *val = parseInitVal();
       if (dimensions.empty())
-        symbol = val->astType == AST::FLOAT
+        symbol = val->type == AST::FLOAT
                      ? new Symbol(Symbol::GLOBAL_VAR, type, name, val->fVal)
                      : new Symbol(Symbol::GLOBAL_VAR, type, name, val->iVal);
       else if (type == Symbol::FLOAT) {
@@ -621,9 +619,9 @@ AST *SyntaxParser::parseIfStmt(Symbol *func) {
     if (depthInc)
       symbolStack.pop_back();
   }
-  if (cond->astType == AST::FLOAT || cond->astType == AST::INT) {
-    if ((cond->astType == AST::FLOAT && cond->fVal) ||
-        (cond->astType == AST::INT && cond->iVal)) {
+  if (cond->type == AST::FLOAT || cond->type == AST::INT) {
+    if ((cond->type == AST::FLOAT && cond->fVal) ||
+        (cond->type == AST::INT && cond->iVal)) {
       delete cond;
       if (stmt2)
         delete stmt2;
@@ -659,38 +657,38 @@ AST *SyntaxParser::parseLAndExp() {
   while (tokens[head]->type == Token::L_AND) {
     head++;
     AST *right = parseEqExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       left->isFloat = false;
       left->iVal =
-          (left->astType == AST::FLOAT || right->astType == AST::FLOAT)
-              ? ((left->astType == AST::FLOAT ? left->fVal : left->iVal) &&
-                 (right->astType == AST::FLOAT ? right->fVal : right->iVal))
+          (left->type == AST::FLOAT || right->type == AST::FLOAT)
+              ? ((left->type == AST::FLOAT ? left->fVal : left->iVal) &&
+                 (right->type == AST::FLOAT ? right->fVal : right->iVal))
               : (left->iVal && right->iVal);
-      left->astType = AST::INT;
+      left->type = AST::INT;
       delete right;
       continue;
     }
-    if ((left->astType == AST::FLOAT && left->fVal) ||
-        (left->astType == AST::INT && left->iVal)) {
+    if ((left->type == AST::FLOAT && left->fVal) ||
+        (left->type == AST::INT && left->iVal)) {
       delete left;
       left = right;
       continue;
     }
-    if ((left->astType == AST::FLOAT && !left->fVal) ||
-        (left->astType == AST::INT && !left->iVal)) {
+    if ((left->type == AST::FLOAT && !left->fVal) ||
+        (left->type == AST::INT && !left->iVal)) {
       left->isFloat = false;
-      left->astType = AST::INT;
+      left->type = AST::INT;
       left->iVal = 0;
       delete right;
       continue;
     }
-    if ((right->astType == AST::FLOAT && right->fVal) ||
-        (right->astType == AST::INT && right->iVal)) {
+    if ((right->type == AST::FLOAT && right->fVal) ||
+        (right->type == AST::INT && right->iVal)) {
       delete right;
       continue;
     }
-    left = new AST(AST::BINARY_EXP, false, AST::L_AND, {left, right});
+    left = new AST(AST::L_AND_EXP, false, {left, right});
   }
   return left;
 }
@@ -700,38 +698,38 @@ AST *SyntaxParser::parseLOrExp() {
   while (tokens[head]->type == Token::L_OR) {
     head++;
     AST *right = parseLAndExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       left->isFloat = false;
       left->iVal =
-          (left->astType == AST::FLOAT || right->astType == AST::FLOAT)
-              ? ((left->astType == AST::FLOAT ? left->fVal : left->iVal) ||
-                 (right->astType == AST::FLOAT ? right->fVal : right->iVal))
+          (left->type == AST::FLOAT || right->type == AST::FLOAT)
+              ? ((left->type == AST::FLOAT ? left->fVal : left->iVal) ||
+                 (right->type == AST::FLOAT ? right->fVal : right->iVal))
               : (left->iVal || right->iVal);
-      left->astType = AST::INT;
+      left->type = AST::INT;
       delete right;
       continue;
     }
-    if ((left->astType == AST::FLOAT && left->fVal) ||
-        (left->astType == AST::INT && left->iVal)) {
+    if ((left->type == AST::FLOAT && left->fVal) ||
+        (left->type == AST::INT && left->iVal)) {
       left->isFloat = false;
-      left->astType = AST::INT;
+      left->type = AST::INT;
       left->iVal = 1;
       delete right;
       continue;
     }
-    if ((left->astType == AST::FLOAT && !left->fVal) ||
-        (left->astType == AST::INT && !left->iVal)) {
+    if ((left->type == AST::FLOAT && !left->fVal) ||
+        (left->type == AST::INT && !left->iVal)) {
       delete left;
       left = right;
       continue;
     }
-    if ((right->astType == AST::FLOAT && !right->fVal) ||
-        (right->astType == AST::INT && !right->iVal)) {
+    if ((right->type == AST::FLOAT && !right->fVal) ||
+        (right->type == AST::INT && !right->iVal)) {
       delete right;
       continue;
     }
-    left = new AST(AST::BINARY_EXP, false, AST::L_OR, {left, right});
+    left = new AST(AST::L_OR_EXP, false, {left, right});
   }
   return left;
 }
@@ -745,7 +743,7 @@ AST *SyntaxParser::parseLVal() {
   while (tokens[head]->type == Token::LB) {
     head++;
     dimensions.push_back(parseAddExp());
-    if (dimensions.back()->astType == AST::INT)
+    if (dimensions.back()->type == AST::INT)
       array.push_back(dimensions.back()->iVal);
     head++;
   }
@@ -782,45 +780,43 @@ AST *SyntaxParser::parseMulExp() {
   AST *left = parseUnaryExp();
   while (tokens[head]->type == Token::DIV || tokens[head]->type == Token::MOD ||
          tokens[head]->type == Token::MUL) {
-    AST::OPType type = AST::ERR_OP;
+    AST::ASTType type = AST::ERR_TYPE;
     switch (tokens[head]->type) {
     case Token::DIV:
-      type = AST::DIV;
+      type = AST::DIV_EXP;
       break;
     case Token::MOD:
-      type = AST::MOD;
+      type = AST::MOD_EXP;
       break;
     case Token::MUL:
-      type = AST::MUL;
+      type = AST::MUL_EXP;
       break;
     default:
       break;
     }
     head++;
     AST *right = parseUnaryExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       switch (type) {
-      case AST::DIV:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::DIV_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = true;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) /
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::FLOAT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) /
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::FLOAT;
         } else
           left->iVal = left->iVal / right->iVal;
         break;
-      case AST::MOD:
+      case AST::MOD_EXP:
         left->iVal = left->iVal % right->iVal;
         break;
-      case AST::MUL:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::MUL_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = true;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) *
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::FLOAT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) *
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::FLOAT;
         } else
           left->iVal = left->iVal * right->iVal;
         break;
@@ -834,7 +830,7 @@ AST *SyntaxParser::parseMulExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    left = new AST(AST::BINARY_EXP, left->isFloat, type, {left, right});
+    left = new AST(type, left->isFloat, {left, right});
   }
   return left;
 }
@@ -843,65 +839,61 @@ AST *SyntaxParser::parseRelExp() {
   AST *left = parseAddExp();
   while (tokens[head]->type == Token::GE || tokens[head]->type == Token::GT ||
          tokens[head]->type == Token::LE || tokens[head]->type == Token::LT) {
-    AST::OPType type = AST::ERR_OP;
+    AST::ASTType type = AST::ERR_TYPE;
     switch (tokens[head]->type) {
     case Token::GE:
-      type = AST::GE;
+      type = AST::GE_EXP;
       break;
     case Token::GT:
-      type = AST::GT;
+      type = AST::GT_EXP;
       break;
     case Token::LE:
-      type = AST::LE;
+      type = AST::LE_EXP;
       break;
     case Token::LT:
-      type = AST::LT;
+      type = AST::LT_EXP;
       break;
     default:
       break;
     }
     head++;
     AST *right = parseAddExp();
-    if ((left->astType == AST::FLOAT || left->astType == AST::INT) &&
-        (right->astType == AST::FLOAT || right->astType == AST::INT)) {
+    if ((left->type == AST::FLOAT || left->type == AST::INT) &&
+        (right->type == AST::FLOAT || right->type == AST::INT)) {
       switch (type) {
-      case AST::GE:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::GE_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = false;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) >=
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::INT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) >=
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::INT;
         } else
           left->iVal = left->iVal >= right->iVal;
         break;
-      case AST::GT:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::GT_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = false;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) >
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::INT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) >
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::INT;
         } else
           left->iVal = left->iVal > right->iVal;
         break;
-      case AST::LE:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::LE_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = false;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) <=
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::INT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) <=
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::INT;
         } else
           left->iVal = left->iVal <= right->iVal;
         break;
-      case AST::LT:
-        if (left->astType == AST::FLOAT || right->astType == AST::FLOAT) {
+      case AST::LT_EXP:
+        if (left->type == AST::FLOAT || right->type == AST::FLOAT) {
           left->isFloat = false;
-          left->fVal =
-              (left->astType == AST::FLOAT ? left->fVal : left->iVal) <
-              (right->astType == AST::FLOAT ? right->fVal : right->iVal);
-          left->astType = AST::INT;
+          left->fVal = (left->type == AST::FLOAT ? left->fVal : left->iVal) <
+                       (right->type == AST::FLOAT ? right->fVal : right->iVal);
+          left->type = AST::INT;
         } else
           left->iVal = left->iVal < right->iVal;
         break;
@@ -915,7 +907,7 @@ AST *SyntaxParser::parseRelExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    left = new AST(AST::BINARY_EXP, false, type, {left, right});
+    left = new AST(type, false, {left, right});
   }
   return left;
 }
@@ -1042,59 +1034,50 @@ AST *SyntaxParser::parseUnaryExp() {
   case Token::L_NOT: {
     head++;
     AST *val = parseUnaryExp();
-    switch (val->astType) {
+    switch (val->type) {
     case AST::FLOAT:
       val->isFloat = false;
-      val->astType = AST::INT;
+      val->type = AST::INT;
       val->iVal = !val->fVal;
       return val;
     case AST::INT:
       val->iVal = !val->iVal;
       return val;
-    case AST::UNARY_EXP:
-      switch (val->opType) {
-      case AST::L_NOT:
-        if (val->nodes[0]->astType == AST::UNARY_EXP &&
-            val->nodes[0]->opType == AST::L_NOT) {
-          AST *ret = val->nodes[0];
-          val->nodes.clear();
-          delete val;
-          return ret;
-        }
-        break;
-      case AST::NEG:
-        return val;
-      default:
-        break;
-      }
-      break;
-    default:
-      break;
-    }
-    return new AST(AST::UNARY_EXP, false, AST::L_NOT, {val});
-  }
-  case Token::MINUS: {
-    head++;
-    AST *val = parseUnaryExp();
-    switch (val->astType) {
-    case AST::FLOAT:
-      val->fVal = -val->fVal;
-      return val;
-    case AST::INT:
-      val->iVal = -val->iVal;
-      return val;
-    case AST::UNARY_EXP:
-      if (val->opType == AST::NEG) {
+    case AST::L_NOT_EXP:
+      if (val->nodes[0]->type == AST::L_NOT_EXP) {
         AST *ret = val->nodes[0];
         val->nodes.clear();
         delete val;
         return ret;
       }
       break;
+    case AST::NEG_EXP:
+      return val;
     default:
       break;
     }
-    return new AST(AST::UNARY_EXP, val->isFloat, AST::NEG, {val});
+    return new AST(AST::L_NOT_EXP, false, {val});
+  }
+  case Token::MINUS: {
+    head++;
+    AST *val = parseUnaryExp();
+    switch (val->type) {
+    case AST::FLOAT:
+      val->fVal = -val->fVal;
+      return val;
+    case AST::INT:
+      val->iVal = -val->iVal;
+      return val;
+    case AST::NEG_EXP: {
+      AST *ret = val->nodes[0];
+      val->nodes.clear();
+      delete val;
+      return ret;
+    }
+    default:
+      break;
+    }
+    return new AST(AST::NEG_EXP, val->isFloat, {val});
   }
   case Token::PLUS: {
     head++;
@@ -1177,8 +1160,8 @@ AST *SyntaxParser::parseWhileStmt(Symbol *func) {
   AST *body = parseStmt(func);
   if (depthInc)
     symbolStack.pop_back();
-  if ((cond->astType == AST::FLOAT && !cond->fVal) ||
-      (cond->astType == AST::INT && !cond->iVal)) {
+  if ((cond->type == AST::FLOAT && !cond->fVal) ||
+      (cond->type == AST::INT && !cond->iVal)) {
     delete cond;
     delete body;
     return new AST(AST::BLANK_STMT, false, {});

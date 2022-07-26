@@ -25,7 +25,6 @@ private:
   vector<IR *> parseAST(AST *, Symbol *);
   vector<IR *> parseAlgoExp(AST *, Symbol *);
   vector<IR *> parseAssignStmt(AST *, Symbol *);
-  vector<IR *> parseBinaryExp(AST *, Symbol *);
   vector<IR *> parseBlock(AST *, Symbol *);
   vector<IR *> parseCmpExp(AST *, Symbol *);
   vector<IR *> parseCond(AST *, Symbol *, IR *, IR *);
@@ -37,11 +36,9 @@ private:
   vector<IR *> parseLCmpExp(AST *, Symbol *, IR *, IR *);
   vector<IR *> parseLOrExp(AST *, Symbol *, IR *, IR *);
   vector<IR *> parseLVal(AST *, Symbol *);
-  vector<IR *> parseModExp(AST *, Symbol *);
   vector<IR *> parseRVal(AST *, Symbol *);
   vector<IR *> parseReturnStmt(AST *, Symbol *);
   void parseRoot(AST *);
-  vector<IR *> parseUnaryExp(AST *, Symbol *);
   vector<IR *> parseWhileStmt(AST *, Symbol *);
 
 public:

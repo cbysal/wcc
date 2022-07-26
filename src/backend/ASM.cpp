@@ -194,7 +194,7 @@ string ASM::toString() {
       break;
     }
     break;
-  case SDIV:
+  case DIV:
     s += "sdiv " + regTypeStr[items[0]->reg] + ", " +
          regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;

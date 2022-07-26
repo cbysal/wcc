@@ -14,57 +14,51 @@ class Symbol;
 class AST {
 public:
   enum ASTType {
+    ERR_TYPE,
+    ADD_EXP,
     ASSIGN_STMT,
-    BINARY_EXP,
     BLANK_STMT,
     BLOCK,
     BREAK_STMT,
     CONST_DEF,
     CONST_INIT_VAL,
     CONTINUE_STMT,
+    DIV_EXP,
+    EQ_EXP,
     EXP_STMT,
+    F2I_EXP,
     FLOAT,
     FUNC_CALL,
     FUNC_DEF,
     FUNC_PARAM,
+    GE_EXP,
+    GT_EXP,
     GLOBAL_VAR_DEF,
+    I2F_EXP,
     IF_STMT,
     INIT_VAL,
     INT,
+    LE_EXP,
     LOCAL_VAR_DEF,
+    LT_EXP,
+    L_AND_EXP,
+    L_NOT_EXP,
+    L_OR_EXP,
     L_VAL,
     MEMSET_ZERO,
+    MOD_EXP,
+    MUL_EXP,
+    NE_EXP,
+    NEG_EXP,
+    POS_EXP,
     RETURN_STMT,
     ROOT,
-    UNARY_EXP,
+    SUB_EXP,
     WHILE_STMT
   };
 
-  enum OPType {
-    ERR_OP,
-    ADD,
-    DIV,
-    EQ,
-    F2I,
-    GE,
-    GT,
-    I2F,
-    LE,
-    LT,
-    L_AND,
-    L_NOT,
-    L_OR,
-    MOD,
-    MUL,
-    NE,
-    NEG,
-    POS,
-    SUB
-  };
-
-  ASTType astType;
+  ASTType type;
   bool isFloat;
-  OPType opType;
   Symbol *symbol;
   union {
     int iVal;
@@ -73,7 +67,6 @@ public:
   unsigned dimension;
   vector<AST *> nodes;
 
-  AST(ASTType, bool, OPType, const vector<AST *> &);
   AST(ASTType, bool, Symbol *, const vector<AST *> &);
   AST(ASTType, bool, const vector<AST *> &);
   AST(float);

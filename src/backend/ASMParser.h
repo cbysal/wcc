@@ -66,6 +66,7 @@ private:
   void parseI2F(vector<ASM *> &, IR *);
   void parseLNot(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
+  void parseMod(vector<ASM *> &, IR *);
   void parseMovToFtemp(vector<ASM *> &, IR *);
   void parseMovToItemp(vector<ASM *> &, IR *);
   void parseMovToSymbol(vector<ASM *> &, IR *);

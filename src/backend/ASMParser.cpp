@@ -564,7 +564,7 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
       parseCall(asms, irs[i]);
       break;
     case IR::DIV:
-      parseAlgo(asms, ASM::SDIV, ASM::VDIV, irs[i]);
+      parseAlgo(asms, ASM::DIV, ASM::VDIV, irs[i]);
       break;
     case IR::EQ:
     case IR::GE:
@@ -594,6 +594,9 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
       break;
     case IR::MEMSET_ZERO:
       parseMemsetZero(asms, irs[i]);
+      break;
+    case IR::MOD:
+      parseMod(asms, irs[i]);
       break;
     case IR::MOV:
       switch (irs[i]->items[0]->type) {
@@ -683,6 +686,32 @@ void ASMParser::parseMemsetZero(vector<ASM *> &asms, IR *ir) {
     size *= dimension;
   loadImmToReg(asms, ASMItem::A3, size);
   asms.push_back(new ASM(ASM::BL, {new ASMItem("memset")}));
+}
+
+void ASMParser::parseMod(vector<ASM *> &asms, IR *ir) {
+  bool flag1 = itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end(),
+       flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end(),
+       flag3 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
+  if (flag2)
+    loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[1]->iVal]);
+  if (flag3)
+    loadFromSP(asms, ASMItem::A3, spillOffsets[ir->items[2]->iVal]);
+  asms.push_back(new ASM(
+      ASM::DIV,
+      {new ASMItem(ASMItem::A1),
+       new ASMItem(flag2 ? ASMItem::A2 : itemp2Reg[ir->items[1]->iVal]),
+       new ASMItem(flag3 ? ASMItem::A3 : itemp2Reg[ir->items[2]->iVal])}));
+  asms.push_back(new ASM(
+      ASM::MUL,
+      {new ASMItem(ASMItem::A1), new ASMItem(ASMItem::A1),
+       new ASMItem(flag3 ? ASMItem::A3 : itemp2Reg[ir->items[2]->iVal])}));
+  asms.push_back(
+      new ASM(ASM::SUB,
+              {new ASMItem(flag1 ? ASMItem::A1 : itemp2Reg[ir->items[0]->iVal]),
+               new ASMItem(flag2 ? ASMItem::A2 : itemp2Reg[ir->items[1]->iVal]),
+               new ASMItem(ASMItem::A1)}));
+  if (flag1)
+    storeFromSP(asms, ASMItem::A1, spillOffsets[ir->items[0]->iVal]);
 }
 
 void ASMParser::parseMovToFtemp(vector<ASM *> &asms, IR *ir) {
