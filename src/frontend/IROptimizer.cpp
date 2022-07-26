@@ -281,11 +281,11 @@ void IROptimizer::singleVar2Reg() {
             ir->items[i]->symbol->dimensions.empty()) {
           if (symbol2tempId.find(ir->items[i]->symbol) == symbol2tempId.end())
             symbol2tempId[ir->items[i]->symbol] = tempId++;
+          Symbol *symbol = ir->items[i]->symbol;
           delete ir->items[i];
           ir->items[i] = new IRItem(
-              ir->items[i]->symbol->dataType == Symbol::INT ? IRItem::ITEMP
-                                                            : IRItem::FTEMP,
-              symbol2tempId[ir->items[i]->symbol]);
+              symbol->dataType == Symbol::INT ? IRItem::ITEMP : IRItem::FTEMP,
+              symbol2tempId[symbol]);
         }
       }
       irs.push_back(ir);

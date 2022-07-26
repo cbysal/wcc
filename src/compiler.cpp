@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     delete asmParser;
     delete irOptimizer;
     delete irParser;
+    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
   } else if (argc == 2) {
@@ -94,6 +95,7 @@ int main(int argc, char *argv[]) {
     delete asmParser;
     delete irOptimizer;
     delete irParser;
+    delete astOptimizer;
     delete syntaxparser;
     delete lexicalParser;
   } else {
@@ -151,6 +153,7 @@ int main(int argc, char *argv[]) {
       delete asmParser;
       delete irOptimizer;
       delete irParser;
+      delete astOptimizer;
       delete syntaxparser;
       delete lexicalParser;
     }

@@ -301,8 +301,10 @@ vector<IR *> IRParser::parseIfStmt(AST *root, Symbol *func) {
     irs4.push_back(label1);
     irs4.insert(irs4.end(), irs3.begin(), irs3.end());
     irs4.push_back(label2);
-  } else
+  } else {
     irs4.push_back(label1);
+    delete label2;
+  }
   return irs4;
 }
 
