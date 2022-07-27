@@ -55,6 +55,7 @@ private:
   void initFrame();
   bool isFloatReg(ASMItem::RegType);
   void makeFrame(vector<ASM *> &, const vector<IR *> &, Symbol *);
+  vector<unsigned> makeSmartImmMask(unsigned);
   void moveFromSP(vector<ASM *> &, ASMItem::RegType, int);
   void parse();
   void parseAlgo(vector<ASM *> &, ASM::ASMOpType, ASM::ASMOpType, IR *);

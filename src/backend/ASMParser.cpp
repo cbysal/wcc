@@ -50,19 +50,12 @@ vector<pair<Symbol *, vector<ASM *>>> ASMParser::getFuncASMs() {
 
 void ASMParser::loadFromSP(vector<ASM *> &asms, ASMItem::RegType target,
                            unsigned offset) {
-  vector<unsigned> smartBytes;
-  for (int i = 30; i >= 0; i -= 2) {
-    if (offset & (0x3 << i)) {
-      if (i >= 6)
-        smartBytes.push_back(offset & (0xff << (i - 6)));
-      else
-        smartBytes.push_back(offset & (0xff >> (6 - i)));
-      i -= 6;
-    }
-  }
+  vector<unsigned> smartImm;
+  for (unsigned mask : makeSmartImmMask(offset))
+    smartImm.push_back(offset & mask);
   ASM::ASMOpType op = isFloatReg(target) ? ASM::VLDR : ASM::LDR;
   unsigned maxOffset = isFloatReg(target) ? 1020 : 4095;
-  switch (smartBytes.size()) {
+  switch (smartImm.size()) {
   case 0:
     asms.push_back(
         new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP)}));
@@ -88,12 +81,12 @@ void ASMParser::loadFromSP(vector<ASM *> &asms, ASMItem::RegType target,
           new ASM(ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset)}));
       asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
                                   new ASMItem(ASMItem::A4)}));
-    } else if (smartBytes[1] <= maxOffset) {
+    } else if (smartImm[1] <= maxOffset) {
       asms.push_back(
           new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                             new ASMItem(smartBytes[0])}));
+                             new ASMItem(smartImm[0])}));
       asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::A4),
-                                  new ASMItem(smartBytes[1])}));
+                                  new ASMItem(smartImm[1])}));
     } else {
       asms.push_back(new ASM(
           ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset & 0xffff)}));
@@ -195,25 +188,191 @@ void ASMParser::makeFrame(vector<ASM *> &asms, const vector<IR *> &irs,
   moveFromSP(asms, ASMItem::SP, (int)savedRegs * 4 - frameOffset);
 }
 
+vector<unsigned> ASMParser::makeSmartImmMask(unsigned imm) {
+  const static vector<pair<unsigned, vector<unsigned>>> masks = {
+      {0x00000000, {}},
+      {0x000000ff, {0x000000ff}},
+      {0x000003fc, {0x000003fc}},
+      {0x00000ff0, {0x00000ff0}},
+      {0x00003fc0, {0x00003fc0}},
+      {0x0000ff00, {0x0000ff00}},
+      {0x0003fc00, {0x0003fc00}},
+      {0x000ff000, {0x000ff000}},
+      {0x003fc000, {0x003fc000}},
+      {0x00ff0000, {0x00ff0000}},
+      {0x03fc0000, {0x03fc0000}},
+      {0x0ff00000, {0x0ff00000}},
+      {0x3fc00000, {0x3fc00000}},
+      {0xc000003f, {0xc000003f}},
+      {0xf000000f, {0xf000000f}},
+      {0xfc000003, {0xfc000003}},
+      {0xff000000, {0xff000000}},
+      {0x0000ffff, {0x000000ff, 0x0000ff00}},
+      {0x0003fcff, {0x000000ff, 0x0003fc00}},
+      {0x0003fffc, {0x000003fc, 0x0003fc00}},
+      {0x000ff0ff, {0x000000ff, 0x000ff000}},
+      {0x000ff3fc, {0x000003fc, 0x000ff000}},
+      {0x000ffff0, {0x00000ff0, 0x000ff000}},
+      {0x003fc0ff, {0x000000ff, 0x003fc000}},
+      {0x003fc3fc, {0x000003fc, 0x003fc000}},
+      {0x003fcff0, {0x00000ff0, 0x003fc000}},
+      {0x003fffc0, {0x00003fc0, 0x003fc000}},
+      {0x00ff00ff, {0x000000ff, 0x00ff0000}},
+      {0x00ff03fc, {0x000003fc, 0x00ff0000}},
+      {0x00ff0ff0, {0x00000ff0, 0x00ff0000}},
+      {0x00ff3fc0, {0x00003fc0, 0x00ff0000}},
+      {0x00ffff00, {0x0000ff00, 0x00ff0000}},
+      {0x03fc00ff, {0x000000ff, 0x03fc0000}},
+      {0x03fc03fc, {0x000003fc, 0x03fc0000}},
+      {0x03fc0ff0, {0x00000ff0, 0x03fc0000}},
+      {0x03fc3fc0, {0x00003fc0, 0x03fc0000}},
+      {0x03fcff00, {0x0000ff00, 0x03fc0000}},
+      {0x03fffc00, {0x0003fc00, 0x03fc0000}},
+      {0x0ff000ff, {0x000000ff, 0x0ff00000}},
+      {0x0ff003fc, {0x000003fc, 0x0ff00000}},
+      {0x0ff00ff0, {0x00000ff0, 0x0ff00000}},
+      {0x0ff03fc0, {0x00003fc0, 0x0ff00000}},
+      {0x0ff0ff00, {0x0000ff00, 0x0ff00000}},
+      {0x0ff3fc00, {0x0003fc00, 0x0ff00000}},
+      {0x0ffff000, {0x000ff000, 0x0ff00000}},
+      {0x3fc000ff, {0x000000ff, 0x3fc00000}},
+      {0x3fc003fc, {0x000003fc, 0x3fc00000}},
+      {0x3fc00ff0, {0x00000ff0, 0x3fc00000}},
+      {0x3fc03fc0, {0x00003fc0, 0x3fc00000}},
+      {0x3fc0ff00, {0x0000ff00, 0x3fc00000}},
+      {0x3fc3fc00, {0x0003fc00, 0x3fc00000}},
+      {0x3fcff000, {0x000ff000, 0x3fc00000}},
+      {0x3fffc000, {0x003fc000, 0x3fc00000}},
+      {0xc0003fff, {0x00003fc0, 0xc000003f}},
+      {0xc000ff3f, {0x0000ff00, 0xc000003f}},
+      {0xc003fc3f, {0x0003fc00, 0xc000003f}},
+      {0xc00ff03f, {0x000ff000, 0xc000003f}},
+      {0xc03fc03f, {0x003fc000, 0xc000003f}},
+      {0xc0ff003f, {0x00ff0000, 0xc000003f}},
+      {0xc3fc003f, {0x03fc0000, 0xc000003f}},
+      {0xcff0003f, {0x0ff00000, 0xc000003f}},
+      {0xf0000fff, {0x00000ff0, 0xf000000f}},
+      {0xf0003fcf, {0x00003fc0, 0xf000000f}},
+      {0xf000ff0f, {0x0000ff00, 0xf000000f}},
+      {0xf003fc0f, {0x0003fc00, 0xf000000f}},
+      {0xf00ff00f, {0x000ff000, 0xf000000f}},
+      {0xf03fc00f, {0x003fc000, 0xf000000f}},
+      {0xf0ff000f, {0x00ff0000, 0xf000000f}},
+      {0xf3fc000f, {0x03fc0000, 0xf000000f}},
+      {0xfc0003ff, {0x000003fc, 0xfc000003}},
+      {0xfc000ff3, {0x00000ff0, 0xfc000003}},
+      {0xfc003fc3, {0x00003fc0, 0xfc000003}},
+      {0xfc00ff03, {0x0000ff00, 0xfc000003}},
+      {0xfc03fc03, {0x0003fc00, 0xfc000003}},
+      {0xfc0ff003, {0x000ff000, 0xfc000003}},
+      {0xfc3fc003, {0x003fc000, 0xfc000003}},
+      {0xfcff0003, {0x00ff0000, 0xfc000003}},
+      {0xff0000ff, {0x000000ff, 0xff000000}},
+      {0xff0003fc, {0x000003fc, 0xff000000}},
+      {0xff000ff0, {0x00000ff0, 0xff000000}},
+      {0xff003fc0, {0x00003fc0, 0xff000000}},
+      {0xff00ff00, {0x0000ff00, 0xff000000}},
+      {0xff03fc00, {0x0003fc00, 0xff000000}},
+      {0xff0ff000, {0x000ff000, 0xff000000}},
+      {0xff3fc000, {0x003fc000, 0xff000000}},
+      {0xffc0003f, {0x3fc00000, 0xc000003f}},
+      {0xfff0000f, {0x0ff00000, 0xf000000f}},
+      {0xfffc0003, {0x03fc0000, 0xfc000003}},
+      {0xffff0000, {0x00ff0000, 0xff000000}},
+      {0x00ffffff, {0x000000ff, 0x0000ff00, 0x00ff0000}},
+      {0x03fcffff, {0x000000ff, 0x0000ff00, 0x03fc0000}},
+      {0x03fffcff, {0x000000ff, 0x0003fc00, 0x03fc0000}},
+      {0x03fffffc, {0x000003fc, 0x0003fc00, 0x03fc0000}},
+      {0x0ff0ffff, {0x000000ff, 0x0000ff00, 0x0ff00000}},
+      {0x0ff3fcff, {0x000000ff, 0x0003fc00, 0x0ff00000}},
+      {0x0ff3fffc, {0x000003fc, 0x0003fc00, 0x0ff00000}},
+      {0x0ffff0ff, {0x000000ff, 0x000ff000, 0x0ff00000}},
+      {0x0ffff3fc, {0x000003fc, 0x000ff000, 0x0ff00000}},
+      {0x0ffffff0, {0x00000ff0, 0x000ff000, 0x0ff00000}},
+      {0x3fc0ffff, {0x000000ff, 0x0000ff00, 0x3fc00000}},
+      {0x3fc3fcff, {0x000000ff, 0x0003fc00, 0x3fc00000}},
+      {0x3fc3fffc, {0x000003fc, 0x0003fc00, 0x3fc00000}},
+      {0x3fcff0ff, {0x000000ff, 0x000ff000, 0x3fc00000}},
+      {0x3fcff3fc, {0x000003fc, 0x000ff000, 0x3fc00000}},
+      {0x3fcffff0, {0x00000ff0, 0x000ff000, 0x3fc00000}},
+      {0x3fffc0ff, {0x000000ff, 0x003fc000, 0x3fc00000}},
+      {0x3fffc3fc, {0x000003fc, 0x003fc000, 0x3fc00000}},
+      {0x3fffcff0, {0x00000ff0, 0x003fc000, 0x3fc00000}},
+      {0x3fffffc0, {0x00003fc0, 0x003fc000, 0x3fc00000}},
+      {0xc03fffff, {0x00003fc0, 0x003fc000, 0xc000003f}},
+      {0xc0ff3fff, {0x00003fc0, 0x00ff0000, 0xc000003f}},
+      {0xc0ffff3f, {0x0000ff00, 0x00ff0000, 0xc000003f}},
+      {0xc3fc3fff, {0x00003fc0, 0x03fc0000, 0xc000003f}},
+      {0xc3fcff3f, {0x0000ff00, 0x03fc0000, 0xc000003f}},
+      {0xc3fffc3f, {0x0003fc00, 0x03fc0000, 0xc000003f}},
+      {0xcff03fff, {0x00003fc0, 0x0ff00000, 0xc000003f}},
+      {0xcff0ff3f, {0x0000ff00, 0x0ff00000, 0xc000003f}},
+      {0xcff3fc3f, {0x0003fc00, 0x0ff00000, 0xc000003f}},
+      {0xcffff03f, {0x000ff000, 0x0ff00000, 0xc000003f}},
+      {0xf00fffff, {0x00000ff0, 0x000ff000, 0xf000000f}},
+      {0xf03fcfff, {0x00000ff0, 0x003fc000, 0xf000000f}},
+      {0xf03fffcf, {0x00003fc0, 0x003fc000, 0xf000000f}},
+      {0xf0ff0fff, {0x00000ff0, 0x00ff0000, 0xf000000f}},
+      {0xf0ff3fcf, {0x00003fc0, 0x00ff0000, 0xf000000f}},
+      {0xf0ffff0f, {0x0000ff00, 0x00ff0000, 0xf000000f}},
+      {0xf3fc0fff, {0x00000ff0, 0x03fc0000, 0xf000000f}},
+      {0xf3fc3fcf, {0x00003fc0, 0x03fc0000, 0xf000000f}},
+      {0xf3fcff0f, {0x0000ff00, 0x03fc0000, 0xf000000f}},
+      {0xf3fffc0f, {0x0003fc00, 0x03fc0000, 0xf000000f}},
+      {0xfc03ffff, {0x000003fc, 0x0003fc00, 0xfc000003}},
+      {0xfc0ff3ff, {0x000003fc, 0x000ff000, 0xfc000003}},
+      {0xfc0ffff3, {0x00000ff0, 0x000ff000, 0xfc000003}},
+      {0xfc3fc3ff, {0x000003fc, 0x003fc000, 0xfc000003}},
+      {0xfc3fcff3, {0x00000ff0, 0x003fc000, 0xfc000003}},
+      {0xfc3fffc3, {0x00003fc0, 0x003fc000, 0xfc000003}},
+      {0xfcff03ff, {0x000003fc, 0x00ff0000, 0xfc000003}},
+      {0xfcff0ff3, {0x00000ff0, 0x00ff0000, 0xfc000003}},
+      {0xfcff3fc3, {0x00003fc0, 0x00ff0000, 0xfc000003}},
+      {0xfcffff03, {0x0000ff00, 0x00ff0000, 0xfc000003}},
+      {0xff00ffff, {0x000000ff, 0x0000ff00, 0xff000000}},
+      {0xff03fcff, {0x000000ff, 0x0003fc00, 0xff000000}},
+      {0xff03fffc, {0x000003fc, 0x0003fc00, 0xff000000}},
+      {0xff0ff0ff, {0x000000ff, 0x000ff000, 0xff000000}},
+      {0xff0ff3fc, {0x000003fc, 0x000ff000, 0xff000000}},
+      {0xff0ffff0, {0x00000ff0, 0x000ff000, 0xff000000}},
+      {0xff3fc0ff, {0x000000ff, 0x003fc000, 0xff000000}},
+      {0xff3fc3fc, {0x000003fc, 0x003fc000, 0xff000000}},
+      {0xff3fcff0, {0x00000ff0, 0x003fc000, 0xff000000}},
+      {0xff3fffc0, {0x00003fc0, 0x003fc000, 0xff000000}},
+      {0xffc03fff, {0x00003fc0, 0x3fc00000, 0xc000003f}},
+      {0xffc0ff3f, {0x0000ff00, 0x3fc00000, 0xc000003f}},
+      {0xffc3fc3f, {0x0003fc00, 0x3fc00000, 0xc000003f}},
+      {0xffcff03f, {0x000ff000, 0x3fc00000, 0xc000003f}},
+      {0xfff00fff, {0x00000ff0, 0x0ff00000, 0xf000000f}},
+      {0xfff03fcf, {0x00003fc0, 0x0ff00000, 0xf000000f}},
+      {0xfff0ff0f, {0x0000ff00, 0x0ff00000, 0xf000000f}},
+      {0xfff3fc0f, {0x0003fc00, 0x0ff00000, 0xf000000f}},
+      {0xfffc03ff, {0x000003fc, 0x03fc0000, 0xfc000003}},
+      {0xfffc0ff3, {0x00000ff0, 0x03fc0000, 0xfc000003}},
+      {0xfffc3fc3, {0x00003fc0, 0x03fc0000, 0xfc000003}},
+      {0xfffcff03, {0x0000ff00, 0x03fc0000, 0xfc000003}},
+      {0xffff00ff, {0x000000ff, 0x00ff0000, 0xff000000}},
+      {0xffff03fc, {0x000003fc, 0x00ff0000, 0xff000000}},
+      {0xffff0ff0, {0x00000ff0, 0x00ff0000, 0xff000000}},
+      {0xffff3fc0, {0x00003fc0, 0x00ff0000, 0xff000000}},
+      {0xffffc03f, {0x003fc000, 0x3fc00000, 0xc000003f}},
+      {0xfffff00f, {0x000ff000, 0x0ff00000, 0xf000000f}},
+      {0xfffffc03, {0x0003fc00, 0x03fc0000, 0xfc000003}},
+      {0xffffff00, {0x0000ff00, 0x00ff0000, 0xff000000}}};
+  for (const pair<unsigned, vector<unsigned>> &mask : masks)
+    if (!(imm & ~mask.first))
+      return mask.second;
+  return {0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000};
+}
+
 void ASMParser::moveFromSP(vector<ASM *> &asms, ASMItem::RegType target,
                            int offset) {
-  vector<unsigned> smartBytes(5);
   ASM::ASMOpType op = offset > 0 ? ASM::ADD : ASM::SUB;
   offset = abs(offset);
-  for (int i = 0; i < 4; i++) {
-    vector<unsigned> temps;
-    for (unsigned j = 0; j < 16; j++) {
-      if (offset & (0x3 << (((i + j) % 16) * 2))) {
-        temps.push_back(offset &
-                        ((0xff << min<unsigned>(((i + j) % 16) * 2, 32)) |
-                         max(0xff >> (((i + j) % 16) * 2 - 24), 0)));
-        j += 3;
-      }
-    }
-    if (smartBytes.size() > temps.size())
-      smartBytes = temps;
-  }
-  switch (smartBytes.size()) {
+  vector<unsigned> smartImm;
+  for (unsigned mask : makeSmartImmMask(offset))
+    smartImm.push_back(offset & mask);
+  switch (smartImm.size()) {
   case 0:
     if (target != ASMItem::SP)
       asms.push_back(
@@ -221,7 +380,7 @@ void ASMParser::moveFromSP(vector<ASM *> &asms, ASMItem::RegType target,
     break;
   case 1:
     asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                new ASMItem(smartBytes[0])}));
+                                new ASMItem(smartImm[0])}));
     break;
   case 2:
     if (!(offset & 0xffff0000)) {
@@ -231,9 +390,9 @@ void ASMParser::moveFromSP(vector<ASM *> &asms, ASMItem::RegType target,
                                   new ASMItem(ASMItem::A4)}));
     } else {
       asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                  new ASMItem(smartBytes[0])}));
+                                  new ASMItem(smartImm[0])}));
       asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(target),
-                                  new ASMItem(smartBytes[1])}));
+                                  new ASMItem(smartImm[1])}));
     }
     break;
   default:
@@ -1174,19 +1333,12 @@ void ASMParser::saveUsedRegs(vector<ASM *> &asms) {
 
 void ASMParser::storeFromSP(vector<ASM *> &asms, ASMItem::RegType source,
                             unsigned offset) {
-  vector<unsigned> smartBytes;
-  for (int i = 30; i >= 0; i -= 2) {
-    if (offset & (0x3 << i)) {
-      if (i >= 6)
-        smartBytes.push_back(offset & (0xff << (i - 6)));
-      else
-        smartBytes.push_back(offset & (0xff >> (6 - i)));
-      i -= 6;
-    }
-  }
+  vector<unsigned> smartImm;
+  for (unsigned mask : makeSmartImmMask(offset))
+    smartImm.push_back(offset & mask);
   ASM::ASMOpType op = isFloatReg(source) ? ASM::VSTR : ASM::STR;
   unsigned maxOffset = isFloatReg(source) ? 1020 : 4095;
-  switch (smartBytes.size()) {
+  switch (smartImm.size()) {
   case 0:
     asms.push_back(
         new ASM(op, {new ASMItem(source), new ASMItem(ASMItem::SP)}));
@@ -1212,12 +1364,12 @@ void ASMParser::storeFromSP(vector<ASM *> &asms, ASMItem::RegType source,
           new ASM(ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset)}));
       asms.push_back(new ASM(op, {new ASMItem(source), new ASMItem(ASMItem::SP),
                                   new ASMItem(ASMItem::A4)}));
-    } else if (smartBytes[1] <= maxOffset) {
+    } else if (smartImm[1] <= maxOffset) {
       asms.push_back(
           new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                             new ASMItem(smartBytes[0])}));
+                             new ASMItem(smartImm[0])}));
       asms.push_back(new ASM(op, {new ASMItem(source), new ASMItem(ASMItem::A4),
-                                  new ASMItem(smartBytes[1])}));
+                                  new ASMItem(smartImm[1])}));
     } else {
       asms.push_back(new ASM(
           ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset & 0xffff)}));
