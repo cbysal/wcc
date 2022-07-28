@@ -36,7 +36,6 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::MUL, "MUL"},
     {IR::NE, "NE"},
     {IR::NEG, "NEG"},
-    {IR::RETURN, "RETURN"},
     {IR::SUB, "SUB"}};
 
 IR::IR(IRType type) {

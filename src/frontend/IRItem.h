@@ -14,15 +14,15 @@ class IR;
 class IRItem {
 public:
   enum IRItemType {
-    FLOAT,
-    FTEMP,
-    INT,
-    ITEMP,
-    IR_OFFSET,
-    IR_T,
+    FLOAT,     // float const
+    FTEMP,     // float temporary
+    INT,       // int const
+    ITEMP,     // int temporary
+    IR_OFFSET, // unused
+    IR_T,      // destination address of jump
     RETURN,
     SYMBOL,
-    VAL
+    VAL // unused
   };
 
   IRItemType type;

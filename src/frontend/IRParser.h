@@ -20,6 +20,7 @@ private:
   unordered_map<Symbol *, vector<Symbol *>> localVars;
   vector<pair<Symbol *, vector<IR *>>> funcs;
   unsigned tempId;
+  IR *funcEnd;
 
   IRItem *lastResult(const vector<IR *> &);
   vector<IR *> parseAST(AST *, Symbol *);

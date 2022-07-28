@@ -275,11 +275,12 @@ vector<IR *> IRParser::parseFuncCall(AST *root, Symbol *func) {
 
 vector<IR *> IRParser::parseFuncDef(AST *root, Symbol *func) {
   vector<IR *> irs;
+  funcEnd = new IR(IR::LABEL);
   for (AST *node : root->nodes) {
     vector<IR *> moreIRs = parseAST(node, func);
     irs.insert(irs.end(), moreIRs.begin(), moreIRs.end());
   }
-  irs.push_back(new IR(IR::LABEL));
+  irs.push_back(funcEnd);
   return irs;
 }
 
@@ -755,10 +756,13 @@ vector<IR *> IRParser::parseRVal(AST *root, Symbol *func) {
 }
 
 vector<IR *> IRParser::parseReturnStmt(AST *root, Symbol *func) {
-  if (root->nodes.empty())
-    return {new IR(IR::RETURN)};
-  vector<IR *> irs = parseAST(root->nodes[0], func);
-  irs.push_back(new IR(IR::RETURN, {lastResult(irs)->clone()}));
+  vector<IR *> irs;
+  if (!root->nodes.empty()) {
+    irs = parseAST(root->nodes[0], func);
+    irs.push_back(new IR(
+        IR::MOV, {new IRItem(IRItem::RETURN), lastResult(irs)->clone()}));
+  }
+  irs.push_back(new IR(IR::GOTO, {new IRItem(funcEnd)}));
   return irs;
 }
 

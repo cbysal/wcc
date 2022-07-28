@@ -131,10 +131,10 @@ void RegAllocator::simpleScan() {
           tempType[irs[i]->items[j]->iVal] = irs[i]->items[j]->type;
         } else
           lifespan[irs[i]->items[j]->iVal].second = i;
-        if (j == 0 && irs[i]->type != IR::RETURN)
-          wMap[irs[i]->items[j]->iVal].insert(i);
-        else
+        if (j)
           rMap[irs[i]->items[j]->iVal].insert(i);
+        else
+          wMap[irs[i]->items[j]->iVal].insert(i);
       }
 }
 

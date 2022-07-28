@@ -765,6 +765,9 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
       case IRItem::ITEMP:
         parseMovToItemp(asms, irs[i]);
         break;
+      case IRItem::RETURN:
+        parseMovToReturn(asms, irs[i]);
+        break;
       case IRItem::SYMBOL:
         parseMovToSymbol(asms, irs[i]);
         break;
@@ -777,9 +780,6 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
       break;
     case IR::NEG:
       parseNeg(asms, irs[i]);
-      break;
-    case IR::RETURN:
-      parseReturn(asms, irs[i], irs.back());
       break;
     case IR::SUB:
       parseAlgo(asms, ASM::SUB, ASM::VSUB, irs[i]);
@@ -1096,6 +1096,24 @@ void ASMParser::parseMovToItemp(vector<ASM *> &asms, IR *ir) {
   }
 }
 
+void ASMParser::parseMovToReturn(vector<ASM *> &asms, IR *ir) {
+  if (ir->items[1]->type == IRItem::FTEMP) {
+    if (ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end())
+      loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
+    else
+      asms.push_back(
+          new ASM(ASM::VMOV, {new ASMItem(ASMItem::S0),
+                              new ASMItem(ftemp2Reg[ir->items[1]->iVal])}));
+  } else {
+    if (itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end())
+      loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
+    else
+      asms.push_back(
+          new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
+                             new ASMItem(itemp2Reg[ir->items[1]->iVal])}));
+  }
+}
+
 void ASMParser::parseMovToSymbol(vector<ASM *> &asms, IR *ir) {
   vector<unsigned> sizes({4});
   for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
@@ -1233,28 +1251,6 @@ void ASMParser::parseNeg(vector<ASM *> &asms, IR *ir) {
     if (flag1)
       storeFromSP(asms, ASMItem::S0, spillOffsets[ir->items[0]->iVal]);
   }
-}
-
-void ASMParser::parseReturn(vector<ASM *> &asms, IR *ir, IR *lastIR) {
-  if (!ir->items.empty()) {
-    if (ir->items[0]->type == IRItem::ITEMP) {
-      if (itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end())
-        loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[0]->iVal]);
-      else
-        asms.push_back(
-            new ASM(ASM::MOV, {new ASMItem(ASMItem::A1),
-                               new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
-    } else {
-      if (ftemp2Reg.find(ir->items[0]->iVal) == ftemp2Reg.end())
-        loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[0]->iVal]);
-      else
-        asms.push_back(
-            new ASM(ASM::VMOV, {new ASMItem(ASMItem::S0),
-                                new ASMItem(ftemp2Reg[ir->items[0]->iVal])}));
-    }
-  }
-  asms.push_back(
-      new ASM(ASM::B, {new ASMItem(ASMItem::LABEL, irLabels[lastIR])}));
 }
 
 void ASMParser::popArgs(vector<ASM *> &asms) {

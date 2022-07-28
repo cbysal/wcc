@@ -60,6 +60,7 @@ vector<Symbol *> IROptimizer::getGlobalVars() {
 
 void IROptimizer::optimize() {
   isProcessed = true;
+  // flowOptimize();
   removeDeadCode();
   singleVar2Reg();
   removeDeadCode();
@@ -79,6 +80,134 @@ void IROptimizer::printIRs() {
     cout << func.first->name << endl;
     for (IR *ir : func.second)
       cout << ir->toString() << endl;
+  }
+}
+
+void IROptimizer::flowOptimize() {
+  for (auto &func : funcs) {
+    int cnt = 0;
+    vector<vector<IR *>> block(1);
+    vector<vector<pair<int, int>>> G;
+    unordered_map<int, int> belong;
+    for (auto &ir : func.second) {
+      if (ir->type == IR::LABEL || ir->type == IR::GOTO) {
+        if (!block[cnt].empty()) {
+          ++cnt;
+          block.push_back({});
+        }
+        block[cnt].push_back(ir);
+        belong[ir->irId] = cnt;
+        ++cnt;
+        block.push_back({});
+      } else {
+        block[cnt].push_back(ir);
+        belong[ir->irId] = cnt;
+      }
+    }
+
+    // build flow graph
+    G.resize(cnt);
+    for (int i = 0; i < cnt; ++i)
+      if (block[i][0]->type == IR::GOTO)
+        G[i].push_back({belong[block[i][0]->items[0]->ir->irId], 0});
+      else
+        G[i].push_back({i + 1, 0});
+    for (auto &ir : func.second) {
+      if (ir->type == IR::BEQ || ir->type == IR::BGE || ir->type == IR::BGT ||
+          ir->type == IR::BLE || ir->type == IR::BLT || ir->type == IR::BNE) {
+        G[belong[ir->irId]].push_back({belong[ir->items[0]->ir->irId], 1});
+      }
+    }
+
+    // debug
+    // printf("%s: %d\n", func.first->toString().data(), cnt);
+    // for (int i = 0; i < cnt; ++i) {
+    //   printf("block %d:\n", i);
+    //   for (auto ir : block[i])
+    //     puts(ir->toString().data());
+    //   puts("");
+    // }
+    // for (int i = 0; i < cnt; ++i)
+    //   for (auto [v, t] : G[i])
+    //     printf("%d %d %d\n", i, v, t);
+    // puts("\n\n");
+
+    // Block Constant Propagation
+    auto blockCP = [&](vector<IR *> &b) {
+      if (b.empty() || b[0]->type == IR::GOTO || b[0]->type == IR::LABEL)
+        return b;
+      vector<IR *> newb;
+      unordered_map<int, int> itmp;
+      unordered_map<int, float> ftmp;
+      unordered_map<string, int> isym;
+      unordered_map<string, float> fsym;
+      for (auto &ir : b) {
+        int push = 1;
+        // replace all constant value
+        for (auto &item : ir->items) {
+          if (item->type == IRItem::ITEMP && itmp.count(item->iVal)) {
+            item->type = IRItem::INT;
+            item->iVal = itmp[item->iVal];
+          } else if (item->type == IRItem::FTEMP && ftmp.count(item->iVal)) {
+            item->type = IRItem::FLOAT;
+            item->fVal = ftmp[item->iVal];
+          } else if (item->type == IRItem::SYMBOL &&
+                     item->symbol->dataType == Symbol::DataType::INT &&
+                     isym.count(item->name)) {
+            item->type = IRItem::INT;
+            item->iVal = isym[item->name];
+          } else if (item->type == IRItem::SYMBOL &&
+                     item->symbol->dataType == Symbol::DataType::FLOAT &&
+                     fsym.count(item->name)) {
+            item->type = IRItem::FLOAT;
+            item->fVal = fsym[item->name];
+          }
+        }
+        if (ir->type == IR::MOV) {
+          if (ir->items.size() > 2 || ir->items[1]->type == IRItem::RETURN) {
+            newb.push_back(ir);
+            continue;
+          }
+          auto type0 = ir->items[0]->type;
+          auto type1 = ir->items[1]->type;
+          auto v0 = ir->items[0]->iVal;
+          auto v1 = ir->items[1]->iVal;
+          auto n0 = ir->items[0]->name;
+          // replace temporary with constant
+          if (type1 == IRItem::INT) {
+            if (type0 == IRItem::ITEMP) {
+              push = 0;
+              itmp[v0] = v1;
+            } else
+              isym[n0] = v1;
+          } else if (type1 == IRItem::FLOAT) {
+            if (type0 == IRItem::FTEMP) {
+              push = 0;
+              ftmp[v0] = ir->items[1]->fVal;
+            } else
+              fsym[n0] = ir->items[1]->fVal;
+          }
+        }
+        if (push)
+          newb.push_back(ir);
+      }
+      return newb;
+    };
+    for (auto &b : block)
+      b = blockCP(b);
+
+    // debug
+    // printf("%s: %d\n", func.first->toString().data(), cnt);
+    // for (int i = 0; i < cnt; ++i) {
+    //   printf("block %d:\n", i);
+    //   for (auto ir : block[i])
+    //     puts(ir->toString().data());
+    //   puts("");
+    // }
+    vector<IR *> result;
+    for (auto &b : block)
+      result.insert(result.end(), b.begin(), b.end());
+    func.second = result;
   }
 }
 
@@ -111,8 +240,8 @@ void IROptimizer::removeDeadCode() {
       if (ir->type == IR::MOV && ir->items[1]->type == IRItem::SYMBOL &&
           ir->items[1]->symbol->symbolType == Symbol::GLOBAL_VAR)
         usedSymbols.insert(ir->items[1]->symbol);
-      if (ir->type == IR::RETURN && func.first->dataType != Symbol::VOID)
-        usedTemps.insert(ir->items[0]->iVal);
+      if (ir->type == IR::MOV && ir->items[0]->type == IRItem::RETURN)
+        usedTemps.insert(ir->items[1]->iVal);
     }
     unsigned size = 0;
     while (size != usedTemps.size() + usedSymbols.size()) {
@@ -138,7 +267,7 @@ void IROptimizer::removeDeadCode() {
           ir->type == IR::BGE || ir->type == IR::BGT || ir->type == IR::BLE ||
           ir->type == IR::BLT || ir->type == IR::BNE || ir->type == IR::CALL ||
           ir->type == IR::GOTO || ir->type == IR::LABEL ||
-          ir->type == IR::MEMSET_ZERO || ir->type == IR::RETURN) {
+          ir->type == IR::MEMSET_ZERO) {
         newIRs.push_back(ir);
         continue;
       }

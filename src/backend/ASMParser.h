@@ -70,9 +70,9 @@ private:
   void parseMod(vector<ASM *> &, IR *);
   void parseMovToFtemp(vector<ASM *> &, IR *);
   void parseMovToItemp(vector<ASM *> &, IR *);
+  void parseMovToReturn(vector<ASM *> &, IR *);
   void parseMovToSymbol(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
-  void parseReturn(vector<ASM *> &, IR *, IR *);
   void popArgs(vector<ASM *> &);
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);

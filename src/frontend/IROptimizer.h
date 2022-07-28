@@ -19,6 +19,7 @@ private:
 
   unordered_set<unsigned> getBlockBegins(const vector<IR *> &);
   void optimize();
+  void flowOptimize();
   void removeDeadCode();
   void removeDuplicatedJumps();
   void removeDuplicatedLabels();

@@ -40,7 +40,6 @@ public:
     MUL,
     NE,
     NEG,
-    RETURN,
     SUB
   };
 
