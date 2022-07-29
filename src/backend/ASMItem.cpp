@@ -38,9 +38,19 @@ ASMItem::ASMItem(OpType op) {
   this->op = op;
 }
 
+ASMItem::ASMItem(float fVal) {
+  this->type = FLOAT;
+  this->iVal = fVal;
+}
+
 ASMItem::ASMItem(int iVal) {
-  this->type = IMM;
+  this->type = INT;
   this->iVal = iVal;
+}
+
+ASMItem::ASMItem(unsigned uVal) {
+  this->type = INT;
+  this->iVal = uVal;
 }
 
 ASMItem::ASMItem(const string &sVal) {

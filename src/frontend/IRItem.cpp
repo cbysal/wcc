@@ -9,8 +9,7 @@ unordered_map<IRItem::IRItemType, string> irItemTypeStr = {
     {IRItem::FLOAT, "FLOAT"},   {IRItem::FTEMP, "FTEMP"},
     {IRItem::INT, "INT"},       {IRItem::IR_OFFSET, "IR_OFFSET"},
     {IRItem::IR_T, "IR_T"},     {IRItem::ITEMP, "ITEMP"},
-    {IRItem::RETURN, "RETURN"}, {IRItem::SYMBOL, "SYMBOL"},
-    {IRItem::VAL, "VAL"}};
+    {IRItem::RETURN, "RETURN"}, {IRItem::SYMBOL, "SYMBOL"}};
 
 IRItem::IRItem(IR *ir) {
   this->type = IR_T;

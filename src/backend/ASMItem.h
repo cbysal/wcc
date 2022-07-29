@@ -8,7 +8,7 @@ using namespace std;
 
 class ASMItem {
 public:
-  enum ASMItemType { COND, IMM, LABEL, OP, POSNEG, REG, TAG, WB };
+  enum ASMItemType { COND, FLOAT, INT, LABEL, OP, POSNEG, REG, TAG, WB };
   enum OpType { MINUS, PLUS };
   enum RegType {
     SPILL,
@@ -75,7 +75,9 @@ public:
   ASMItem(ASMItemType, int);
   ASMItem(RegType);
   ASMItem(OpType);
+  ASMItem(float);
   ASMItem(int);
+  ASMItem(unsigned);
   ASMItem(const string &);
   ~ASMItem();
 };

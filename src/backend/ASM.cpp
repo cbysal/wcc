@@ -38,7 +38,7 @@ string ASM::toString() {
     s += "add " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
     switch (items[2]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[2]->iVal);
       break;
     case ASMItem::REG:
@@ -68,7 +68,7 @@ string ASM::toString() {
     s += "eor " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
     switch (items[2]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[2]->iVal);
       break;
     case ASMItem::REG:
@@ -90,7 +90,7 @@ string ASM::toString() {
     s += "[" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
       switch (items[2]->type) {
-      case ASMItem::IMM:
+      case ASMItem::INT:
         s += ", #" + to_string(items[2]->iVal);
         break;
       case ASMItem::REG:
@@ -107,7 +107,7 @@ string ASM::toString() {
       s += condTypeStr[cond];
     s += " " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[1]->iVal);
       break;
     case ASMItem::TAG:
@@ -123,7 +123,7 @@ string ASM::toString() {
   case MOVT:
     s += "movt " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[1]->iVal);
       break;
     case ASMItem::TAG:
@@ -136,7 +136,7 @@ string ASM::toString() {
   case MOVW:
     s += "movw " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[1]->iVal);
       break;
     case ASMItem::TAG:
@@ -150,7 +150,7 @@ string ASM::toString() {
     s += "mul " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
     switch (items[2]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[2]->iVal);
       break;
     case ASMItem::REG:
@@ -184,7 +184,7 @@ string ASM::toString() {
     s += "rsb " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
     switch (items[2]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[2]->iVal);
       break;
     case ASMItem::REG:
@@ -202,7 +202,7 @@ string ASM::toString() {
     s += "str " + regTypeStr[items[0]->reg] + ", [" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
       switch (items[2]->type) {
-      case ASMItem::IMM:
+      case ASMItem::INT:
         s += ", #" + to_string(items[2]->iVal);
         break;
       case ASMItem::REG:
@@ -217,7 +217,7 @@ string ASM::toString() {
     s += "sub " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
     switch (items[2]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(items[2]->iVal);
       break;
     case ASMItem::REG:
@@ -235,8 +235,17 @@ string ASM::toString() {
          regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;
   case VCMP:
-    s += "vcmp.f32 " + regTypeStr[items[0]->reg] + ", " +
-         regTypeStr[items[1]->reg];
+    s += "vcmp.f32 " + regTypeStr[items[0]->reg] + ", ";
+    switch (items[1]->type) {
+    case ASMItem::FLOAT:
+      s += "#" + to_string(items[1]->fVal);
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[1]->reg];
+      break;
+    default:
+      break;
+    }
     break;
   case VCVTFS:
     s += "vcvt.s32.f32 " + regTypeStr[items[0]->reg] + ", " +
@@ -259,7 +268,7 @@ string ASM::toString() {
     s += "[" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
       switch (items[2]->type) {
-      case ASMItem::IMM:
+      case ASMItem::INT:
         s += ", #" + to_string(items[2]->iVal);
         break;
       case ASMItem::REG:
@@ -273,7 +282,7 @@ string ASM::toString() {
   case VMOV:
     s += "vmov.f32 " + regTypeStr[items[0]->reg] + ", ";
     switch (items[1]->type) {
-    case ASMItem::IMM:
+    case ASMItem::INT:
       s += "#" + to_string(*(float *)(&items[1]->fVal));
       break;
     case ASMItem::REG:
@@ -319,7 +328,7 @@ string ASM::toString() {
          regTypeStr[items[1]->reg];
     if (items.size() == 3)
       switch (items[2]->type) {
-      case ASMItem::IMM:
+      case ASMItem::INT:
         s += ", #" + to_string(items[2]->iVal);
         break;
       case ASMItem::REG:

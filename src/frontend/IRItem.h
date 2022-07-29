@@ -21,8 +21,7 @@ public:
     IR_OFFSET, // unused
     IR_T,      // destination address of jump
     RETURN,
-    SYMBOL,
-    VAL // unused
+    SYMBOL
   };
 
   IRItemType type;
