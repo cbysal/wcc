@@ -538,22 +538,22 @@ vector<IR *> IRParser::parseLCmpExp(AST *root, Symbol *func, IR *trueLabel,
   IR::IRType type = IR::BEQ;
   switch (root->type) {
   case AST::EQ_EXP:
-    type = IR::BNE;
+    type = IR::BEQ;
     break;
   case AST::GE_EXP:
-    type = IR::BLT;
-    break;
-  case AST::GT_EXP:
-    type = IR::BLE;
-    break;
-  case AST::LE_EXP:
-    type = IR::BGT;
-    break;
-  case AST::LT_EXP:
     type = IR::BGE;
     break;
+  case AST::GT_EXP:
+    type = IR::BGT;
+    break;
+  case AST::LE_EXP:
+    type = IR::BLE;
+    break;
+  case AST::LT_EXP:
+    type = IR::BLT;
+    break;
   case AST::NE_EXP:
-    type = IR::BEQ;
+    type = IR::BNE;
     break;
   default:
     break;
@@ -562,9 +562,9 @@ vector<IR *> IRParser::parseLCmpExp(AST *root, Symbol *func, IR *trueLabel,
   irs3.insert(irs3.end(), irs1.begin(), irs1.end());
   irs3.insert(irs3.end(), irs2.begin(), irs2.end());
   irs3.push_back(
-      new IR(type, {new IRItem(falseLabel), lastResult(irs1)->clone(),
+      new IR(type, {new IRItem(trueLabel), lastResult(irs1)->clone(),
                     lastResult(irs2)->clone()}));
-  irs3.push_back(new IR(IR::GOTO, {new IRItem(trueLabel)}));
+  irs3.push_back(new IR(IR::GOTO, {new IRItem(falseLabel)}));
   return irs3;
 }
 
