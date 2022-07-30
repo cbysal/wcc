@@ -1582,7 +1582,7 @@ void ASMParser::parseMovToSymbol(vector<ASM *> &asms, IR *ir) {
   if (offset) {
     loadImmToReg(asms, ASMItem::A3, (int)offset);
     asms.push_back(
-        new ASM(ASM::ADD, {new ASMItem(ASMItem::A2), new ASMItem(ASMItem::A3),
+        new ASM(ASM::ADD, {new ASMItem(ASMItem::A2), new ASMItem(ASMItem::A2),
                            new ASMItem(ASMItem::A3)}));
   }
   switch (ir->items[1]->type) {
