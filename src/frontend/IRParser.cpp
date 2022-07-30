@@ -204,9 +204,10 @@ vector<IR *> IRParser::parseCond(AST *root, Symbol *func, IR *trueLabel,
   case AST::SUB_EXP: {
     vector<IR *> irs = parseAST(root, func);
     irs.push_back(new IR(
-        IR::BEQ, {new IRItem(falseLabel), lastResult(irs)->clone(),
+        IR::BNE, {new IRItem(trueLabel), lastResult(irs)->clone(),
                   lastResult(irs)->type == IRItem::FTEMP ? new IRItem(0.0f)
                                                          : new IRItem(0)}));
+    irs.push_back(new IR(IR::GOTO, {new IRItem(falseLabel)}));
     return irs;
   }
   case AST::EQ_EXP:
@@ -228,22 +229,25 @@ vector<IR *> IRParser::parseCond(AST *root, Symbol *func, IR *trueLabel,
         new IR(IR::GOTO, {new IRItem(root->iVal ? trueLabel : falseLabel)})};
   case AST::F2I_EXP: {
     vector<IR *> irs = parseAST(root, func);
-    irs.push_back(new IR(IR::BEQ, {new IRItem(falseLabel),
+    irs.push_back(new IR(IR::BNE, {new IRItem(trueLabel),
                                    lastResult(irs)->clone(), new IRItem(0)}));
+    irs.push_back(new IR(IR::GOTO, {new IRItem(falseLabel)}));
     return irs;
   }
   case AST::I2F_EXP: {
     vector<IR *> irs = parseAST(root->nodes[0], func);
-    irs.push_back(new IR(IR::BEQ, {new IRItem(falseLabel),
+    irs.push_back(new IR(IR::BNE, {new IRItem(trueLabel),
                                    lastResult(irs)->clone(), new IRItem(0)}));
+    irs.push_back(new IR(IR::GOTO, {new IRItem(falseLabel)}));
     return irs;
   }
   case AST::L_NOT_EXP: {
     if (root->nodes[0]->type == AST::L_NOT_EXP)
       return parseCond(root->nodes[0]->nodes[0], func, trueLabel, falseLabel);
     vector<IR *> irs = parseAST(root->nodes[0], func);
-    irs.push_back(new IR(IR::BNE, {new IRItem(falseLabel),
+    irs.push_back(new IR(IR::BEQ, {new IRItem(trueLabel),
                                    lastResult(irs)->clone(), new IRItem(0)}));
+    irs.push_back(new IR(IR::GOTO, {new IRItem(falseLabel)}));
     return irs;
   }
   case AST::NEG_EXP:
@@ -839,14 +843,15 @@ vector<IR *> IRParser::parseWhileStmt(AST *root, Symbol *func) {
   IR *label2 = new IR(IR::LABEL_WHILE_END);
   vector<IR *> irs1 = parseCond(root->nodes[0], func, label1, label2);
   vector<IR *> irs2 = parseAST(root->nodes[1], func);
-  vector<IR *> irs3;
-  irs3.push_back(label0);
-  irs3.insert(irs3.end(), irs1.begin(), irs1.end());
-  irs3.push_back(label1);
-  irs3.insert(irs3.end(), irs2.begin(), irs2.end());
-  irs3.push_back(new IR(IR::GOTO, {new IRItem(label0)}));
-  irs3.push_back(label2);
-  return irs3;
+  vector<IR *> irs3 = parseCond(root->nodes[0], func, label1, label2);
+  vector<IR *> irs4;
+  irs4.push_back(label0);
+  irs4.insert(irs4.end(), irs1.begin(), irs1.end());
+  irs4.push_back(label1);
+  irs4.insert(irs4.end(), irs2.begin(), irs2.end());
+  irs4.insert(irs4.end(), irs3.begin(), irs3.end());
+  irs4.push_back(label2);
+  return irs4;
 }
 
 vector<Symbol *> IRParser::getConsts() {
