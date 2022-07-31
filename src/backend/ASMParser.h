@@ -74,6 +74,11 @@ private:
   void parseF2I(vector<ASM *> &, IR *);
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
   void parseI2F(vector<ASM *> &, IR *);
+  void parseLCmp(vector<ASM *> &, IR *);
+  void parseLCmpFtempFloat(vector<ASM *> &, IR *);
+  void parseLCmpFtempFtemp(vector<ASM *> &, IR *);
+  void parseLCmpItempInt(vector<ASM *> &, IR *);
+  void parseLCmpItempItemp(vector<ASM *> &, IR *);
   void parseLNot(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
   void parseMod(vector<ASM *> &, IR *);
@@ -89,6 +94,7 @@ private:
   void saveUsedRegs(vector<ASM *> &);
   void saveArgRegs(vector<ASM *> &, Symbol *);
   void storeFromSP(vector<ASM *> &, ASMItem::RegType, unsigned);
+  void switchLCmpLogic(IR *);
 
 public:
   vector<pair<Symbol *, vector<ASM *>>> getFuncASMs();

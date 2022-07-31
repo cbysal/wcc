@@ -57,6 +57,13 @@ string ASM::toString() {
   case BL:
     s += "bl " + items[0]->sVal + "(PLT)";
     break;
+  case CMN:
+    s += "cmn " + regTypeStr[items[0]->reg] + ", ";
+    if (items[1]->type == ASMItem::REG)
+      s += regTypeStr[items[1]->reg];
+    else
+      s += "#" + to_string(items[1]->iVal);
+    break;
   case CMP:
     s += "cmp " + regTypeStr[items[0]->reg] + ", ";
     if (items[1]->type == ASMItem::REG)

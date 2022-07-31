@@ -69,67 +69,21 @@ unsigned ASMParser::float2Unsigned(float fVal) {
 
 void ASMParser::loadFromSP(vector<ASM *> &asms, ASMItem::RegType target,
                            unsigned offset) {
-  vector<unsigned> smartImm;
-  for (unsigned mask : makeSmartImmMask(offset))
-    smartImm.push_back(offset & mask);
   ASM::ASMOpType op = isFloatReg(target) ? ASM::VLDR : ASM::LDR;
   unsigned maxOffset = isFloatReg(target) ? 1020 : 4095;
-  switch (smartImm.size()) {
-  case 0:
+  if (!offset) {
     asms.push_back(
         new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP)}));
-    break;
-  case 1:
-    if (offset <= maxOffset)
-      asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                  new ASMItem(offset)}));
-    else {
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                             new ASMItem(offset)}));
-      asms.push_back(
-          new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::A4)}));
-    }
-    break;
-  case 2:
-    if (offset <= maxOffset) {
-      asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                  new ASMItem(offset)}));
-    } else if (!(offset & 0xffff0000)) {
-      asms.push_back(
-          new ASM(ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset)}));
-      asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                  new ASMItem(ASMItem::A4)}));
-    } else if (smartImm[1] <= maxOffset) {
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                             new ASMItem(smartImm[0])}));
-      asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::A4),
-                                  new ASMItem(smartImm[1])}));
-    } else {
-      asms.push_back(new ASM(
-          ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset & 0xffff)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(ASMItem::A4), new ASMItem(offset >> 16)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                             new ASMItem(ASMItem::A4)}));
-      asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                  new ASMItem(ASMItem::A4)}));
-    }
-    break;
-  default:
-    asms.push_back(new ASM(
-        ASM::MOV, {new ASMItem(ASMItem::A4), new ASMItem(offset & 0xffff)}));
-    asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(ASMItem::A4), new ASMItem(offset >> 16)}));
-    asms.push_back(
-        new ASM(ASM::ADD, {new ASMItem(ASMItem::A4), new ASMItem(ASMItem::SP),
-                           new ASMItem(ASMItem::A4)}));
-    asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
-                                new ASMItem(ASMItem::A4)}));
-    break;
+    return;
   }
+  if (offset <= maxOffset) {
+    asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
+                                new ASMItem(offset)}));
+    return;
+  }
+  loadImmToReg(asms, ASMItem::A4, offset);
+  asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(ASMItem::SP),
+                              new ASMItem(ASMItem::A4)}));
 }
 
 void ASMParser::loadImmToReg(vector<ASM *> &asms, ASMItem::RegType reg,
@@ -575,74 +529,7 @@ void ASMParser::parseAddItempItemp(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseB(vector<ASM *> &asms, IR *ir) {
-  if (ir->items[1]->type == IRItem::ITEMP &&
-      ir->items[2]->type == IRItem::ITEMP) {
-    bool flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end(),
-         flag3 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
-    if (flag3)
-      loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(flag2 ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag3 ? ASMItem::A2 : itemp2Reg[ir->items[2]->iVal])}));
-  } else if (ir->items[1]->type == IRItem::ITEMP &&
-             ir->items[2]->type == IRItem::INT) {
-    bool flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
-    loadImmToReg(asms, ASMItem::A2, (unsigned)ir->items[2]->iVal);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(flag2 ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::A2)}));
-  } else if (ir->items[1]->type == IRItem::INT &&
-             ir->items[2]->type == IRItem::ITEMP) {
-    bool flag3 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
-    loadImmToReg(asms, ASMItem::A1, (unsigned)ir->items[1]->iVal);
-    if (flag3)
-      loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(ASMItem::A1),
-         new ASMItem(flag3 ? ASMItem::A2 : itemp2Reg[ir->items[2]->iVal])}));
-  } else if (ir->items[1]->type == IRItem::FTEMP &&
-             ir->items[2]->type == IRItem::FTEMP) {
-    bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end(),
-         flag3 = ftemp2Reg.find(ir->items[2]->iVal) == ftemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
-    if (flag3)
-      loadFromSP(asms, ASMItem::S1, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag3 ? ASMItem::S1 : ftemp2Reg[ir->items[2]->iVal])}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  } else if (ir->items[1]->type == IRItem::FTEMP &&
-             ir->items[2]->type == IRItem::FLOAT) {
-    bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
-    loadImmToReg(asms, ASMItem::S1, ir->items[2]->fVal);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::S1)}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  } else if (ir->items[1]->type == IRItem::FLOAT &&
-             ir->items[2]->type == IRItem::FTEMP) {
-    bool flag3 = ftemp2Reg.find(ir->items[2]->iVal) == ftemp2Reg.end();
-    loadImmToReg(asms, ASMItem::S0, ir->items[1]->fVal);
-    if (flag3)
-      loadFromSP(asms, ASMItem::S1, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(ASMItem::S0),
-         new ASMItem(flag3 ? ASMItem::S1 : ftemp2Reg[ir->items[2]->iVal])}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  }
+  parseLCmp(asms, ir);
   switch (ir->type) {
   case IR::BEQ:
     asms.push_back(
@@ -756,74 +643,7 @@ void ASMParser::parseCall(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseCmp(vector<ASM *> &asms, IR *ir) {
-  if (ir->items[1]->type == IRItem::ITEMP &&
-      ir->items[2]->type == IRItem::ITEMP) {
-    bool flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end(),
-         flag3 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
-    if (flag3)
-      loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(flag2 ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag3 ? ASMItem::A2 : itemp2Reg[ir->items[2]->iVal])}));
-  } else if (ir->items[1]->type == IRItem::ITEMP &&
-             ir->items[2]->type == IRItem::INT) {
-    bool flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
-    loadImmToReg(asms, ASMItem::A2, (unsigned)ir->items[2]->iVal);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(flag2 ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::A2)}));
-  } else if (ir->items[1]->type == IRItem::INT &&
-             ir->items[2]->type == IRItem::ITEMP) {
-    bool flag3 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
-    loadImmToReg(asms, ASMItem::A1, (unsigned)ir->items[1]->iVal);
-    if (flag3)
-      loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::CMP,
-        {new ASMItem(ASMItem::A1),
-         new ASMItem(flag3 ? ASMItem::A2 : itemp2Reg[ir->items[2]->iVal])}));
-  } else if (ir->items[1]->type == IRItem::FTEMP &&
-             ir->items[2]->type == IRItem::FTEMP) {
-    bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end(),
-         flag3 = ftemp2Reg.find(ir->items[2]->iVal) == ftemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
-    if (flag3)
-      loadFromSP(asms, ASMItem::S1, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag3 ? ASMItem::S1 : ftemp2Reg[ir->items[2]->iVal])}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  } else if (ir->items[1]->type == IRItem::FTEMP &&
-             ir->items[2]->type == IRItem::FLOAT) {
-    bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
-    if (flag2)
-      loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
-    loadImmToReg(asms, ASMItem::S1, ir->items[2]->fVal);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::S1)}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  } else if (ir->items[1]->type == IRItem::FLOAT &&
-             ir->items[2]->type == IRItem::FTEMP) {
-    bool flag3 = ftemp2Reg.find(ir->items[2]->iVal) == ftemp2Reg.end();
-    loadImmToReg(asms, ASMItem::S0, ir->items[1]->fVal);
-    if (flag3)
-      loadFromSP(asms, ASMItem::S1, spillOffsets[ir->items[2]->iVal]);
-    asms.push_back(new ASM(
-        ASM::VCMP,
-        {new ASMItem(ASMItem::S0),
-         new ASMItem(flag3 ? ASMItem::S1 : ftemp2Reg[ir->items[2]->iVal])}));
-    asms.push_back(new ASM(ASM::VMRS, {}));
-  }
+  parseLCmp(asms, ir);
   bool flag1 = itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end();
   ASMItem::RegType targetReg =
       flag1 ? ASMItem::A1 : itemp2Reg[ir->items[0]->iVal];
@@ -1088,6 +908,106 @@ void ASMParser::parseI2F(vector<ASM *> &asms, IR *ir) {
        new ASMItem(flag1 ? ASMItem::S0 : ftemp2Reg[ir->items[0]->iVal])}));
   if (flag1)
     storeFromSP(asms, ASMItem::S0, spillOffsets[ir->items[0]->iVal]);
+}
+
+void ASMParser::parseLCmp(vector<ASM *> &asms, IR *ir) {
+  if (ir->items[1]->type == IRItem::ITEMP &&
+      ir->items[2]->type == IRItem::ITEMP)
+    parseLCmpItempItemp(asms, ir);
+  else if (ir->items[1]->type == IRItem::ITEMP &&
+           ir->items[2]->type == IRItem::INT)
+    parseLCmpItempInt(asms, ir);
+  else if (ir->items[1]->type == IRItem::INT &&
+           ir->items[2]->type == IRItem::ITEMP) {
+    switchLCmpLogic(ir);
+    parseLCmpItempInt(asms, ir);
+  } else if (ir->items[1]->type == IRItem::FTEMP &&
+             ir->items[2]->type == IRItem::FTEMP)
+    parseLCmpFtempFtemp(asms, ir);
+  else if (ir->items[1]->type == IRItem::FTEMP &&
+           ir->items[2]->type == IRItem::FLOAT)
+    parseAddFtempFloat(asms, ir);
+  else if (ir->items[1]->type == IRItem::FLOAT &&
+           ir->items[2]->type == IRItem::FTEMP) {
+    switchLCmpLogic(ir);
+    parseAddFtempFloat(asms, ir);
+  }
+}
+
+void ASMParser::parseLCmpFtempFloat(vector<ASM *> &asms, IR *ir) {
+  bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
+  if (flag2)
+    loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
+  if (ir->items[2]->fVal) {
+    loadImmToReg(asms, ASMItem::S1, ir->items[2]->fVal);
+    asms.push_back(new ASM(
+        ASM::VCMP,
+        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(ASMItem::S1)}));
+  } else
+    asms.push_back(new ASM(
+        ASM::VCMP,
+        {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(0.0f)}));
+  asms.push_back(new ASM(ASM::VMRS, {}));
+}
+
+void ASMParser::parseLCmpFtempFtemp(vector<ASM *> &asms, IR *ir) {
+  bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end(),
+       flag3 = ftemp2Reg.find(ir->items[2]->iVal) == ftemp2Reg.end();
+  if (flag2)
+    loadFromSP(asms, ASMItem::S0, spillOffsets[ir->items[1]->iVal]);
+  if (flag3)
+    loadFromSP(asms, ASMItem::S1, spillOffsets[ir->items[2]->iVal]);
+  asms.push_back(new ASM(
+      ASM::VCMP,
+      {new ASMItem(flag2 ? ASMItem::S0 : ftemp2Reg[ir->items[1]->iVal]),
+       new ASMItem(flag3 ? ASMItem::S1 : ftemp2Reg[ir->items[2]->iVal])}));
+  asms.push_back(new ASM(ASM::VMRS, {}));
+}
+
+void ASMParser::parseLCmpItempInt(vector<ASM *> &asms, IR *ir) {
+  bool flag = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end();
+  if (flag)
+    loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
+  if (isByteShiftImm(ir->items[2]->iVal)) {
+    loadImmToReg(asms, ASMItem::A2, (unsigned)ir->items[2]->iVal);
+    asms.push_back(new ASM(
+        ASM::CMP,
+        {new ASMItem(flag ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(ir->items[2]->iVal)}));
+  } else if (isByteShiftImm(-ir->items[2]->iVal)) {
+    asms.push_back(new ASM(
+        ASM::CMN,
+        {new ASMItem(flag ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(-ir->items[2]->iVal)}));
+  } else if (canBeLoadInSingleInstruction(ir->items[2]->iVal) ||
+             canBeLoadInSingleInstruction(-ir->items[2]->iVal)) {
+    loadImmToReg(asms, ASMItem::A2, (unsigned)ir->items[2]->iVal);
+    asms.push_back(new ASM(
+        ASM::CMP,
+        {new ASMItem(flag ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(ASMItem::A2)}));
+  } else {
+    loadImmToReg(asms, ASMItem::A2, (unsigned)(-ir->items[2]->iVal));
+    asms.push_back(new ASM(
+        ASM::CMN,
+        {new ASMItem(flag ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(ASMItem::A2)}));
+  }
+}
+
+void ASMParser::parseLCmpItempItemp(vector<ASM *> &asms, IR *ir) {
+  bool flag1 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end(),
+       flag2 = itemp2Reg.find(ir->items[2]->iVal) == itemp2Reg.end();
+  if (flag1)
+    loadFromSP(asms, ASMItem::A1, spillOffsets[ir->items[1]->iVal]);
+  if (flag2)
+    loadFromSP(asms, ASMItem::A2, spillOffsets[ir->items[2]->iVal]);
+  asms.push_back(new ASM(
+      ASM::CMP,
+      {new ASMItem(flag1 ? ASMItem::A1 : itemp2Reg[ir->items[1]->iVal]),
+       new ASMItem(flag2 ? ASMItem::A2 : itemp2Reg[ir->items[2]->iVal])}));
 }
 
 void ASMParser::parseLNot(vector<ASM *> &asms, IR *ir) {
@@ -1997,4 +1917,48 @@ void ASMParser::storeFromSP(vector<ASM *> &asms, ASMItem::RegType source,
                                 new ASMItem(ASMItem::A4)}));
     break;
   }
+}
+
+void ASMParser::switchLCmpLogic(IR *ir) {
+  switch (ir->type) {
+  case IR::BEQ:
+    ir->type = IR::BNE;
+    break;
+  case IR::BGE:
+    ir->type = IR::BLT;
+    break;
+  case IR::BGT:
+    ir->type = IR::BLE;
+    break;
+  case IR::BLE:
+    ir->type = IR::BGT;
+    break;
+  case IR::BLT:
+    ir->type = IR::BGE;
+    break;
+  case IR::BNE:
+    ir->type = IR::BEQ;
+    break;
+  case IR::EQ:
+    ir->type = IR::NE;
+    break;
+  case IR::GE:
+    ir->type = IR::LT;
+    break;
+  case IR::GT:
+    ir->type = IR::LE;
+    break;
+  case IR::LE:
+    ir->type = IR::GT;
+    break;
+  case IR::LT:
+    ir->type = IR::GE;
+    break;
+  case IR::NE:
+    ir->type = IR::EQ;
+    break;
+  default:
+    break;
+  }
+  swap(ir->items[1], ir->items[2]);
 }

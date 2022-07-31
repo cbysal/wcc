@@ -14,6 +14,7 @@ public:
     ADD,
     B,
     BL,
+    CMN,
     CMP,
     DIV,
     DW,
