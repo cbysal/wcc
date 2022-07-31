@@ -160,6 +160,9 @@ string ASM::toString() {
       break;
     }
     break;
+  case MVN:
+    s += "mvn " + regTypeStr[items[0]->reg] + ", #" + to_string(items[1]->iVal);
+    break;
   case POP:
     s += "pop {";
     for (ASMItem *item : items) {

@@ -24,6 +24,7 @@ public:
     MOVT,
     MOVW,
     MUL,
+    MVN,
     POP,
     PUSH,
     RSB,
