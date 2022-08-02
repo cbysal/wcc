@@ -12,6 +12,7 @@ class ASM {
 public:
   enum ASMOpType {
     ADD,
+    ASR,
     B,
     BL,
     CMN,
@@ -29,6 +30,8 @@ public:
     POP,
     PUSH,
     RSB,
+    SMMLA,
+    SMMUL,
     STR,
     SUB,
     TAG,

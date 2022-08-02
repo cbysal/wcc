@@ -8,7 +8,19 @@ using namespace std;
 
 class ASMItem {
 public:
-  enum ASMItemType { COND, FLOAT, INT, LABEL, OP, POSNEG, REG, TAG, WB };
+  enum ASMItemType {
+    ASR,
+    COND,
+    FLOAT,
+    INT,
+    LABEL,
+    LSR,
+    OP,
+    POSNEG,
+    REG,
+    TAG,
+    WB
+  };
   enum OpType { MINUS, PLUS };
   enum RegType {
     SPILL,

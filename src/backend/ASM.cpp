@@ -47,6 +47,28 @@ string ASM::toString() {
     default:
       break;
     }
+    if (items.size() >= 4)
+      switch (items[3]->type) {
+      case ASMItem::LSR:
+        s += ", lsr #" + to_string(items[3]->iVal);
+        break;
+      default:
+        break;
+      }
+    break;
+  case ASR:
+    s += "asr " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
+         ", ";
+    switch (items[2]->type) {
+    case ASMItem::INT:
+      s += "#" + to_string(items[2]->iVal);
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[2]->reg];
+      break;
+    default:
+      break;
+    }
     break;
   case B:
     s += "b";
@@ -70,6 +92,10 @@ string ASM::toString() {
       s += regTypeStr[items[1]->reg];
     else
       s += "#" + to_string(items[1]->iVal);
+    break;
+  case DIV:
+    s += "sdiv " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;
   case EOR:
     s += "eor " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
@@ -203,9 +229,22 @@ string ASM::toString() {
     default:
       break;
     }
+    if (items.size() >= 4)
+      switch (items[3]->type) {
+      case ASMItem::ASR:
+        s += ", asr #" + to_string(items[3]->iVal);
+        break;
+      default:
+        break;
+      }
     break;
-  case DIV:
-    s += "sdiv " + regTypeStr[items[0]->reg] + ", " +
+  case SMMLA:
+    s += "smmla " + regTypeStr[items[0]->reg] + ", " +
+         regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg] + ", " +
+         regTypeStr[items[3]->reg];
+    break;
+  case SMMUL:
+    s += "smmul " + regTypeStr[items[0]->reg] + ", " +
          regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;
   case STR:

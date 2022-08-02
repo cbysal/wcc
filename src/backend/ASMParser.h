@@ -71,6 +71,12 @@ private:
   void parseCall(vector<ASM *> &, IR *);
   void parseCmp(vector<ASM *> &, IR *);
   void parseDiv(vector<ASM *> &, IR *);
+  void parseDivFloatFtemp(vector<ASM *> &, IR *);
+  void parseDivFtempFloat(vector<ASM *> &, IR *);
+  void parseDivFtempFtemp(vector<ASM *> &, IR *);
+  void parseDivIntItemp(vector<ASM *> &, IR *);
+  void parseDivItempInt(vector<ASM *> &, IR *);
+  void parseDivItempItemp(vector<ASM *> &, IR *);
   void parseF2I(vector<ASM *> &, IR *);
   vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
   void parseI2F(vector<ASM *> &, IR *);
