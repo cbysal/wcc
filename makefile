@@ -7,12 +7,13 @@ compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $
 	$(TARGET_DIR)/ASMOptimizer.o $(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
 	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o \
 	$(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o \
-	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
+	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o $(TARGET_DIR)/BasicBlock.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/IR.o \
 	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
 	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o -o compiler
+	$(TARGET_DIR)/Token.o  \
+	$(TARGET_DIR)/BasicBlock.o -o compiler
 
 $(TARGET_DIR)/compiler.o: src/compiler.cpp src
 	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
@@ -67,6 +68,9 @@ $(TARGET_DIR)/SyntaxParser.o: src/frontend/SyntaxParser.cpp src/frontend/SyntaxP
 
 $(TARGET_DIR)/Token.o: src/frontend/Token.cpp src/frontend/Token.h
 	$(CC) $(CFLAGS) -c src/frontend/Token.cpp -o $(TARGET_DIR)/Token.o
+
+$(TARGET_DIR)/BasicBlock.o: src/backend/BasicBlock.cpp src/backend/BasicBlock.h
+	$(CC) $(CFLAGS) -c src/backend/BasicBlock.cpp -o $(TARGET_DIR)/BasicBlock.o
 
 $(TARGET_DIR):
 	mkdir -p $(TARGET_DIR)

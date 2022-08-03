@@ -21,9 +21,11 @@ public:
   ~RegFile();
 
   unsigned getUsed(Type);
+  void setUsed(Type, unsigned);
   pair<ASMItem::RegType, unsigned> pop(Type);
   void push(ASMItem::RegType);
   void push(unsigned);
+  vector<ASMItem::RegType> getRegs(Type type);
 };
 
 #endif

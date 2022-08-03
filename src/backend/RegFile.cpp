@@ -68,3 +68,24 @@ void RegFile::push(ASMItem::RegType reg) {
 }
 
 void RegFile::push(unsigned reg) { spillRegs.push_back(reg); }
+
+vector<ASMItem::RegType> RegFile::getRegs(Type type) {
+  if (type == V)
+    return vRegs;
+  else
+    return sRegs;
+}
+
+void RegFile::setUsed(Type type, unsigned used) {
+  switch (type) {
+  case V:
+    vUsed = used;
+    break;
+  case S:
+    sUsed = used;
+    break;
+  case SPILL:
+    spillUsed = used;
+    break;
+  }
+}
