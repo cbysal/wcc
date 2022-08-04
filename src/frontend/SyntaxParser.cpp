@@ -211,53 +211,6 @@ AST *SyntaxParser::parseAddExp() {
       left = left->transIF();
     if (left->isFloat && !right->isFloat)
       right = right->transIF();
-    switch (type) {
-    case AST::ADD_EXP:
-      if (left->dimension) {
-        unsigned dimension = left->dimension;
-        if (right->type == AST::INT)
-          right->iVal = right->iVal * dimension * 4;
-        else
-          right = new AST(AST::MUL_EXP, false,
-                          {right, new AST((int)dimension * 4)});
-        left = new AST(AST::ADD_EXP, false, {left, right});
-        left->dimension = dimension;
-        continue;
-      }
-      if (right->dimension) {
-        unsigned dimension = right->dimension;
-        if (left->type == AST::INT)
-          left->iVal = left->iVal * dimension * 4;
-        else
-          left =
-              new AST(AST::MUL_EXP, false, {left, new AST((int)dimension * 4)});
-        right = new AST(AST::ADD_EXP, false, {left, right});
-        right->dimension = dimension;
-        continue;
-      }
-      break;
-    case AST::SUB_EXP:
-      if (left->dimension || right->dimension) {
-        unsigned dimension = left->dimension;
-        if (right->dimension) {
-          left = new AST(AST::SUB_EXP, false, {left, right});
-          left =
-              new AST(AST::DIV_EXP, false, {left, new AST((int)dimension * 4)});
-          continue;
-        }
-        if (right->type == AST::INT)
-          right->iVal = right->iVal * dimension * 4;
-        else
-          right = new AST(AST::MUL_EXP, false,
-                          {right, new AST((int)dimension * 4)});
-        left = new AST(AST::SUB_EXP, false, {left, right});
-        left->dimension = dimension;
-        continue;
-      }
-      break;
-    default:
-      break;
-    }
     left = new AST(type, left->isFloat, {left, right});
   }
   return left;
@@ -766,14 +719,8 @@ AST *SyntaxParser::parseLVal() {
                          ? 0.0f
                          : symbol->fMap[offset]);
   }
-  AST *root = new AST(AST::L_VAL, symbol->dataType == Symbol::FLOAT, symbol,
-                      dimensions);
-  if (dimensions.size() != symbol->dimensions.size()) {
-    root->dimension = 1;
-    for (unsigned i = dimensions.size() + 1; i < symbol->dimensions.size(); i++)
-      root->dimension *= symbol->dimensions[i];
-  }
-  return root;
+  return new AST(AST::L_VAL, symbol->dataType == Symbol::FLOAT, symbol,
+                 dimensions);
 }
 
 AST *SyntaxParser::parseMulExp() {
