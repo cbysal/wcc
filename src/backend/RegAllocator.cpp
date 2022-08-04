@@ -23,7 +23,7 @@ void RegAllocator::allocate() {
   calcPrevMap();
   simpleScan();
   calcLifespan();
-  betterAllocate();
+  // betterAllocate();
   vector<unordered_set<unsigned>> begins(irs.size()), ends(irs.size());
   for (pair<unsigned, pair<unsigned, unsigned>> span : lifespan) {
     begins[span.second.first].insert(span.first);
@@ -185,9 +185,10 @@ void RegAllocator::betterAllocate() {
   dfsTestLoop(path);
   topSortBlocks();
   calcInAndOut();
-  calcInterfereByLine();
+  // std::cerr << "start coloring" << std::endl;
   int spillCount = 0;
   unsigned vCount = 0, sCount = 0;
+  calcInterfereByLine(spillCount);
   vCount = graphColoring(IRItem::ITEMP, spillCount);
   sCount = graphColoring(IRItem::FTEMP, spillCount);
   regs->setUsed(RegFile::V, vCount);
@@ -460,8 +461,8 @@ void RegAllocator::updateInterfereMatrix(
 void RegAllocator::logInterfere() {
   std::cout << "Interfere\n";
   for (size_t i = 0; i < interfereMatrix.size(); i++) {
-    if (interfereMatrix[i].empty())
-      continue;
+    // if (interfereMatrix[i].empty())
+    //   continue;
     std::cout << i << ": ";
     std::cout << "Reg: ";
     if (itemp2Reg.count(i) != 0)
@@ -478,41 +479,72 @@ void RegAllocator::logInterfere() {
 }
 
 // calc the interfere relation by each line
-void RegAllocator::calcInterfereByLine() {
+void RegAllocator::calcInterfereByLine(int &spillCount) {
   for (auto bb : bbs) {
+    set<unsigned> comAlive;
     set<unsigned> alive;
     for (unsigned t : bb->outTemps) {
-      alive.emplace(t);
+      comAlive.emplace(t);
     }
+    // std::cerr << bb->last - bb->first << std::endl;
     for (int i = (int)bb->last; (int)bb->first <= i; i--) {
       vector<IRItem *> &its = irs[i]->items;
       if (its.empty())
         continue;
       if (its[0]->type == IRItem::ITEMP || its[0]->type == IRItem::FTEMP) {
-        alive.erase(its[0]->iVal);
-        useCount[its[0]->iVal] += 1;
+        // TODO: delete the judge after un used temps are deleted
+        if (alive.count(its[0]->iVal) != 0 ||
+            comAlive.count(its[0]->iVal) != 0) {
+          alive.erase(its[0]->iVal);
+          comAlive.erase(its[0]->iVal);
+        } else {
+          comAlive.emplace(its[0]->iVal);
+          useCount[its[0]->iVal] += 1;
+        }
+        // alive.erase(its[0]->iVal);
+        // comAlive.erase(its[0]->iVal);
       }
       for (size_t j = 1; j < its.size(); j++) {
         if (its[j]->type == IRItem::ITEMP || its[j]->type == IRItem::FTEMP) {
-          alive.emplace(its[j]->iVal);
-          useCount[its[j]->iVal] += bb->inLoop ? 10 : 2;
+          comAlive.emplace(its[j]->iVal);
+          useCount[its[j]->iVal] += bb->inLoop ? 10 : 1;
         }
       }
-      if (1 < alive.size())
-        updateInterfereMatrix(alive);
+      if (0 < comAlive.size())
+        updateInterfereMatrix(comAlive, alive, spillCount);
+      alive.insert(comAlive.begin(), comAlive.end());
+      comAlive.clear();
     }
   }
 }
 
-void RegAllocator::updateInterfereMatrix(const set<unsigned> &alive) {
+void RegAllocator::updateInterfereMatrix(const set<unsigned> &comAlive,
+                                         const set<unsigned> &alive,
+                                         int &spillCount) {
+  vector<unsigned> newlive(comAlive.begin(), comAlive.end());
   vector<unsigned> live(alive.begin(), alive.end());
-  for (size_t i = 0; i < live.size(); i++) {
-    for (size_t j = i + 1; j < live.size(); j++) {
-      bool ii = iTemps.find(live[i]) != iTemps.end();
+  // std::cerr << newlive.size() << ' ' << live.size() << std::endl;
+  for (size_t i = 0; i < newlive.size(); i++) {
+    // directly spill the temps with too many interfefe edges
+    if (500 < live.size()) {
+      temp2SpillReg[newlive[i]] = spillCount++;
+      continue;
+    }
+    for (size_t j = i + 1; j < newlive.size(); j++) {
+      bool ii = iTemps.find(newlive[i]) != iTemps.end();
+      bool jni = iTemps.find(newlive[j]) == iTemps.end();
+      if (ii ^ jni) {
+        interfereMatrix[newlive[i]].emplace(newlive[j]);
+        interfereMatrix[newlive[j]].emplace(newlive[i]);
+      }
+    }
+    for (size_t j = 0; j < live.size(); j++) {
+      bool ii = iTemps.find(newlive[i]) != iTemps.end();
       bool jni = iTemps.find(live[j]) == iTemps.end();
-      if (ii ^ jni)
-        interfereMatrix[live[i]].emplace(live[j]);
-      interfereMatrix[live[j]].emplace(live[i]);
+      if (ii ^ jni) {
+        interfereMatrix[newlive[i]].emplace(live[j]);
+        interfereMatrix[live[j]].emplace(newlive[i]);
+      }
     }
   }
 }
@@ -561,8 +593,19 @@ unsigned RegAllocator::graphColoring(IRItem::IRItemType iorf, int &spillCount) {
       pque(cmp);
   vector<pair<unsigned, bool>> stk;
   vector<unsigned> spills;
+  // directly spill temps with too many interfering neighbors
   for (size_t i = 0; i < degs.size(); i++) {
-    if (((iTemps.count(i) != 0) ^ (iorf != IRItem::ITEMP)) && useCount[i] != 0)
+    if (((iTemps.count(i) == 0) ^ (iorf != IRItem::ITEMP)) || degs[i] < 500)
+      continue;
+    spills.emplace_back(i);
+    degs[i] = -1;
+    for (unsigned x : inters[i])
+      if (degs[x] != -1)
+        degs[x]--;
+  }
+  for (size_t i = 0; i < degs.size(); i++) {
+    if (((iTemps.count(i) != 0) ^ (iorf != IRItem::ITEMP)) &&
+        useCount[i] != 0 && degs[i] != -1 && temp2SpillReg.count(i) == 0)
       pque.emplace(i, degs[i]);
   }
   // pre color and spill
@@ -694,14 +737,16 @@ void RegAllocator::constrainSpill(vector<unsigned> &spilled, int &spillCount) {
   }
 
   // binary search to find the least spill memory needed
-  int lo = spillCount, hi = spillCount + static_cast<int>(spilled.size());
-  while (lo + 1 != hi) {
-    int mi = (lo + hi) >> 1;
-    if (testSpill(inter, degs, spillCount, mi))
-      hi = mi;
-    else
-      lo = mi;
-  }
+  int hi = spillCount + static_cast<int>(spilled.size());
+  // int lo = spillCount;
+  // while (lo + 1 != hi) {
+  //   int mi = (lo + hi) >> 1;
+  //   if (testSpill(inter, degs, spillCount, mi))
+  //     hi = mi;
+  //   else
+  //     lo = mi;
+  // }
+  // std::cerr << hi << ' ' << spilled.size() << std::endl;
   testSpill(inter, degs, spillCount, hi, true, &spilled);
   spillCount = hi;
 }

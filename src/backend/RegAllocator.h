@@ -40,11 +40,12 @@ private:
   void topSortBlocks();
   void calcInAndOut();
   void calcInterfere();
-  void calcInterfereByLine();
+  void calcInterfereByLine(int &spillCount);
   void updateInterfereMatrix(
       const std::vector<int> &used,
       const std::vector<std::vector<std::pair<unsigned, unsigned>>> &ranges);
-  void updateInterfereMatrix(const std::set<unsigned> &alive);
+  void updateInterfereMatrix(const std::set<unsigned> &comAlive,
+                             const std::set<unsigned> &alive, int &spillCount);
   void logInterfere();
   unsigned graphColoring(IRItem::IRItemType iorf, int &spillCount);
   void constrainSpill(std::vector<unsigned> &spilled, int &spillCount);
