@@ -103,6 +103,12 @@ private:
   void parseMovToSymbol(vector<ASM *> &, IR *);
   void parseNeg(vector<ASM *> &, IR *);
   void parseSub(vector<ASM *> &, IR *);
+  void parseSubFloatFtemp(vector<ASM *> &, IR *);
+  void parseSubFtempFloat(vector<ASM *> &, IR *);
+  void parseSubFtempFtemp(vector<ASM *> &, IR *);
+  void parseSubIntItemp(vector<ASM *> &, IR *);
+  void parseSubItempInt(vector<ASM *> &, IR *);
+  void parseSubItempItemp(vector<ASM *> &, IR *);
   void popArgs(vector<ASM *> &);
   void preProcess();
   void saveUsedRegs(vector<ASM *> &);
