@@ -49,12 +49,29 @@ string ASM::toString() {
     }
     if (items.size() >= 4)
       switch (items[3]->type) {
+      case ASMItem::LSL:
+        s += ", lsl #" + to_string(items[3]->iVal);
+        break;
       case ASMItem::LSR:
         s += ", lsr #" + to_string(items[3]->iVal);
         break;
       default:
         break;
       }
+    break;
+  case AND:
+    s += "and " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
+         ", ";
+    switch (items[2]->type) {
+    case ASMItem::INT:
+      s += "#" + to_string(items[2]->iVal);
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[2]->reg];
+      break;
+    default:
+      break;
+    }
     break;
   case ASR:
     s += "asr " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
@@ -133,6 +150,20 @@ string ASM::toString() {
         break;
       }
     s += "]";
+    break;
+  case LSL:
+    s += "lsl " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
+         ", ";
+    switch (items[2]->type) {
+    case ASMItem::INT:
+      s += "#" + to_string(items[2]->iVal);
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[2]->reg];
+      break;
+    default:
+      break;
+    }
     break;
   case MOV:
     s += "mov";
@@ -216,6 +247,20 @@ string ASM::toString() {
     }
     s += "}";
     break;
+  case ROR:
+    s += "ror " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
+         ", ";
+    switch (items[2]->type) {
+    case ASMItem::INT:
+      s += "#" + to_string(items[2]->iVal);
+      break;
+    case ASMItem::REG:
+      s += regTypeStr[items[2]->reg];
+      break;
+    default:
+      break;
+    }
+    break;
   case RSB:
     s += "rsb " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
          ", ";
@@ -234,6 +279,9 @@ string ASM::toString() {
       case ASMItem::ASR:
         s += ", asr #" + to_string(items[3]->iVal);
         break;
+      case ASMItem::LSL:
+        s += ", LSL #" + to_string(items[3]->iVal);
+        break;
       default:
         break;
       }
@@ -248,7 +296,10 @@ string ASM::toString() {
          regTypeStr[items[1]->reg] + ", " + regTypeStr[items[2]->reg];
     break;
   case STR:
-    s += "str " + regTypeStr[items[0]->reg] + ", [" + regTypeStr[items[1]->reg];
+    s += "str";
+    if (cond != ASM::AL)
+      s += condTypeStr[cond];
+    s += " " + regTypeStr[items[0]->reg] + ", [" + regTypeStr[items[1]->reg];
     if (items.size() == 3)
       switch (items[2]->type) {
       case ASMItem::INT:

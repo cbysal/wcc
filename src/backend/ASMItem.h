@@ -14,6 +14,7 @@ public:
     FLOAT,
     INT,
     LABEL,
+    LSL,
     LSR,
     OP,
     POSNEG,

@@ -88,7 +88,15 @@ private:
   void parseLNot(vector<ASM *> &, IR *);
   void parseMemsetZero(vector<ASM *> &, IR *);
   void parseMod(vector<ASM *> &, IR *);
+  void parseModIntItemp(vector<ASM *> &, IR *);
+  void parseModItempInt(vector<ASM *> &, IR *);
+  void parseModItempItemp(vector<ASM *> &, IR *);
   void parseMul(vector<ASM *> &, IR *);
+  void parseMulFloatFtemp(vector<ASM *> &, IR *);
+  void parseMulFtempFloat(vector<ASM *> &, IR *);
+  void parseMulFtempFtemp(vector<ASM *> &, IR *);
+  void parseMulItempInt(vector<ASM *> &, IR *);
+  void parseMulItempItemp(vector<ASM *> &, IR *);
   void parseMovToFtemp(vector<ASM *> &, IR *);
   void parseMovToItemp(vector<ASM *> &, IR *);
   void parseMovToReturn(vector<ASM *> &, IR *);
