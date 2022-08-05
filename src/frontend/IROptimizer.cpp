@@ -413,8 +413,7 @@ void IROptimizer::flowOptimize() {
           else if (s->dataType == Symbol::DataType::FLOAT)
             fsym.erase(s);
       }
-      block[u] =
-          blockCP(block[u], ban ? usedSymbol[col[u]] : set<Symbol *>{});
+      block[u] = blockCP(block[u], ban ? usedSymbol[col[u]] : set<Symbol *>{});
       for (size_t i = 0; i < block[u].size(); ++i) {
         if (branch.count((block[u][i])->type)) {
           auto &ir = block[u][i];

@@ -185,7 +185,6 @@ void RegAllocator::betterAllocate() {
   dfsTestLoop(path);
   topSortBlocks();
   calcInAndOut();
-  // std::cerr << "start coloring" << std::endl;
   int spillCount = 0;
   unsigned vCount = 0, sCount = 0;
   calcInterfereByLine(spillCount);
@@ -274,6 +273,8 @@ void RegAllocator::calcUseAndDef(unsigned &maxTemp) {
         bbs[i]->defTemps.insert(irs[j]->items[0]->iVal);
         if (irs[j]->items[0]->type == IRItem::ITEMP)
           iTemps.emplace(irs[j]->items[0]->iVal);
+        maxTemp =
+            std::max(maxTemp, static_cast<unsigned>(irs[j]->items[0]->iVal));
       }
       for (size_t k = 1; k < irs[j]->items.size(); k++) {
         if (irs[j]->items[k]->type == IRItem::ITEMP ||
