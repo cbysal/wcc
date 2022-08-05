@@ -8,7 +8,6 @@ AST::AST(ASTType astType, bool isFloat, Symbol *symbol,
          const vector<AST *> &nodes) {
   this->type = astType;
   this->isFloat = isFloat;
-  this->dimension = 0;
   this->nodes = nodes;
   this->symbol = symbol;
 }
@@ -16,7 +15,6 @@ AST::AST(ASTType astType, bool isFloat, Symbol *symbol,
 AST::AST(ASTType astType, bool isFloat, const vector<AST *> &nodes) {
   this->type = astType;
   this->isFloat = isFloat;
-  this->dimension = 0;
   this->nodes = nodes;
   this->symbol = nullptr;
 }
@@ -25,7 +23,6 @@ AST::AST(float fVal) {
   this->type = FLOAT;
   this->isFloat = true;
   this->fVal = fVal;
-  this->dimension = 0;
   this->symbol = nullptr;
 }
 
@@ -33,7 +30,6 @@ AST::AST(int iVal) {
   this->type = INT;
   this->isFloat = false;
   this->iVal = iVal;
-  this->dimension = 0;
   this->symbol = nullptr;
 }
 

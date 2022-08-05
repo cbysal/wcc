@@ -146,29 +146,29 @@ void RegAllocator::simpleScan() {
 
 unordered_map<unsigned, ASMItem::RegType> RegAllocator::getFtemp2Reg() {
   if (!isProcessed)
-    // allocate();
-    betterAllocate();
+    allocate();
+  // betterAllocate();
   return ftemp2Reg;
 }
 
 unordered_map<unsigned, ASMItem::RegType> RegAllocator::getItemp2Reg() {
   if (!isProcessed)
-    // allocate();
-    betterAllocate();
+    allocate();
+  // betterAllocate();
   return itemp2Reg;
 }
 
 unordered_map<unsigned, unsigned> RegAllocator::getTemp2SpillReg() {
   if (!isProcessed)
-    // allocate();
-    betterAllocate();
+    allocate();
+  // betterAllocate();
   return temp2SpillReg;
 }
 
 vector<unsigned> RegAllocator::getUsedRegNum() {
   if (!isProcessed)
-    // allocate();
-    betterAllocate();
+    allocate();
+  // betterAllocate();
   return {regs->getUsed(RegFile::V), regs->getUsed(RegFile::S),
           regs->getUsed(RegFile::SPILL)};
 }

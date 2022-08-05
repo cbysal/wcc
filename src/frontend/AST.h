@@ -64,7 +64,6 @@ public:
     int iVal;
     float fVal;
   };
-  unsigned dimension;
   vector<AST *> nodes;
 
   AST(ASTType, bool, Symbol *, const vector<AST *> &);
