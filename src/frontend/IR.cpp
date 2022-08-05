@@ -1,4 +1,3 @@
-#include <string>
 #include <unordered_map>
 
 #include "IR.h"
@@ -27,8 +26,6 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::I2F, "I2F"},
     {IR::L_NOT, "L_NOT"},
     {IR::LABEL, "LABEL"},
-    {IR::LABEL_WHILE_BEGIN, "LABEL_WHILE_BEGIN"},
-    {IR::LABEL_WHILE_END, "LABEL_WHILE_END"},
     {IR::LE, "LE"},
     {IR::LT, "LT"},
     {IR::MEMSET_ZERO, "MEMSET_ZERO"},

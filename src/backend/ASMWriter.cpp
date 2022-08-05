@@ -2,6 +2,8 @@
 
 #include "ASMWriter.h"
 
+using namespace std;
+
 ASMWriter::ASMWriter(const string &asmFile, const vector<Symbol *> &consts,
                      const vector<Symbol *> &globalVars,
                      const vector<pair<Symbol *, vector<ASM *>>> &funcASMs) {

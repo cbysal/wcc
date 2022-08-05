@@ -3,10 +3,7 @@
 
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-
-using namespace std;
 
 class Symbol {
 public:
@@ -15,28 +12,29 @@ public:
 
   SymbolType symbolType;
   DataType dataType;
-  string name;
-  vector<Symbol *> params;
-  vector<int> dimensions;
+  std::string name;
+  std::vector<Symbol *> params;
+  std::vector<int> dimensions;
   union {
     float fVal;
     int iVal;
   };
-  unordered_map<int, float> fMap;
-  unordered_map<int, int> iMap;
+  std::unordered_map<int, float> fMap;
+  std::unordered_map<int, int> iMap;
 
-  Symbol(SymbolType, DataType, const string &);
-  Symbol(SymbolType, DataType, const string &, float);
-  Symbol(SymbolType, DataType, const string &, int);
-  Symbol(SymbolType, DataType, const string &, const vector<Symbol *> &);
-  Symbol(SymbolType, DataType, const string &, const vector<int> &);
-  Symbol(SymbolType, DataType, const string &, const vector<int> &,
-         const unordered_map<int, float> &);
-  Symbol(SymbolType, DataType, const string &, const vector<int> &,
-         const unordered_map<int, int> &);
+  Symbol(SymbolType, DataType, const std::string &);
+  Symbol(SymbolType, DataType, const std::string &, float);
+  Symbol(SymbolType, DataType, const std::string &, int);
+  Symbol(SymbolType, DataType, const std::string &,
+         const std::vector<Symbol *> &);
+  Symbol(SymbolType, DataType, const std::string &, const std::vector<int> &);
+  Symbol(SymbolType, DataType, const std::string &, const std::vector<int> &,
+         const std::unordered_map<int, float> &);
+  Symbol(SymbolType, DataType, const std::string &, const std::vector<int> &,
+         const std::unordered_map<int, int> &);
   ~Symbol();
 
-  string toString();
+  std::string toString();
 };
 
 #endif

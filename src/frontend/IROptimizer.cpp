@@ -1,6 +1,5 @@
 #include <functional>
 #include <iostream>
-#include <queue>
 #include <set>
 #include <unordered_set>
 
@@ -66,12 +65,12 @@ vector<Symbol *> IROptimizer::getGlobalVars() {
 void IROptimizer::optimize() {
   isProcessed = true;
   // flowOptimize();
-  removeDeadCode();
-  singleVar2Reg();
-  removeDeadCode();
-  removeDuplicatedJumps();
-  removeDuplicatedLabels();
-  removeDuplicatedSymbols();
+  // removeDeadCode();
+  // singleVar2Reg();
+  // removeDeadCode();
+  // removeDuplicatedJumps();
+  // removeDuplicatedLabels();
+  // removeDuplicatedSymbols();
 }
 
 void IROptimizer::printIRs() {

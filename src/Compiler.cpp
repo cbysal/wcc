@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <iostream>
 #include <unistd.h>
+#include <unordered_set>
+#include <vector>
 
 #include "backend/ASMOptimizer.h"
 #include "backend/ASMParser.h"

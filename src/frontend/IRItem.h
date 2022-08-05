@@ -7,8 +7,6 @@
 #include "IR.h"
 #include "Symbol.h"
 
-using namespace std;
-
 class IR;
 
 class IRItem {
@@ -31,13 +29,13 @@ public:
     int iVal;
     float fVal;
   };
-  string name;
+  std::string name;
 
   IRItem(IR *);
   IRItem(IRItemType);
   IRItem(IRItemType, unsigned);
-  IRItem(IRItemType, const string &);
-  IRItem(IRItemType, const string &, int);
+  IRItem(IRItemType, const std::string &);
+  IRItem(IRItemType, const std::string &, int);
   IRItem(Symbol *);
   IRItem(float);
   IRItem(int);
@@ -46,6 +44,6 @@ public:
   IRItem *clone();
 };
 
-extern unordered_map<IRItem::IRItemType, string> irItemTypeStr;
+extern std::unordered_map<IRItem::IRItemType, std::string> irItemTypeStr;
 
 #endif

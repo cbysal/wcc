@@ -1,5 +1,7 @@
 #include "ASTOptimizer.h"
 
+using namespace std;
+
 ASTOptimizer::ASTOptimizer(AST *root, const vector<Symbol *> &symbols) {
   this->isProcessed = false;
   this->root = root;

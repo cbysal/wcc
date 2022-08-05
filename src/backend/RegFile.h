@@ -5,14 +5,13 @@
 #include <vector>
 
 #include "ASMItem.h"
-
-using namespace std;
+#include "Reg.h"
 
 class RegFile {
 private:
   unsigned vUsed, sUsed, spillUsed;
-  vector<ASMItem::RegType> vRegs, sRegs;
-  vector<unsigned> spillRegs;
+  std::vector<Reg::Type> vRegs, sRegs;
+  std::vector<unsigned> spillRegs;
 
 public:
   enum Type { V, S, SPILL };
@@ -22,10 +21,10 @@ public:
 
   unsigned getUsed(Type);
   void setUsed(Type, unsigned);
-  pair<ASMItem::RegType, unsigned> pop(Type);
-  void push(ASMItem::RegType);
+  std::pair<Reg::Type, unsigned> pop(Type);
+  void push(Reg::Type);
   void push(unsigned);
-  vector<ASMItem::RegType> getRegs(Type type);
+  std::vector<Reg::Type> getRegs(Type type);
 };
 
 #endif

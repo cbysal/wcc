@@ -1,9 +1,10 @@
-#ifndef _BASIC_BLOCK_H_
-#define _BASIC_BLOCK_H_
+#ifndef __BASIC_BLOCK_H__
+#define __BASIC_BLOCK_H__
 
-#include "../frontend/IR.h"
 #include <unordered_set>
 #include <vector>
+
+#include "../frontend/IR.h"
 
 struct BasicBlock {
   unsigned bid;

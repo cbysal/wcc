@@ -1,6 +1,7 @@
 #ifndef __ASM_WRITER_H__
 #define __ASM_WRITER_H__
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -10,14 +11,15 @@
 class ASMWriter {
 private:
   bool isProcessed;
-  string asmFile;
-  vector<Symbol *> consts;
-  vector<Symbol *> globalVars;
-  vector<pair<Symbol *, vector<ASM *>>> funcASMs;
+  std::string asmFile;
+  std::vector<Symbol *> consts;
+  std::vector<Symbol *> globalVars;
+  std::vector<std::pair<Symbol *, std::vector<ASM *>>> funcASMs;
 
 public:
-  ASMWriter(const string &, const vector<Symbol *> &, const vector<Symbol *> &,
-            const vector<pair<Symbol *, vector<ASM *>>> &);
+  ASMWriter(const std::string &, const std::vector<Symbol *> &,
+            const std::vector<Symbol *> &,
+            const std::vector<std::pair<Symbol *, std::vector<ASM *>>> &);
   ~ASMWriter();
 
   void write();

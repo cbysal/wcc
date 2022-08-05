@@ -1,6 +1,7 @@
 #ifndef __IR_PARSER__
 #define __IR_PARSER__
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -8,48 +9,46 @@
 #include "IR.h"
 #include "Symbol.h"
 
-using namespace std;
-
 class IRParser {
 private:
   bool isProcessed;
   AST *root;
-  vector<Symbol *> symbols;
-  vector<Symbol *> consts;
-  vector<Symbol *> globalVars;
-  unordered_map<Symbol *, vector<Symbol *>> localVars;
-  vector<pair<Symbol *, vector<IR *>>> funcs;
+  std::vector<Symbol *> symbols;
+  std::vector<Symbol *> consts;
+  std::vector<Symbol *> globalVars;
+  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
+  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
   unsigned tempId;
   IR *funcEnd;
 
-  IRItem *lastResult(const vector<IR *> &);
-  vector<IR *> parseAST(AST *, Symbol *);
-  vector<IR *> parseAlgoExp(AST *, Symbol *);
-  vector<IR *> parseAssignStmt(AST *, Symbol *);
-  vector<IR *> parseBlock(AST *, Symbol *);
-  vector<IR *> parseCmpExp(AST *, Symbol *);
-  vector<IR *> parseCond(AST *, Symbol *, IR *, IR *);
-  vector<IR *> parseExpStmt(AST *, Symbol *);
-  vector<IR *> parseFuncCall(AST *, Symbol *);
-  vector<IR *> parseFuncDef(AST *, Symbol *);
-  vector<IR *> parseIfStmt(AST *, Symbol *);
-  vector<IR *> parseLAndExp(AST *, Symbol *, IR *, IR *);
-  vector<IR *> parseLCmpExp(AST *, Symbol *, IR *, IR *);
-  vector<IR *> parseLOrExp(AST *, Symbol *, IR *, IR *);
-  vector<IR *> parseLVal(AST *, Symbol *);
-  vector<IR *> parseRVal(AST *, Symbol *);
-  vector<IR *> parseReturnStmt(AST *, Symbol *);
+  IRItem *lastResult(const std::vector<IR *> &);
+  std::vector<IR *> parseAST(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseAlgoExp(AST *, Symbol *);
+  std::vector<IR *> parseAssignStmt(AST *, Symbol *);
+  std::vector<IR *> parseBlock(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseCmpExp(AST *, Symbol *);
+  std::vector<IR *> parseCond(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseExpStmt(AST *, Symbol *);
+  std::vector<IR *> parseFuncCall(AST *, Symbol *);
+  std::vector<IR *> parseFuncDef(AST *, Symbol *);
+  std::vector<IR *> parseIfStmt(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseLAndExp(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseLCmpExp(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseLOrExp(AST *, Symbol *, IR *, IR *);
+  std::vector<IR *> parseLVal(AST *, Symbol *);
+  std::vector<IR *> parseRVal(AST *, Symbol *);
+  std::vector<IR *> parseReturnStmt(AST *, Symbol *);
   void parseRoot(AST *);
-  vector<IR *> parseWhileStmt(AST *, Symbol *);
+  std::vector<IR *> parseWhileStmt(AST *, Symbol *);
 
 public:
-  vector<Symbol *> getConsts();
-  vector<Symbol *> getGlobalVars();
-  unordered_map<Symbol *, vector<Symbol *>> getLocalVars();
-  vector<pair<Symbol *, vector<IR *>>> getFuncs();
+  std::vector<Symbol *> getConsts();
+  std::vector<Symbol *> getGlobalVars();
+  std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
+  std::vector<std::pair<Symbol *, std::vector<IR *>>> getFuncs();
   unsigned getTempId();
 
-  IRParser(AST *, vector<Symbol *> &);
+  IRParser(AST *, std::vector<Symbol *> &);
   ~IRParser();
 };
 

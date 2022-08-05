@@ -6,8 +6,6 @@
 
 #include "ASMItem.h"
 
-using namespace std;
-
 class ASM {
 public:
   enum ASMOpType {
@@ -75,12 +73,12 @@ public:
 
   ASMOpType type;
   CondType cond;
-  vector<ASMItem *> items;
+  std::vector<ASMItem *> items;
 
-  string toString();
+  std::string toString();
 
-  ASM(ASMOpType, const vector<ASMItem *> &);
-  ASM(ASMOpType, CondType, const vector<ASMItem *> &);
+  ASM(ASMOpType, const std::vector<ASMItem *> &);
+  ASM(ASMOpType, CondType, const std::vector<ASMItem *> &);
   ~ASM();
 };
 

@@ -1,13 +1,9 @@
 #ifndef __AST_H__
 #define __AST_H__
 
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "Symbol.h"
-
-using namespace std;
 
 class Symbol;
 
@@ -64,10 +60,10 @@ public:
     int iVal;
     float fVal;
   };
-  vector<AST *> nodes;
+  std::vector<AST *> nodes;
 
-  AST(ASTType, bool, Symbol *, const vector<AST *> &);
-  AST(ASTType, bool, const vector<AST *> &);
+  AST(ASTType, bool, Symbol *, const std::vector<AST *> &);
+  AST(ASTType, bool, const std::vector<AST *> &);
   AST(float);
   AST(int);
   ~AST();

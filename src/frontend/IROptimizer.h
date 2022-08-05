@@ -1,6 +1,7 @@
 #ifndef __IR_OPTIMIZER_H__
 #define __IR_OPTIMIZER_H__
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -11,13 +12,13 @@ class IROptimizer {
 private:
   bool isProcessed;
   unsigned tempId;
-  vector<Symbol *> consts;
-  vector<Symbol *> globalVars;
-  unordered_map<Symbol *, vector<Symbol *>> localVars;
-  vector<pair<Symbol *, vector<IR *>>> funcs;
-  vector<IR *> toRecycleIRs;
+  std::vector<Symbol *> consts;
+  std::vector<Symbol *> globalVars;
+  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
+  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
+  std::vector<IR *> toRecycleIRs;
 
-  unordered_set<unsigned> getBlockBegins(const vector<IR *> &);
+  std::unordered_set<unsigned> getBlockBegins(const std::vector<IR *> &);
   void optimize();
   void flowOptimize();
   void removeDeadCode();
@@ -27,14 +28,15 @@ private:
   void singleVar2Reg();
 
 public:
-  IROptimizer(const vector<Symbol *> &, const vector<Symbol *> &,
-              const unordered_map<Symbol *, vector<Symbol *>> &,
-              const vector<pair<Symbol *, vector<IR *>>> &, unsigned);
+  IROptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
+              const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
+              const std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
+              unsigned);
   ~IROptimizer();
 
-  vector<Symbol *> getConsts();
-  vector<pair<Symbol *, vector<IR *>>> getFuncs();
-  vector<Symbol *> getGlobalVars();
+  std::vector<Symbol *> getConsts();
+  std::vector<std::pair<Symbol *, std::vector<IR *>>> getFuncs();
+  std::vector<Symbol *> getGlobalVars();
   void printIRs();
 };
 

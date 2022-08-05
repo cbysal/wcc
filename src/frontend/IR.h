@@ -1,10 +1,11 @@
 #ifndef __IR_H__
 #define __IR_H__
 
+#include <string>
+#include <vector>
+
 #include "IRItem.h"
 #include "Symbol.h"
-
-using namespace std;
 
 class IRItem;
 
@@ -30,8 +31,6 @@ public:
     I2F,
     L_NOT,
     LABEL,
-    LABEL_WHILE_BEGIN,
-    LABEL_WHILE_END,
     LE,
     LT,
     MEMSET_ZERO,
@@ -45,12 +44,12 @@ public:
 
   int irId;
   IRType type;
-  vector<IRItem *> items;
+  std::vector<IRItem *> items;
 
-  string toString();
+  std::string toString();
 
   IR(IRType);
-  IR(IRType, const vector<IRItem *> &);
+  IR(IRType, const std::vector<IRItem *> &);
   ~IR();
 };
 

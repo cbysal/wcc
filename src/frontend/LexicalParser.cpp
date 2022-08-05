@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <regex>
+#include <unordered_map>
 
 #include "LexicalParser.h"
 

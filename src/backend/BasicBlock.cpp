@@ -1,5 +1,6 @@
-#include "BasicBlock.h"
 #include <iostream>
+
+#include "BasicBlock.h"
 
 void BasicBlock::addPred(BasicBlock *p) { preds.emplace_back(p); }
 

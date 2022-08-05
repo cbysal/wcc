@@ -6,16 +6,17 @@
 #include "AST.h"
 #include "Symbol.h"
 
-using namespace std;
+class AST;
+class Symbol;
 
 class ASTOptimizer {
 private:
   bool isProcessed;
   AST *root;
-  vector<Symbol *> symbols;
+  std::vector<Symbol *> symbols;
 
 public:
-  ASTOptimizer(AST *, const vector<Symbol *> &);
+  ASTOptimizer(AST *, const std::vector<Symbol *> &);
   ~ASTOptimizer();
 
   AST *getAST();

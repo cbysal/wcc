@@ -2,18 +2,18 @@
 #define __LEXICAL_PARSER_H__
 
 #include <string>
-#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "Token.h"
 
 class LexicalParser {
 private:
-  string fileName;
+  std::string fileName;
   bool isProcessed;
   unsigned long head;
-  string content;
-  vector<Token *> tokens;
+  std::string content;
+  std::vector<Token *> tokens;
   unsigned lineno;
   unsigned startLineno;
   unsigned stopLineno;
@@ -23,12 +23,12 @@ private:
   void parse();
 
 public:
-  LexicalParser(const string &);
+  LexicalParser(const std::string &);
   ~LexicalParser();
 
-  string &getContent();
-  pair<unsigned, unsigned> getLineno();
-  vector<Token *> &getTokens();
+  std::string &getContent();
+  std::pair<unsigned, unsigned> getLineno();
+  std::vector<Token *> &getTokens();
 };
 
 #endif

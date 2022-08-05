@@ -1,9 +1,10 @@
-#include <string>
 #include <unordered_map>
 
 #include "ASM.h"
 
 using namespace std;
+
+class ASM;
 
 unordered_map<ASM::CondType, string> condTypeStr = {
     {ASM::AL, "al"}, {ASM::CC, "cc"}, {ASM::LO, "lo"}, {ASM::CS, "cs"},

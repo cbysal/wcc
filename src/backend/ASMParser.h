@@ -1,141 +1,138 @@
 #ifndef __ASM_PARSER_H__
 #define __ASM_PARSER_H__
 
+#include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "../frontend/IR.h"
 #include "../frontend/Symbol.h"
 #include "ASM.h"
-
-using namespace std;
+#include "Reg.h"
 
 class ASMParser {
 private:
-  const vector<ASMItem::RegType> aIRegs = {ASMItem::A1, ASMItem::A2,
-                                           ASMItem::A3, ASMItem::A4};
-  const vector<ASMItem::RegType> aFRegs = {
-      ASMItem::S0,  ASMItem::S1,  ASMItem::S2,  ASMItem::S3,
-      ASMItem::S4,  ASMItem::S5,  ASMItem::S6,  ASMItem::S7,
-      ASMItem::S8,  ASMItem::S9,  ASMItem::S10, ASMItem::S11,
-      ASMItem::S12, ASMItem::S13, ASMItem::S14, ASMItem::S15};
-  const vector<ASMItem::RegType> vIRegs = {
-      ASMItem::V1, ASMItem::V2, ASMItem::V3, ASMItem::V4,
-      ASMItem::V5, ASMItem::V6, ASMItem::V7, ASMItem::V8};
-  const vector<ASMItem::RegType> vFRegs = {
-      ASMItem::S16, ASMItem::S17, ASMItem::S18, ASMItem::S19,
-      ASMItem::S20, ASMItem::S21, ASMItem::S22, ASMItem::S23,
-      ASMItem::S24, ASMItem::S25, ASMItem::S26, ASMItem::S27,
-      ASMItem::S28, ASMItem::S29, ASMItem::S30, ASMItem::S31};
+  const std::vector<Reg::Type> aIRegs = {Reg::A1, Reg::A2, Reg::A3, Reg::A4};
+  const std::vector<Reg::Type> aFRegs = {
+      Reg::S0,  Reg::S1,  Reg::S2,  Reg::S3, Reg::S4,  Reg::S5,
+      Reg::S6,  Reg::S7,  Reg::S8,  Reg::S9, Reg::S10, Reg::S11,
+      Reg::S12, Reg::S13, Reg::S14, Reg::S15};
+  const std::vector<Reg::Type> vIRegs = {Reg::V1, Reg::V2, Reg::V3, Reg::V4,
+                                         Reg::V5, Reg::V6, Reg::V7, Reg::V8};
+  const std::vector<Reg::Type> vFRegs = {
+      Reg::S16, Reg::S17, Reg::S18, Reg::S19, Reg::S20, Reg::S21,
+      Reg::S22, Reg::S23, Reg::S24, Reg::S25, Reg::S26, Reg::S27,
+      Reg::S28, Reg::S29, Reg::S30, Reg::S31};
 
   bool isProcessed;
   unsigned labelId;
-  vector<Symbol *> consts;
-  vector<Symbol *> globalVars;
-  unordered_map<Symbol *, vector<Symbol *>> localVars;
-  vector<pair<Symbol *, vector<IR *>>> funcIRs;
-  unordered_map<IR *, unsigned> irLabels;
-  vector<pair<Symbol *, vector<ASM *>>> funcASMs;
-  vector<unsigned> usedRegNum;
+  std::vector<Symbol *> consts;
+  std::vector<Symbol *> globalVars;
+  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
+  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcIRs;
+  std::unordered_map<IR *, unsigned> irLabels;
+  std::vector<std::pair<Symbol *, std::vector<ASM *>>> funcASMs;
+  std::vector<unsigned> usedRegNum;
   unsigned savedRegs;
   unsigned frameOffset;
-  unordered_map<unsigned, ASMItem::RegType> ftemp2Reg;
-  unordered_map<unsigned, ASMItem::RegType> itemp2Reg;
-  unordered_map<unsigned, unsigned> temp2SpillReg;
-  unordered_map<unsigned, int> spillOffsets;
-  unordered_map<Symbol *, int> offsets;
+  std::unordered_map<unsigned, Reg::Type> ftemp2Reg;
+  std::unordered_map<unsigned, Reg::Type> itemp2Reg;
+  std::unordered_map<unsigned, unsigned> temp2SpillReg;
+  std::unordered_map<unsigned, int> spillOffsets;
+  std::unordered_map<Symbol *, int> offsets;
   unsigned startLineno;
   unsigned stopLineno;
 
-  int calcCallArgSize(const vector<IR *> &);
+  int calcCallArgSize(const std::vector<IR *> &);
   bool canBeLoadInSingleInstruction(unsigned);
   unsigned float2Unsigned(float);
-  void loadFromSP(vector<ASM *> &, ASMItem::RegType, unsigned);
-  void loadImmToReg(vector<ASM *> &, ASMItem::RegType, float);
-  void loadImmToReg(vector<ASM *> &, ASMItem::RegType, unsigned);
+  void loadFromSP(std::vector<ASM *> &, Reg::Type, unsigned);
+  void loadImmToReg(std::vector<ASM *> &, Reg::Type, float);
+  void loadImmToReg(std::vector<ASM *> &, Reg::Type, unsigned);
   void initFrame();
   bool isByteShiftImm(unsigned);
   bool isFloatImm(float);
-  bool isFloatReg(ASMItem::RegType);
-  void makeFrame(vector<ASM *> &, const vector<IR *> &, Symbol *);
-  vector<unsigned> makeSmartImmMask(unsigned);
-  void moveFromSP(vector<ASM *> &, ASMItem::RegType, int);
+  bool isFloatReg(Reg::Type);
+  void makeFrame(std::vector<ASM *> &, const std::vector<IR *> &, Symbol *);
+  std::vector<unsigned> makeSmartImmMask(unsigned);
+  void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void parse();
-  void parseAdd(vector<ASM *> &, IR *);
-  void parseAddFtempFloat(vector<ASM *> &, IR *);
-  void parseAddFtempFtemp(vector<ASM *> &, IR *);
-  void parseAddItempInt(vector<ASM *> &, IR *);
-  void parseAddItempItemp(vector<ASM *> &, IR *);
-  void parseB(vector<ASM *> &, IR *);
-  void parseCall(vector<ASM *> &, IR *);
-  void parseCmp(vector<ASM *> &, IR *);
-  void parseDiv(vector<ASM *> &, IR *);
-  void parseDivFloatFtemp(vector<ASM *> &, IR *);
-  void parseDivFtempFloat(vector<ASM *> &, IR *);
-  void parseDivFtempFtemp(vector<ASM *> &, IR *);
-  void parseDivIntItemp(vector<ASM *> &, IR *);
-  void parseDivItempInt(vector<ASM *> &, IR *);
-  void parseDivItempItemp(vector<ASM *> &, IR *);
-  void parseF2I(vector<ASM *> &, IR *);
-  vector<ASM *> parseFunc(Symbol *, const vector<IR *> &);
-  void parseI2F(vector<ASM *> &, IR *);
-  void parseLCmp(vector<ASM *> &, IR *);
-  void parseLCmpFtempFloat(vector<ASM *> &, IR *);
-  void parseLCmpFtempFtemp(vector<ASM *> &, IR *);
-  void parseLCmpItempInt(vector<ASM *> &, IR *);
-  void parseLCmpItempItemp(vector<ASM *> &, IR *);
-  void parseLNot(vector<ASM *> &, IR *);
-  void parseMemsetZero(vector<ASM *> &, IR *);
-  void parseMod(vector<ASM *> &, IR *);
-  void parseModIntItemp(vector<ASM *> &, IR *);
-  void parseModItempInt(vector<ASM *> &, IR *);
-  void parseModItempItemp(vector<ASM *> &, IR *);
-  void parseMul(vector<ASM *> &, IR *);
-  void parseMulFloatFtemp(vector<ASM *> &, IR *);
-  void parseMulFtempFloat(vector<ASM *> &, IR *);
-  void parseMulFtempFtemp(vector<ASM *> &, IR *);
-  void parseMulItempInt(vector<ASM *> &, IR *);
-  void parseMulItempItemp(vector<ASM *> &, IR *);
-  void parseMov(vector<ASM *> &, IR *);
-  void parseMovFtempFloat(vector<ASM *> &, IR *);
-  void parseMovFtempFtemp(vector<ASM *> &, IR *);
-  void parseMovFtempReturn(vector<ASM *> &, IR *);
-  void parseMovFtempSymbol(vector<ASM *> &, IR *);
-  void parseMovItempInt(vector<ASM *> &, IR *);
-  void parseMovItempItemp(vector<ASM *> &, IR *);
-  void parseMovItempReturn(vector<ASM *> &, IR *);
-  void parseMovItempSymbol(vector<ASM *> &, IR *);
-  void parseMovReturnFloat(vector<ASM *> &, IR *);
-  void parseMovReturnFtemp(vector<ASM *> &, IR *);
-  void parseMovReturnInt(vector<ASM *> &, IR *);
-  void parseMovReturnItemp(vector<ASM *> &, IR *);
-  void parseMovReturnSymbol(vector<ASM *> &, IR *);
-  void parseMovSymbolFtemp(vector<ASM *> &, IR *);
-  void parseMovSymbolImm(vector<ASM *> &, IR *);
-  void parseMovSymbolItemp(vector<ASM *> &, IR *);
-  void parseMovSymbolReturn(vector<ASM *> &, IR *);
-  void parseNeg(vector<ASM *> &, IR *);
-  void parseSub(vector<ASM *> &, IR *);
-  void parseSubFloatFtemp(vector<ASM *> &, IR *);
-  void parseSubFtempFloat(vector<ASM *> &, IR *);
-  void parseSubFtempFtemp(vector<ASM *> &, IR *);
-  void parseSubIntItemp(vector<ASM *> &, IR *);
-  void parseSubItempInt(vector<ASM *> &, IR *);
-  void parseSubItempItemp(vector<ASM *> &, IR *);
-  void popArgs(vector<ASM *> &);
+  void parseAdd(std::vector<ASM *> &, IR *);
+  void parseAddFtempFloat(std::vector<ASM *> &, IR *);
+  void parseAddFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseAddItempInt(std::vector<ASM *> &, IR *);
+  void parseAddItempItemp(std::vector<ASM *> &, IR *);
+  void parseB(std::vector<ASM *> &, IR *);
+  void parseCall(std::vector<ASM *> &, IR *);
+  void parseCmp(std::vector<ASM *> &, IR *);
+  void parseDiv(std::vector<ASM *> &, IR *);
+  void parseDivFloatFtemp(std::vector<ASM *> &, IR *);
+  void parseDivFtempFloat(std::vector<ASM *> &, IR *);
+  void parseDivFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseDivIntItemp(std::vector<ASM *> &, IR *);
+  void parseDivItempInt(std::vector<ASM *> &, IR *);
+  void parseDivItempItemp(std::vector<ASM *> &, IR *);
+  void parseF2I(std::vector<ASM *> &, IR *);
+  std::vector<ASM *> parseFunc(Symbol *, const std::vector<IR *> &);
+  void parseI2F(std::vector<ASM *> &, IR *);
+  void parseLCmp(std::vector<ASM *> &, IR *);
+  void parseLCmpFtempFloat(std::vector<ASM *> &, IR *);
+  void parseLCmpFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseLCmpItempInt(std::vector<ASM *> &, IR *);
+  void parseLCmpItempItemp(std::vector<ASM *> &, IR *);
+  void parseLNot(std::vector<ASM *> &, IR *);
+  void parseMemsetZero(std::vector<ASM *> &, IR *);
+  void parseMod(std::vector<ASM *> &, IR *);
+  void parseModIntItemp(std::vector<ASM *> &, IR *);
+  void parseModItempInt(std::vector<ASM *> &, IR *);
+  void parseModItempItemp(std::vector<ASM *> &, IR *);
+  void parseMul(std::vector<ASM *> &, IR *);
+  void parseMulFloatFtemp(std::vector<ASM *> &, IR *);
+  void parseMulFtempFloat(std::vector<ASM *> &, IR *);
+  void parseMulFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseMulItempInt(std::vector<ASM *> &, IR *);
+  void parseMulItempItemp(std::vector<ASM *> &, IR *);
+  void parseMov(std::vector<ASM *> &, IR *);
+  void parseMovFtempFloat(std::vector<ASM *> &, IR *);
+  void parseMovFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseMovFtempReturn(std::vector<ASM *> &, IR *);
+  void parseMovFtempSymbol(std::vector<ASM *> &, IR *);
+  void parseMovItempInt(std::vector<ASM *> &, IR *);
+  void parseMovItempItemp(std::vector<ASM *> &, IR *);
+  void parseMovItempReturn(std::vector<ASM *> &, IR *);
+  void parseMovItempSymbol(std::vector<ASM *> &, IR *);
+  void parseMovReturnFloat(std::vector<ASM *> &, IR *);
+  void parseMovReturnFtemp(std::vector<ASM *> &, IR *);
+  void parseMovReturnInt(std::vector<ASM *> &, IR *);
+  void parseMovReturnItemp(std::vector<ASM *> &, IR *);
+  void parseMovReturnSymbol(std::vector<ASM *> &, IR *);
+  void parseMovSymbolFtemp(std::vector<ASM *> &, IR *);
+  void parseMovSymbolImm(std::vector<ASM *> &, IR *);
+  void parseMovSymbolItemp(std::vector<ASM *> &, IR *);
+  void parseMovSymbolReturn(std::vector<ASM *> &, IR *);
+  void parseNeg(std::vector<ASM *> &, IR *);
+  void parseSub(std::vector<ASM *> &, IR *);
+  void parseSubFloatFtemp(std::vector<ASM *> &, IR *);
+  void parseSubFtempFloat(std::vector<ASM *> &, IR *);
+  void parseSubFtempFtemp(std::vector<ASM *> &, IR *);
+  void parseSubIntItemp(std::vector<ASM *> &, IR *);
+  void parseSubItempInt(std::vector<ASM *> &, IR *);
+  void parseSubItempItemp(std::vector<ASM *> &, IR *);
+  void popArgs(std::vector<ASM *> &);
   void preProcess();
-  void saveUsedRegs(vector<ASM *> &);
-  void saveArgRegs(vector<ASM *> &, Symbol *);
-  void storeFromSP(vector<ASM *> &, ASMItem::RegType, unsigned);
+  void saveUsedRegs(std::vector<ASM *> &);
+  void saveArgRegs(std::vector<ASM *> &, Symbol *);
+  void storeFromSP(std::vector<ASM *> &, Reg::Type, unsigned);
   void switchLCmpLogic(IR *);
 
 public:
-  vector<pair<Symbol *, vector<ASM *>>> getFuncASMs();
+  std::vector<std::pair<Symbol *, std::vector<ASM *>>> getFuncASMs();
 
-  ASMParser(pair<unsigned, unsigned>, vector<pair<Symbol *, vector<IR *>>> &,
-            vector<Symbol *> &, vector<Symbol *> &,
-            unordered_map<Symbol *, vector<Symbol *>> &);
+  ASMParser(std::pair<unsigned, unsigned>,
+            std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
+            std::vector<Symbol *> &, std::vector<Symbol *> &,
+            std::unordered_map<Symbol *, std::vector<Symbol *>> &);
   ~ASMParser();
 };
 

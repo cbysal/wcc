@@ -3,19 +3,18 @@ CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
 TARGET_DIR = target
 ARCH = $(shell uname -m)
 
-compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o \
-	$(TARGET_DIR)/ASMOptimizer.o $(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
-	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/RegAllocator.o \
-	$(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
-	$(CC) $(CFLAGS) $(TARGET_DIR)/compiler.o $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o \
-	$(TARGET_DIR)/ASMOptimizer.o $(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
-	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/RegAllocator.o \
-	$(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
-
-$(TARGET_DIR)/compiler.o: src/compiler.cpp src
-	$(CC) $(CFLAGS) -c src/compiler.cpp -o $(TARGET_DIR)/compiler.o
+compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
+	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Reg.o \
+	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o
+	$(CC) $(CFLAGS) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
+	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
+	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Reg.o \
+	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
+	$(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/ASM.o: src/backend/ASM.cpp src/backend/ASM.h
 	$(CC) $(CFLAGS) -c src/backend/ASM.cpp -o $(TARGET_DIR)/ASM.o
@@ -41,6 +40,9 @@ $(TARGET_DIR)/ASTOptimizer.o: src/frontend/ASTOptimizer.cpp src/frontend/ASTOpti
 $(TARGET_DIR)/BasicBlock.o: src/backend/BasicBlock.cpp src/backend/BasicBlock.h
 	$(CC) $(CFLAGS) -c src/backend/BasicBlock.cpp -o $(TARGET_DIR)/BasicBlock.o
 
+$(TARGET_DIR)/Compiler.o: src/Compiler.cpp src
+	$(CC) $(CFLAGS) -c src/Compiler.cpp -o $(TARGET_DIR)/Compiler.o
+
 $(TARGET_DIR)/IR.o: src/frontend/IR.cpp src/frontend/IR.h
 	$(CC) $(CFLAGS) -c src/frontend/IR.cpp -o $(TARGET_DIR)/IR.o
 
@@ -55,6 +57,9 @@ $(TARGET_DIR)/IRParser.o: src/frontend/IRParser.cpp src/frontend/IRParser.h
 
 $(TARGET_DIR)/LexicalParser.o: src/frontend/LexicalParser.cpp src/frontend/LexicalParser.h
 	$(CC) $(CFLAGS) -c src/frontend/LexicalParser.cpp -o $(TARGET_DIR)/LexicalParser.o
+
+$(TARGET_DIR)/Reg.o: src/backend/Reg.cpp src/backend/Reg.h
+	$(CC) $(CFLAGS) -c src/backend/Reg.cpp -o $(TARGET_DIR)/Reg.o
 
 $(TARGET_DIR)/RegAllocator.o: src/backend/RegAllocator.cpp src/backend/RegAllocator.h
 	$(CC) $(CFLAGS) -c src/backend/RegAllocator.cpp -o $(TARGET_DIR)/RegAllocator.o
@@ -80,4 +85,4 @@ testbench: tools/testbench_for_x86.cpp tools/testbench_for_arm.cpp
 
 clean:
 	rm target -rf
-	rm compiler testbench test test.c test.s out -f
+	rm Compiler testbench test test.c test.s out -f

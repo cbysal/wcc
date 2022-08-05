@@ -1,15 +1,16 @@
 #include "RegFile.h"
 
+using namespace std;
+
 RegFile::RegFile() {
   this->vUsed = 0;
   this->sUsed = 0;
   this->spillUsed = 0;
-  this->vRegs = {ASMItem::V8, ASMItem::V7, ASMItem::V6, ASMItem::V5,
-                 ASMItem::V4, ASMItem::V3, ASMItem::V2, ASMItem::V1};
-  this->sRegs = {ASMItem::S31, ASMItem::S30, ASMItem::S29, ASMItem::S28,
-                 ASMItem::S27, ASMItem::S26, ASMItem::S25, ASMItem::S24,
-                 ASMItem::S23, ASMItem::S22, ASMItem::S21, ASMItem::S20,
-                 ASMItem::S19, ASMItem::S18, ASMItem::S17, ASMItem::S16};
+  this->vRegs = {Reg::V8, Reg::V7, Reg::V6, Reg::V5,
+                 Reg::V4, Reg::V3, Reg::V2, Reg::V1};
+  this->sRegs = {Reg::S31, Reg::S30, Reg::S29, Reg::S28, Reg::S27, Reg::S26,
+                 Reg::S25, Reg::S24, Reg::S23, Reg::S22, Reg::S21, Reg::S20,
+                 Reg::S19, Reg::S18, Reg::S17, Reg::S16};
 }
 
 RegFile::~RegFile() {}
@@ -26,8 +27,8 @@ unsigned RegFile::getUsed(Type type) {
   return 0;
 }
 
-pair<ASMItem::RegType, unsigned> RegFile::pop(Type type) {
-  ASMItem::RegType reg = ASMItem::SPILL;
+pair<Reg::Type, unsigned> RegFile::pop(Type type) {
+  Reg::Type reg = Reg::SPILL;
   unsigned offset = 0;
   switch (type) {
   case V:
@@ -60,16 +61,16 @@ pair<ASMItem::RegType, unsigned> RegFile::pop(Type type) {
   return {reg, offset};
 }
 
-void RegFile::push(ASMItem::RegType reg) {
-  if (reg >= ASMItem::A1 && reg <= ASMItem::PC)
+void RegFile::push(Reg::Type reg) {
+  if (reg >= Reg::A1 && reg <= Reg::PC)
     vRegs.push_back(reg);
-  else if (reg >= ASMItem::S0 && reg <= ASMItem::S31)
+  else if (reg >= Reg::S0 && reg <= Reg::S31)
     sRegs.push_back(reg);
 }
 
 void RegFile::push(unsigned reg) { spillRegs.push_back(reg); }
 
-vector<ASMItem::RegType> RegFile::getRegs(Type type) {
+vector<Reg::Type> RegFile::getRegs(Type type) {
   if (type == V)
     return vRegs;
   else

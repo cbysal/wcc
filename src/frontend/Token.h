@@ -2,9 +2,6 @@
 #define __TOKEN_H__
 
 #include <string>
-#include <unordered_map>
-
-using namespace std;
 
 class Token {
 public:
@@ -52,12 +49,12 @@ public:
     int iVal;
     float fVal;
   };
-  string sVal;
+  std::string sVal;
 
   Token(Type);
   Token(float);
   Token(int);
-  Token(const string &);
+  Token(const std::string &);
   ~Token();
 };
 

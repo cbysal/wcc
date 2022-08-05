@@ -2,8 +2,6 @@
 #include <iostream>
 #include <map>
 #include <queue>
-#include <set>
-#include <unordered_set>
 
 #include "RegAllocator.h"
 
@@ -48,26 +46,26 @@ void RegAllocator::allocate() {
     }
     for (unsigned temp : begins[i]) {
       if (tempType[temp] == IRItem::ITEMP) {
-        pair<ASMItem::RegType, unsigned> reg = regs->pop(RegFile::V);
-        if (reg.first == ASMItem::SPILL)
+        pair<Reg::Type, unsigned> reg = regs->pop(RegFile::V);
+        if (reg.first == Reg::SPILL)
           temp2SpillReg[temp] = reg.second;
         else
           itemp2Reg[temp] = reg.first;
         if (ends[i].find(temp) != ends[i].end()) {
-          if (reg.first == ASMItem::SPILL)
+          if (reg.first == Reg::SPILL)
             regs->push(reg.second);
           else
             regs->push(reg.first);
         }
       }
       if (tempType[temp] == IRItem::FTEMP) {
-        pair<ASMItem::RegType, unsigned> reg = regs->pop(RegFile::S);
-        if (reg.first == ASMItem::SPILL)
+        pair<Reg::Type, unsigned> reg = regs->pop(RegFile::S);
+        if (reg.first == Reg::SPILL)
           temp2SpillReg[temp] = reg.second;
         else
           ftemp2Reg[temp] = reg.first;
         if (ends[i].find(temp) != ends[i].end()) {
-          if (reg.first == ASMItem::SPILL)
+          if (reg.first == Reg::SPILL)
             regs->push(reg.second);
           else
             regs->push(reg.first);
@@ -144,14 +142,14 @@ void RegAllocator::simpleScan() {
       }
 }
 
-unordered_map<unsigned, ASMItem::RegType> RegAllocator::getFtemp2Reg() {
+unordered_map<unsigned, Reg::Type> RegAllocator::getFtemp2Reg() {
   if (!isProcessed)
     allocate();
   // betterAllocate();
   return ftemp2Reg;
 }
 
-unordered_map<unsigned, ASMItem::RegType> RegAllocator::getItemp2Reg() {
+unordered_map<unsigned, Reg::Type> RegAllocator::getItemp2Reg() {
   if (!isProcessed)
     allocate();
   // betterAllocate();
@@ -552,9 +550,9 @@ void RegAllocator::updateInterfereMatrix(const set<unsigned> &comAlive,
 
 unsigned RegAllocator::graphColoring(IRItem::IRItemType iorf, int &spillCount) {
   vector<vector<unsigned>> inters(interfereMatrix.size());
-  vector<unordered_map<ASMItem::RegType, bool>> color(interfereMatrix.size());
-  vector<ASMItem::RegType> regrs;
-  unordered_map<unsigned, ASMItem::RegType> *temp2Reg;
+  vector<unordered_map<Reg::Type, bool>> color(interfereMatrix.size());
+  vector<Reg::Type> regrs;
+  unordered_map<unsigned, Reg::Type> *temp2Reg;
   unordered_set<unsigned> usedRegSet;
   vector<int> degs(inters.size(), 0);
   // check iorf is ITEMP or FTEMP
@@ -565,7 +563,7 @@ unsigned RegAllocator::graphColoring(IRItem::IRItemType iorf, int &spillCount) {
     regrs = regs->getRegs(RegFile::S);
     temp2Reg = &this->ftemp2Reg;
   }
-  regrs = vector<ASMItem::RegType>(regrs.rbegin(), regrs.rend());
+  regrs = vector<Reg::Type>(regrs.rbegin(), regrs.rend());
   // copy the interfere list
   for (size_t i = 0; i < interfereMatrix.size(); i++) {
     for (unsigned x : interfereMatrix[i])
