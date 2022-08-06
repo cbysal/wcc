@@ -3,176 +3,46 @@
 #include <map>
 #include <queue>
 
-#include "RegAllocator.h"
+#include "ColoringRegAllocator.h"
 
 using namespace std;
 
-RegAllocator::RegAllocator(const vector<IR *> &irs) {
+ColoringRegAllocator::ColoringRegAllocator(const vector<IR *> &irs) {
   this->irs = irs;
   this->isProcessed = false;
   this->regs = new RegFile();
   // this->coloring = false;
 }
 
-RegAllocator::~RegAllocator() { delete regs; }
+ColoringRegAllocator::~ColoringRegAllocator() { delete regs; }
 
-void RegAllocator::allocate() {
-  isProcessed = true;
-  calcPrevMap();
-  simpleScan();
-  calcLifespan();
-  // betterAllocate();
-  vector<unordered_set<unsigned>> begins(irs.size()), ends(irs.size());
-  for (pair<unsigned, pair<unsigned, unsigned>> span : lifespan) {
-    begins[span.second.first].insert(span.first);
-    ends[span.second.second].insert(span.first);
-  }
-  for (unsigned i = 0; i < irs.size(); i++) {
-    for (unsigned temp : ends[i]) {
-      if (begins[i].find(temp) == begins[i].end()) {
-        if (tempType[temp] == IRItem::ITEMP) {
-          if (itemp2Reg.find(temp) == itemp2Reg.end())
-            regs->push(temp2SpillReg[temp]);
-          else
-            regs->push(itemp2Reg[temp]);
-        }
-        if (tempType[temp] == IRItem::FTEMP) {
-          if (ftemp2Reg.find(temp) == ftemp2Reg.end())
-            regs->push(temp2SpillReg[temp]);
-          else
-            regs->push(ftemp2Reg[temp]);
-        }
-      }
-    }
-    for (unsigned temp : begins[i]) {
-      if (tempType[temp] == IRItem::ITEMP) {
-        pair<Reg::Type, unsigned> reg = regs->pop(RegFile::V);
-        if (reg.first == Reg::SPILL)
-          temp2SpillReg[temp] = reg.second;
-        else
-          itemp2Reg[temp] = reg.first;
-        if (ends[i].find(temp) != ends[i].end()) {
-          if (reg.first == Reg::SPILL)
-            regs->push(reg.second);
-          else
-            regs->push(reg.first);
-        }
-      }
-      if (tempType[temp] == IRItem::FTEMP) {
-        pair<Reg::Type, unsigned> reg = regs->pop(RegFile::S);
-        if (reg.first == Reg::SPILL)
-          temp2SpillReg[temp] = reg.second;
-        else
-          ftemp2Reg[temp] = reg.first;
-        if (ends[i].find(temp) != ends[i].end()) {
-          if (reg.first == Reg::SPILL)
-            regs->push(reg.second);
-          else
-            regs->push(reg.first);
-        }
-      }
-    }
-  }
-}
-
-void RegAllocator::calcLifespan() {
-  simpleScan();
-  for (unordered_map<unsigned, pair<unsigned, unsigned>>::iterator it =
-           lifespan.begin();
-       it != lifespan.end(); it++) {
-    for (unsigned rId : rMap[it->first]) {
-      unordered_set<unsigned> span, track;
-      scanSpan(rId, it->first, span, track);
-      if (!span.empty()) {
-        it->second.first =
-            min(it->second.first, *min_element(span.begin(), span.end()));
-        it->second.second =
-            max(it->second.second, *max_element(span.begin(), span.end()));
-      }
-    }
-  }
-}
-
-void RegAllocator::calcPrevMap() {
-  unordered_map<IR *, unsigned> irIdMap;
-  for (unsigned i = 0; i < irs.size(); i++)
-    irIdMap[irs[i]] = i;
-  for (unsigned i = 0; i < irs.size(); i++) {
-    if (irs[i]->type == IR::GOTO)
-      prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
-    else if (irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
-             irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
-             irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) {
-      prevMap[i + 1].push_back(i);
-      prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
-    } else
-      prevMap[i + 1].push_back(i);
-  }
-}
-
-void RegAllocator::scanSpan(unsigned cur, unsigned tId,
-                            unordered_set<unsigned> &span,
-                            unordered_set<unsigned> &track) {
-  if (span.find(cur) != span.end() || track.find(cur) != track.end() ||
-      wMap[tId].find(cur) != wMap[tId].end()) {
-    span.insert(track.begin(), track.end());
-    span.insert(cur);
-    return;
-  }
-  track.insert(cur);
-  for (unsigned jId : prevMap[cur])
-    scanSpan(jId, tId, span, track);
-  track.erase(cur);
-}
-
-void RegAllocator::simpleScan() {
-  for (unsigned i = 0; i < irs.size(); i++)
-    for (unsigned j = 0; j < irs[i]->items.size(); j++)
-      if (irs[i]->items[j]->type == IRItem::FTEMP ||
-          irs[i]->items[j]->type == IRItem::ITEMP) {
-        if (lifespan.find(irs[i]->items[j]->iVal) == lifespan.end()) {
-          lifespan[irs[i]->items[j]->iVal] = {i, i};
-          tempType[irs[i]->items[j]->iVal] = irs[i]->items[j]->type;
-        } else
-          lifespan[irs[i]->items[j]->iVal].second = i;
-        if (j)
-          rMap[irs[i]->items[j]->iVal].insert(i);
-        else
-          wMap[irs[i]->items[j]->iVal].insert(i);
-      }
-}
-
-unordered_map<unsigned, Reg::Type> RegAllocator::getFtemp2Reg() {
+unordered_map<unsigned, Reg::Type> ColoringRegAllocator::getFtemp2Reg() {
   if (!isProcessed)
-    allocate();
-  // betterAllocate();
+    betterAllocate();
   return ftemp2Reg;
 }
 
-unordered_map<unsigned, Reg::Type> RegAllocator::getItemp2Reg() {
+unordered_map<unsigned, Reg::Type> ColoringRegAllocator::getItemp2Reg() {
   if (!isProcessed)
-    allocate();
-  // betterAllocate();
+    betterAllocate();
   return itemp2Reg;
 }
 
-unordered_map<unsigned, unsigned> RegAllocator::getTemp2SpillReg() {
+unordered_map<unsigned, unsigned> ColoringRegAllocator::getTemp2SpillReg() {
   if (!isProcessed)
-    allocate();
-  // betterAllocate();
+    betterAllocate();
   return temp2SpillReg;
 }
 
-vector<unsigned> RegAllocator::getUsedRegNum() {
+vector<unsigned> ColoringRegAllocator::getUsedRegNum() {
   if (!isProcessed)
-    allocate();
-  // betterAllocate();
+    betterAllocate();
   return {regs->getUsed(RegFile::V), regs->getUsed(RegFile::S),
           regs->getUsed(RegFile::SPILL)};
 }
 
 // ADD allocate registers using graph coloring
-void RegAllocator::betterAllocate() {
+void ColoringRegAllocator::betterAllocate() {
   isProcessed = true;
   buildBlocks();
   unsigned maxTemp;
@@ -203,7 +73,7 @@ void RegAllocator::betterAllocate() {
 }
 
 // Function to build the basic blocks
-void RegAllocator::buildBlocks() {
+void ColoringRegAllocator::buildBlocks() {
   unordered_map<IR *, unsigned> irIdMap;
   map<unsigned, unsigned> startPoints;
   startPoints[0] = 0;
@@ -259,7 +129,7 @@ void RegAllocator::buildBlocks() {
 }
 
 // Get the use and def set for bbs
-void RegAllocator::calcUseAndDef(unsigned &maxTemp) {
+void ColoringRegAllocator::calcUseAndDef(unsigned &maxTemp) {
   maxTemp = 0;
   for (size_t i = 0; i < bbs.size(); i++) {
     for (unsigned j = bbs[i]->first; j <= bbs[i]->last; j++) {
@@ -290,7 +160,7 @@ void RegAllocator::calcUseAndDef(unsigned &maxTemp) {
   }
 }
 
-void RegAllocator::topSortBlocks() {
+void ColoringRegAllocator::topSortBlocks() {
   const int maxn = 0x7fffffff;
   std::vector<BasicBlock *> topbbs;
   std::vector<int> degs(bbs.size());
@@ -324,7 +194,7 @@ void RegAllocator::topSortBlocks() {
 }
 
 // Itetate to calc Ins and Outs for every blocks
-void RegAllocator::calcInAndOut() {
+void ColoringRegAllocator::calcInAndOut() {
   while (true) {
     bool still = true;
     for (BasicBlock *bb : bbs) {
@@ -338,7 +208,7 @@ void RegAllocator::calcInAndOut() {
 }
 
 // Dfs to test whether a block is in loop
-void RegAllocator::dfsTestLoop(std::vector<unsigned> &path) {
+void ColoringRegAllocator::dfsTestLoop(std::vector<unsigned> &path) {
   unsigned cur = path.back();
   if (bbs[cur]->onPath) {
     bbs[cur]->inLoop = true;
@@ -362,7 +232,7 @@ void RegAllocator::dfsTestLoop(std::vector<unsigned> &path) {
   return;
 }
 
-void RegAllocator::calcInterfere() {
+void ColoringRegAllocator::calcInterfere() {
   for (BasicBlock *bb : bbs) {
     std::vector<int> used;
     std::unordered_map<int, int> idMap;
@@ -424,7 +294,7 @@ void RegAllocator::calcInterfere() {
   } // end for bb
 }
 
-void RegAllocator::updateInterfereMatrix(
+void ColoringRegAllocator::updateInterfereMatrix(
     const vector<int> &used,
     const vector<vector<pair<unsigned, unsigned>>> &ranges) {
   for (size_t i = 0; i < used.size(); i++) {
@@ -457,7 +327,7 @@ void RegAllocator::updateInterfereMatrix(
   }
 }
 
-void RegAllocator::logInterfere() {
+void ColoringRegAllocator::logInterfere() {
   std::cout << "Interfere\n";
   for (size_t i = 0; i < interfereMatrix.size(); i++) {
     // if (interfereMatrix[i].empty())
@@ -478,7 +348,7 @@ void RegAllocator::logInterfere() {
 }
 
 // calc the interfere relation by each line
-void RegAllocator::calcInterfereByLine(int &spillCount) {
+void ColoringRegAllocator::calcInterfereByLine(int &spillCount) {
   for (auto bb : bbs) {
     set<unsigned> comAlive;
     set<unsigned> alive;
@@ -517,9 +387,9 @@ void RegAllocator::calcInterfereByLine(int &spillCount) {
   }
 }
 
-void RegAllocator::updateInterfereMatrix(const set<unsigned> &comAlive,
-                                         const set<unsigned> &alive,
-                                         int &spillCount) {
+void ColoringRegAllocator::updateInterfereMatrix(const set<unsigned> &comAlive,
+                                                 const set<unsigned> &alive,
+                                                 int &spillCount) {
   vector<unsigned> newlive(comAlive.begin(), comAlive.end());
   vector<unsigned> live(alive.begin(), alive.end());
   // std::cerr << newlive.size() << ' ' << live.size() << std::endl;
@@ -548,7 +418,8 @@ void RegAllocator::updateInterfereMatrix(const set<unsigned> &comAlive,
   }
 }
 
-unsigned RegAllocator::graphColoring(IRItem::IRItemType iorf, int &spillCount) {
+unsigned ColoringRegAllocator::graphColoring(IRItem::IRItemType iorf,
+                                             int &spillCount) {
   vector<vector<unsigned>> inters(interfereMatrix.size());
   vector<unordered_map<Reg::Type, bool>> color(interfereMatrix.size());
   vector<Reg::Type> regrs;
@@ -665,9 +536,10 @@ unsigned RegAllocator::graphColoring(IRItem::IRItemType iorf, int &spillCount) {
 }
 
 // try to color the spilled temps with the limit number of mem
-bool RegAllocator::testSpill(const vector<vector<unsigned>> &inter,
-                             vector<int> degs, int base, int limit, bool update,
-                             const vector<unsigned> *temps) {
+bool ColoringRegAllocator::testSpill(const vector<vector<unsigned>> &inter,
+                                     vector<int> degs, int base, int limit,
+                                     bool update,
+                                     const vector<unsigned> *temps) {
   bool ret = true;
   auto cmp = [](pair<int, int> &a, pair<int, int> &b) -> bool {
     return b.second < a.second;
@@ -717,7 +589,8 @@ bool RegAllocator::testSpill(const vector<vector<unsigned>> &inter,
   return ret;
 }
 
-void RegAllocator::constrainSpill(vector<unsigned> &spilled, int &spillCount) {
+void ColoringRegAllocator::constrainSpill(vector<unsigned> &spilled,
+                                          int &spillCount) {
   int cnt = 0;
   unordered_map<unsigned, int> spillMap;
   for (unsigned x : spilled)

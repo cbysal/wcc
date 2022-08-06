@@ -54,7 +54,7 @@ private:
   bool isByteShiftImm(unsigned);
   bool isFloatImm(float);
   bool isFloatReg(Reg::Type);
-  void makeFrame(std::vector<ASM *> &, const std::vector<IR *> &, Symbol *);
+  void makeFrame(std::vector<ASM *> &, std::vector<IR *> &, Symbol *);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void parse();
@@ -74,7 +74,7 @@ private:
   void parseDivItempInt(std::vector<ASM *> &, IR *);
   void parseDivItempItemp(std::vector<ASM *> &, IR *);
   void parseF2I(std::vector<ASM *> &, IR *);
-  std::vector<ASM *> parseFunc(Symbol *, const std::vector<IR *> &);
+  std::vector<ASM *> parseFunc(Symbol *, std::vector<IR *> &);
   void parseI2F(std::vector<ASM *> &, IR *);
   void parseLCmp(std::vector<ASM *> &, IR *);
   void parseLCmpFtempFloat(std::vector<ASM *> &, IR *);

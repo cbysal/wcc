@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "ASMParser.h"
-#include "RegAllocator.h"
+#include "LinearRegAllocator.h"
 
 using namespace std;
 
@@ -627,13 +627,14 @@ bool ASMParser::isFloatImm(float imm) {
 
 bool ASMParser::isFloatReg(Reg::Type reg) { return reg >= Reg::S0; }
 
-void ASMParser::makeFrame(vector<ASM *> &asms, const vector<IR *> &irs,
+void ASMParser::makeFrame(vector<ASM *> &asms, vector<IR *> &irs,
                           Symbol *func) {
-  RegAllocator *allocator = new RegAllocator(irs);
+  LinearRegAllocator *allocator = new LinearRegAllocator(irs);
   usedRegNum = allocator->getUsedRegNum();
   itemp2Reg = allocator->getItemp2Reg();
   ftemp2Reg = allocator->getFtemp2Reg();
   temp2SpillReg = allocator->getTemp2SpillReg();
+  irs = allocator->getIRs();
   delete allocator;
   int callArgSize = calcCallArgSize(irs);
   for (unordered_map<unsigned, unsigned>::iterator it = temp2SpillReg.begin();
@@ -737,7 +738,7 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
 void ASMParser::parse() {
   isProcessed = true;
   preProcess();
-  for (const pair<Symbol *, vector<IR *>> &funcIR : funcIRs) {
+  for (pair<Symbol *, vector<IR *>> &funcIR : funcIRs) {
     vector<ASM *> asms = parseFunc(funcIR.first, funcIR.second);
     funcASMs.emplace_back(funcIR.first, asms);
   }
@@ -1262,7 +1263,7 @@ void ASMParser::parseF2I(vector<ASM *> &asms, IR *ir) {
     storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
 }
 
-vector<ASM *> ASMParser::parseFunc(Symbol *func, const vector<IR *> &irs) {
+vector<ASM *> ASMParser::parseFunc(Symbol *func, vector<IR *> &irs) {
   vector<ASM *> asms;
   initFrame();
   makeFrame(asms, irs, func);

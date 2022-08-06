@@ -5,16 +5,16 @@ ARCH = $(shell uname -m)
 
 compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
-	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Reg.o \
-	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o
+	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o \
+	$(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
-	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/Reg.o \
-	$(TARGET_DIR)/RegAllocator.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o \
-	$(TARGET_DIR)/Token.o -o compiler
+	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/Symbol.o \
+	$(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/ASM.o: src/backend/ASM.cpp src/backend/ASM.h
 	$(CC) $(CFLAGS) -c src/backend/ASM.cpp -o $(TARGET_DIR)/ASM.o
@@ -43,6 +43,9 @@ $(TARGET_DIR)/BasicBlock.o: src/backend/BasicBlock.cpp src/backend/BasicBlock.h
 $(TARGET_DIR)/Compiler.o: src/Compiler.cpp src
 	$(CC) $(CFLAGS) -c src/Compiler.cpp -o $(TARGET_DIR)/Compiler.o
 
+$(TARGET_DIR)/ColoringRegAllocator.o: src/backend/ColoringRegAllocator.cpp src/backend/ColoringRegAllocator.h
+	$(CC) $(CFLAGS) -c src/backend/ColoringRegAllocator.cpp -o $(TARGET_DIR)/ColoringRegAllocator.o
+
 $(TARGET_DIR)/IR.o: src/frontend/IR.cpp src/frontend/IR.h
 	$(CC) $(CFLAGS) -c src/frontend/IR.cpp -o $(TARGET_DIR)/IR.o
 
@@ -58,11 +61,11 @@ $(TARGET_DIR)/IRParser.o: src/frontend/IRParser.cpp src/frontend/IRParser.h
 $(TARGET_DIR)/LexicalParser.o: src/frontend/LexicalParser.cpp src/frontend/LexicalParser.h
 	$(CC) $(CFLAGS) -c src/frontend/LexicalParser.cpp -o $(TARGET_DIR)/LexicalParser.o
 
+$(TARGET_DIR)/LinearRegAllocator.o: src/backend/LinearRegAllocator.cpp src/backend/LinearRegAllocator.h
+	$(CC) $(CFLAGS) -c src/backend/LinearRegAllocator.cpp -o $(TARGET_DIR)/LinearRegAllocator.o
+
 $(TARGET_DIR)/Reg.o: src/backend/Reg.cpp src/backend/Reg.h
 	$(CC) $(CFLAGS) -c src/backend/Reg.cpp -o $(TARGET_DIR)/Reg.o
-
-$(TARGET_DIR)/RegAllocator.o: src/backend/RegAllocator.cpp src/backend/RegAllocator.h
-	$(CC) $(CFLAGS) -c src/backend/RegAllocator.cpp -o $(TARGET_DIR)/RegAllocator.o
 
 $(TARGET_DIR)/RegFile.o: src/backend/RegFile.cpp src/backend/RegFile.h
 	$(CC) $(CFLAGS) -c src/backend/RegFile.cpp -o $(TARGET_DIR)/RegFile.o

@@ -147,8 +147,18 @@ void SyntaxParser::initSymbols() {
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",
                     vector<Symbol *>());
   symbols.push_back(func);
-  symbolStack.back()["starttime"] = func;
+  symbolStack.back()["_sysy_starttime"] = func;
   // _sysy_stoptime
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_stoptime",
+                    vector<Symbol *>());
+  symbols.push_back(func);
+  symbolStack.back()["_sysy_stoptime"] = func;
+  // starttime
+  func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",
+                    vector<Symbol *>());
+  symbols.push_back(func);
+  symbolStack.back()["starttime"] = func;
+  // stoptime
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_stoptime",
                     vector<Symbol *>());
   symbols.push_back(func);
