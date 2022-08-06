@@ -55,8 +55,8 @@ private:
   bool isFloatImm(float);
   bool isFloatReg(Reg::Type);
   void makeFrame(std::vector<ASM *> &, const std::vector<IR *> &, Symbol *);
-  std::vector<unsigned> makeSmartImmMask(unsigned);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
+  void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void parse();
   void parseAdd(std::vector<ASM *> &, IR *);
   void parseAddFtempFloat(std::vector<ASM *> &, IR *);

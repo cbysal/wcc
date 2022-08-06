@@ -142,7 +142,8 @@ string ASM::toString() {
     if (items.size() == 3)
       switch (items[2]->type) {
       case ASMItem::INT:
-        s += ", #" + to_string(items[2]->iVal);
+        if (items[2]->iVal)
+          s += ", #" + to_string(items[2]->iVal);
         break;
       case ASMItem::REG:
         s += ", " + regTypeStr[items[2]->reg];
