@@ -31,6 +31,21 @@ public:
   std::vector<Symbol *> getGlobalVars();
   std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
   unsigned getTempId();
+
+  struct dominatorTree {
+    using graph = std::vector<std::vector<int>>;
+    int n, dft;
+    graph G, iG, sG;
+    std::vector<int> dfn, ord, fa, p, mn, sdom, idom;
+
+    void dfs(int);
+    int GF(int);
+    graph LengauerTarjan(int);
+
+    graph work(graph &);
+  } domT;
+
+  
 };
 
 #endif
