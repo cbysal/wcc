@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror
+CFLAGS = -g -fdiagnostics-color=always -Wall -std=c++17 -Werror $(CFLAGS_EX)
 TARGET_DIR = target
 ARCH = $(shell uname -m)
 
