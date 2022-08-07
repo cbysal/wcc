@@ -18,9 +18,7 @@ private:
   std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
   std::vector<IR *> toRecycleIRs;
 
-  std::unordered_set<unsigned> getBlockBegins(const std::vector<IR *> &);
   void optimize();
-  void flowOptimize();
   void removeDeadCode();
   void removeDuplicatedJumps();
   void removeDuplicatedLabels();
@@ -39,7 +37,6 @@ public:
   std::vector<Symbol *> getGlobalVars();
   std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
   unsigned getTempId();
-  void printIRs();
 };
 
 #endif

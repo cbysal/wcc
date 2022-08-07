@@ -110,7 +110,16 @@ int main(int argc, char *argv[]) {
     cout << "----------------------------------------------------------------"
             "----------------"
          << endl;
-    irOptimizer->printIRs();
+    for (Symbol *cst : consts)
+      cout << cst->toString() << endl;
+    for (Symbol *cst : globalVars)
+      cout << cst->toString() << endl;
+    for (pair<Symbol *, vector<IR *>> func : funcs) {
+      cout << func.first->name << endl;
+      for (IR *ir : func.second)
+        cout << ir->toString() << endl;
+    }
+    cout << endl;
     delete asmWriter;
     delete asmOptimizer;
     delete asmParser;
@@ -176,7 +185,15 @@ int main(int argc, char *argv[]) {
       cout << "----------------------------------------------------------------"
               "----------------"
            << endl;
-      irOptimizer->printIRs();
+      for (Symbol *cst : consts)
+        cout << cst->toString() << endl;
+      for (Symbol *cst : globalVars)
+        cout << cst->toString() << endl;
+      for (pair<Symbol *, vector<IR *>> func : funcs) {
+        cout << func.first->name << endl;
+        for (IR *ir : func.second)
+          cout << ir->toString() << endl;
+      }
       cout << endl;
       delete asmWriter;
       delete asmOptimizer;
