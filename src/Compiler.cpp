@@ -13,6 +13,7 @@
 #include "frontend/IROptimizer.h"
 #include "frontend/IRParser.h"
 #include "frontend/LexicalParser.h"
+#include "frontend/SSAOptimizer.h"
 #include "frontend/SyntaxParser.h"
 
 using namespace std;
@@ -41,7 +42,16 @@ int main(int argc, char *argv[]) {
         new IROptimizer(consts, globalVars, localVars, funcs, tempId);
     consts = irOptimizer->getConsts();
     globalVars = irOptimizer->getGlobalVars();
+    localVars = irOptimizer->getLocalVars();
     funcs = irOptimizer->getFuncs();
+    tempId = irOptimizer->getTempId();
+    SSAOptimizer *ssaOptimizer =
+        new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = ssaOptimizer->getConsts();
+    globalVars = ssaOptimizer->getGlobalVars();
+    localVars = ssaOptimizer->getLocalVars();
+    funcs = ssaOptimizer->getFuncs();
+    tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
     vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
@@ -77,7 +87,16 @@ int main(int argc, char *argv[]) {
         new IROptimizer(consts, globalVars, localVars, funcs, tempId);
     consts = irOptimizer->getConsts();
     globalVars = irOptimizer->getGlobalVars();
+    localVars = irOptimizer->getLocalVars();
     funcs = irOptimizer->getFuncs();
+    tempId = irOptimizer->getTempId();
+    SSAOptimizer *ssaOptimizer =
+        new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = ssaOptimizer->getConsts();
+    globalVars = ssaOptimizer->getGlobalVars();
+    localVars = ssaOptimizer->getLocalVars();
+    funcs = ssaOptimizer->getFuncs();
+    tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
     vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
@@ -134,7 +153,16 @@ int main(int argc, char *argv[]) {
           new IROptimizer(consts, globalVars, localVars, funcs, tempId);
       consts = irOptimizer->getConsts();
       globalVars = irOptimizer->getGlobalVars();
+      localVars = irOptimizer->getLocalVars();
       funcs = irOptimizer->getFuncs();
+      tempId = irOptimizer->getTempId();
+      SSAOptimizer *ssaOptimizer =
+          new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
+      consts = ssaOptimizer->getConsts();
+      globalVars = ssaOptimizer->getGlobalVars();
+      localVars = ssaOptimizer->getLocalVars();
+      funcs = ssaOptimizer->getFuncs();
+      tempId = irOptimizer->getTempId();
       ASMParser *asmParser =
           new ASMParser(lineno, funcs, consts, globalVars, localVars);
       vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();

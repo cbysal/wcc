@@ -62,9 +62,17 @@ vector<Symbol *> IROptimizer::getGlobalVars() {
   return globalVars;
 }
 
+std::unordered_map<Symbol *, std::vector<Symbol *>>
+IROptimizer::getLocalVars() {
+  if (!isProcessed)
+    optimize();
+  return localVars;
+}
+
+unsigned IROptimizer::getTempId() { return tempId; }
+
 void IROptimizer::optimize() {
   isProcessed = true;
-  // flowOptimize();
   removeDeadCode();
   singleVar2Reg();
   removeDeadCode();

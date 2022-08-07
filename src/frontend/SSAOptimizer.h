@@ -1,14 +1,13 @@
-#ifndef __IR_OPTIMIZER_H__
-#define __IR_OPTIMIZER_H__
+#ifndef __SSA_OPTIMIZER_H__
+#define __SSA_OPTIMIZER_H__
 
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "IR.h"
 #include "Symbol.h"
 
-class IROptimizer {
+class SSAOptimizer {
 private:
   bool isProcessed;
   unsigned tempId;
@@ -18,28 +17,20 @@ private:
   std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
   std::vector<IR *> toRecycleIRs;
 
-  std::unordered_set<unsigned> getBlockBegins(const std::vector<IR *> &);
   void optimize();
-  void flowOptimize();
-  void removeDeadCode();
-  void removeDuplicatedJumps();
-  void removeDuplicatedLabels();
-  void removeDuplicatedSymbols();
-  void singleVar2Reg();
 
 public:
-  IROptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
-              const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
-              const std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
-              unsigned);
-  ~IROptimizer();
+  SSAOptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
+               const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
+               const std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
+               unsigned);
+  ~SSAOptimizer();
 
   std::vector<Symbol *> getConsts();
   std::vector<std::pair<Symbol *, std::vector<IR *>>> getFuncs();
   std::vector<Symbol *> getGlobalVars();
   std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
   unsigned getTempId();
-  void printIRs();
 };
 
 #endif
