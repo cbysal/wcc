@@ -7,6 +7,8 @@ using namespace std;
 LinearRegAllocator::LinearRegAllocator(const vector<IR *> &irs) {
   this->irs = irs;
   this->isProcessed = false;
+  this->tempNum = 0;
+  this->irNum = 0;
   this->usedVRegNum = 0;
   this->usedSRegNum = 0;
   this->spillNum = 0;
@@ -91,14 +93,14 @@ void LinearRegAllocator::allocate() {
 
 void LinearRegAllocator::calcConflicts() {
   unordered_map<unsigned, vector<pair<unsigned, unsigned>>> intervalsMap;
-  for (pair<unsigned, unordered_set<unsigned>> span : lifespan) {
-    vector<unsigned> lines(span.second.begin(), span.second.end());
+  for (unsigned i = 0; i < tempNum; i++) {
+    vector<unsigned> lines(lifespan[i].begin(), lifespan[i].end());
     sort(lines.begin(), lines.end());
     unsigned left = 0, right = 1;
     while (right < lines.size()) {
       while (right < lines.size() && lines[right - 1] + 1 == lines[right])
         right++;
-      intervalsMap[span.first].emplace_back(lines[left], lines[right - 1]);
+      intervalsMap[i].emplace_back(lines[left], lines[right - 1]);
       left = right;
       right++;
     }
@@ -128,13 +130,11 @@ void LinearRegAllocator::calcConflicts() {
 
 void LinearRegAllocator::calcLifespan() {
   simpleScan();
-  for (unordered_map<unsigned, unordered_set<unsigned>>::iterator it =
-           lifespan.begin();
-       it != lifespan.end(); it++) {
-    for (unsigned rId : rMap[it->first]) {
+  for (unsigned i = 0; i < tempNum; i++) {
+    for (unsigned rId : rMap[i]) {
       unordered_set<unsigned> span, track;
-      scanSpan(rId, it->first, span, track);
-      it->second.insert(span.begin(), span.end());
+      scanSpan(rId, i, span, track);
+      lifespan[i].insert(span.begin(), span.end());
     }
   }
 }
@@ -151,7 +151,7 @@ void LinearRegAllocator::calcPrevMap() {
              irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) {
       prevMap[i + 1].push_back(i);
       prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
-    } else
+    } else if (i + 1 < irNum)
       prevMap[i + 1].push_back(i);
   }
 }
@@ -262,6 +262,34 @@ void LinearRegAllocator::preProcess() {
     }
     irs = newIRs;
   } while (irsSize > irs.size());
+  reassignTempId();
+}
+
+void LinearRegAllocator::reassignTempId() {
+  unordered_map<unsigned, unsigned> reassignMap;
+  for (IR *ir : irs) {
+    for (IRItem *item : ir->items) {
+      if (item->type != IRItem::FTEMP && item->type != IRItem::ITEMP)
+        continue;
+      if (reassignMap.find(item->iVal) != reassignMap.end())
+        continue;
+      reassignMap[item->iVal] = tempNum++;
+    }
+  }
+  for (IR *ir : irs) {
+    ir->irId = irNum++;
+    for (IRItem *item : ir->items) {
+      if (item->type != IRItem::FTEMP && item->type != IRItem::ITEMP)
+        continue;
+      item->iVal = reassignMap[item->iVal];
+    }
+  }
+  prevMap.resize(irNum);
+  lifespan.resize(tempNum);
+  rMap.resize(tempNum);
+  wMap.resize(tempNum);
+  tempType.resize(tempNum);
+  conflictMap.resize(tempNum);
 }
 
 void LinearRegAllocator::scanSpan(unsigned cur, unsigned tId,
@@ -284,8 +312,7 @@ void LinearRegAllocator::simpleScan() {
     for (unsigned j = 0; j < irs[i]->items.size(); j++)
       if (irs[i]->items[j]->type == IRItem::FTEMP ||
           irs[i]->items[j]->type == IRItem::ITEMP) {
-        if (tempType.find(irs[i]->items[j]->iVal) == tempType.end())
-          tempType[irs[i]->items[j]->iVal] = irs[i]->items[j]->type;
+        tempType[irs[i]->items[j]->iVal] = irs[i]->items[j]->type;
         lifespan[irs[i]->items[j]->iVal].insert(i);
         if (j)
           rMap[irs[i]->items[j]->iVal].insert(i);

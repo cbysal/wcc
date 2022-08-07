@@ -20,17 +20,19 @@ private:
 
   std::vector<IR *> irs;
   bool isProcessed;
+  unsigned tempNum;
+  unsigned irNum;
   unsigned usedVRegNum;
   unsigned usedSRegNum;
   unsigned spillNum;
   std::unordered_set<unsigned> allocatedTemps;
   std::unordered_map<unsigned, Reg::Type> itemp2Reg, ftemp2Reg;
   std::unordered_map<unsigned, unsigned> temp2SpillReg;
-  std::unordered_map<unsigned, IRItem::IRItemType> tempType;
-  std::unordered_map<unsigned, std::unordered_set<unsigned>> rMap, wMap;
-  std::unordered_map<unsigned, std::vector<unsigned>> prevMap;
-  std::unordered_map<unsigned, std::unordered_set<unsigned>> lifespan;
-  std::unordered_map<unsigned, std::unordered_set<unsigned>> conflictMap;
+  std::vector<IRItem::IRItemType> tempType;
+  std::vector<std::unordered_set<unsigned>> rMap, wMap;
+  std::vector<std::vector<unsigned>> prevMap;
+  std::vector<std::unordered_set<unsigned>> lifespan;
+  std::vector<std::unordered_set<unsigned>> conflictMap;
 
   void calcConflicts();
   void calcLifespan();
@@ -40,6 +42,7 @@ private:
   unsigned findSpill(unsigned);
   std::unordered_set<Reg::Type> getConflictSet(unsigned);
   void preProcess();
+  void reassignTempId();
   void scanSpan(unsigned, unsigned, std::unordered_set<unsigned> &,
                 std::unordered_set<unsigned> &);
   void simpleScan();
