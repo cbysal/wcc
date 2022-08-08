@@ -328,171 +328,16 @@ static unordered_map<unsigned, pair<unsigned, unsigned>> num2rotateMap = {
     {0x7fffff00, {8, 30}},  {0x7fffff80, {7, 30}},  {0x7fffffc0, {6, 30}},
     {0x7fffffe0, {5, 30}},  {0x7ffffff0, {4, 30}},  {0x7ffffff8, {3, 30}},
     {0x7ffffffc, {2, 30}},  {0x7ffffffe, {1, 30}},  {0x7fffffff, {0, 30}},
-    {0x80000003, {31, 1}},  {0x80000007, {31, 2}},  {0x8000000f, {31, 3}},
-    {0x8000001f, {31, 4}},  {0x8000003f, {31, 5}},  {0x8000007f, {31, 6}},
-    {0x800000ff, {31, 7}},  {0x800001ff, {31, 8}},  {0x800003ff, {31, 9}},
-    {0x800007ff, {31, 10}}, {0x80000fff, {31, 11}}, {0x80001fff, {31, 12}},
-    {0x80003fff, {31, 13}}, {0x80007fff, {31, 14}}, {0x8000ffff, {31, 15}},
-    {0x8001ffff, {31, 16}}, {0x8003ffff, {31, 17}}, {0x8007ffff, {31, 18}},
-    {0x800fffff, {31, 19}}, {0x801fffff, {31, 20}}, {0x803fffff, {31, 21}},
-    {0x807fffff, {31, 22}}, {0x80ffffff, {31, 23}}, {0x81ffffff, {31, 24}},
-    {0x83ffffff, {31, 25}}, {0x87ffffff, {31, 26}}, {0x8fffffff, {31, 27}},
-    {0x9fffffff, {31, 28}}, {0xbfffffff, {31, 29}}, {0xc0000001, {30, 0}},
-    {0xc0000003, {30, 1}},  {0xc0000007, {30, 2}},  {0xc000000f, {30, 3}},
-    {0xc000001f, {30, 4}},  {0xc000003f, {30, 5}},  {0xc000007f, {30, 6}},
-    {0xc00000ff, {30, 7}},  {0xc00001ff, {30, 8}},  {0xc00003ff, {30, 9}},
-    {0xc00007ff, {30, 10}}, {0xc0000fff, {30, 11}}, {0xc0001fff, {30, 12}},
-    {0xc0003fff, {30, 13}}, {0xc0007fff, {30, 14}}, {0xc000ffff, {30, 15}},
-    {0xc001ffff, {30, 16}}, {0xc003ffff, {30, 17}}, {0xc007ffff, {30, 18}},
-    {0xc00fffff, {30, 19}}, {0xc01fffff, {30, 20}}, {0xc03fffff, {30, 21}},
-    {0xc07fffff, {30, 22}}, {0xc0ffffff, {30, 23}}, {0xc1ffffff, {30, 24}},
-    {0xc3ffffff, {30, 25}}, {0xc7ffffff, {30, 26}}, {0xcfffffff, {30, 27}},
-    {0xdfffffff, {30, 28}}, {0xe0000000, {29, 31}}, {0xe0000001, {29, 0}},
-    {0xe0000003, {29, 1}},  {0xe0000007, {29, 2}},  {0xe000000f, {29, 3}},
-    {0xe000001f, {29, 4}},  {0xe000003f, {29, 5}},  {0xe000007f, {29, 6}},
-    {0xe00000ff, {29, 7}},  {0xe00001ff, {29, 8}},  {0xe00003ff, {29, 9}},
-    {0xe00007ff, {29, 10}}, {0xe0000fff, {29, 11}}, {0xe0001fff, {29, 12}},
-    {0xe0003fff, {29, 13}}, {0xe0007fff, {29, 14}}, {0xe000ffff, {29, 15}},
-    {0xe001ffff, {29, 16}}, {0xe003ffff, {29, 17}}, {0xe007ffff, {29, 18}},
-    {0xe00fffff, {29, 19}}, {0xe01fffff, {29, 20}}, {0xe03fffff, {29, 21}},
-    {0xe07fffff, {29, 22}}, {0xe0ffffff, {29, 23}}, {0xe1ffffff, {29, 24}},
-    {0xe3ffffff, {29, 25}}, {0xe7ffffff, {29, 26}}, {0xefffffff, {29, 27}},
-    {0xf0000000, {28, 31}}, {0xf0000001, {28, 0}},  {0xf0000003, {28, 1}},
-    {0xf0000007, {28, 2}},  {0xf000000f, {28, 3}},  {0xf000001f, {28, 4}},
-    {0xf000003f, {28, 5}},  {0xf000007f, {28, 6}},  {0xf00000ff, {28, 7}},
-    {0xf00001ff, {28, 8}},  {0xf00003ff, {28, 9}},  {0xf00007ff, {28, 10}},
-    {0xf0000fff, {28, 11}}, {0xf0001fff, {28, 12}}, {0xf0003fff, {28, 13}},
-    {0xf0007fff, {28, 14}}, {0xf000ffff, {28, 15}}, {0xf001ffff, {28, 16}},
-    {0xf003ffff, {28, 17}}, {0xf007ffff, {28, 18}}, {0xf00fffff, {28, 19}},
-    {0xf01fffff, {28, 20}}, {0xf03fffff, {28, 21}}, {0xf07fffff, {28, 22}},
-    {0xf0ffffff, {28, 23}}, {0xf1ffffff, {28, 24}}, {0xf3ffffff, {28, 25}},
-    {0xf7ffffff, {28, 26}}, {0xf8000000, {27, 31}}, {0xf8000001, {27, 0}},
-    {0xf8000003, {27, 1}},  {0xf8000007, {27, 2}},  {0xf800000f, {27, 3}},
-    {0xf800001f, {27, 4}},  {0xf800003f, {27, 5}},  {0xf800007f, {27, 6}},
-    {0xf80000ff, {27, 7}},  {0xf80001ff, {27, 8}},  {0xf80003ff, {27, 9}},
-    {0xf80007ff, {27, 10}}, {0xf8000fff, {27, 11}}, {0xf8001fff, {27, 12}},
-    {0xf8003fff, {27, 13}}, {0xf8007fff, {27, 14}}, {0xf800ffff, {27, 15}},
-    {0xf801ffff, {27, 16}}, {0xf803ffff, {27, 17}}, {0xf807ffff, {27, 18}},
-    {0xf80fffff, {27, 19}}, {0xf81fffff, {27, 20}}, {0xf83fffff, {27, 21}},
-    {0xf87fffff, {27, 22}}, {0xf8ffffff, {27, 23}}, {0xf9ffffff, {27, 24}},
-    {0xfbffffff, {27, 25}}, {0xfc000000, {26, 31}}, {0xfc000001, {26, 0}},
-    {0xfc000003, {26, 1}},  {0xfc000007, {26, 2}},  {0xfc00000f, {26, 3}},
-    {0xfc00001f, {26, 4}},  {0xfc00003f, {26, 5}},  {0xfc00007f, {26, 6}},
-    {0xfc0000ff, {26, 7}},  {0xfc0001ff, {26, 8}},  {0xfc0003ff, {26, 9}},
-    {0xfc0007ff, {26, 10}}, {0xfc000fff, {26, 11}}, {0xfc001fff, {26, 12}},
-    {0xfc003fff, {26, 13}}, {0xfc007fff, {26, 14}}, {0xfc00ffff, {26, 15}},
-    {0xfc01ffff, {26, 16}}, {0xfc03ffff, {26, 17}}, {0xfc07ffff, {26, 18}},
-    {0xfc0fffff, {26, 19}}, {0xfc1fffff, {26, 20}}, {0xfc3fffff, {26, 21}},
-    {0xfc7fffff, {26, 22}}, {0xfcffffff, {26, 23}}, {0xfdffffff, {26, 24}},
-    {0xfe000000, {25, 31}}, {0xfe000001, {25, 0}},  {0xfe000003, {25, 1}},
-    {0xfe000007, {25, 2}},  {0xfe00000f, {25, 3}},  {0xfe00001f, {25, 4}},
-    {0xfe00003f, {25, 5}},  {0xfe00007f, {25, 6}},  {0xfe0000ff, {25, 7}},
-    {0xfe0001ff, {25, 8}},  {0xfe0003ff, {25, 9}},  {0xfe0007ff, {25, 10}},
-    {0xfe000fff, {25, 11}}, {0xfe001fff, {25, 12}}, {0xfe003fff, {25, 13}},
-    {0xfe007fff, {25, 14}}, {0xfe00ffff, {25, 15}}, {0xfe01ffff, {25, 16}},
-    {0xfe03ffff, {25, 17}}, {0xfe07ffff, {25, 18}}, {0xfe0fffff, {25, 19}},
-    {0xfe1fffff, {25, 20}}, {0xfe3fffff, {25, 21}}, {0xfe7fffff, {25, 22}},
-    {0xfeffffff, {25, 23}}, {0xff000000, {24, 31}}, {0xff000001, {24, 0}},
-    {0xff000003, {24, 1}},  {0xff000007, {24, 2}},  {0xff00000f, {24, 3}},
-    {0xff00001f, {24, 4}},  {0xff00003f, {24, 5}},  {0xff00007f, {24, 6}},
-    {0xff0000ff, {24, 7}},  {0xff0001ff, {24, 8}},  {0xff0003ff, {24, 9}},
-    {0xff0007ff, {24, 10}}, {0xff000fff, {24, 11}}, {0xff001fff, {24, 12}},
-    {0xff003fff, {24, 13}}, {0xff007fff, {24, 14}}, {0xff00ffff, {24, 15}},
-    {0xff01ffff, {24, 16}}, {0xff03ffff, {24, 17}}, {0xff07ffff, {24, 18}},
-    {0xff0fffff, {24, 19}}, {0xff1fffff, {24, 20}}, {0xff3fffff, {24, 21}},
-    {0xff7fffff, {24, 22}}, {0xff800000, {23, 31}}, {0xff800001, {23, 0}},
-    {0xff800003, {23, 1}},  {0xff800007, {23, 2}},  {0xff80000f, {23, 3}},
-    {0xff80001f, {23, 4}},  {0xff80003f, {23, 5}},  {0xff80007f, {23, 6}},
-    {0xff8000ff, {23, 7}},  {0xff8001ff, {23, 8}},  {0xff8003ff, {23, 9}},
-    {0xff8007ff, {23, 10}}, {0xff800fff, {23, 11}}, {0xff801fff, {23, 12}},
-    {0xff803fff, {23, 13}}, {0xff807fff, {23, 14}}, {0xff80ffff, {23, 15}},
-    {0xff81ffff, {23, 16}}, {0xff83ffff, {23, 17}}, {0xff87ffff, {23, 18}},
-    {0xff8fffff, {23, 19}}, {0xff9fffff, {23, 20}}, {0xffbfffff, {23, 21}},
-    {0xffc00000, {22, 31}}, {0xffc00001, {22, 0}},  {0xffc00003, {22, 1}},
-    {0xffc00007, {22, 2}},  {0xffc0000f, {22, 3}},  {0xffc0001f, {22, 4}},
-    {0xffc0003f, {22, 5}},  {0xffc0007f, {22, 6}},  {0xffc000ff, {22, 7}},
-    {0xffc001ff, {22, 8}},  {0xffc003ff, {22, 9}},  {0xffc007ff, {22, 10}},
-    {0xffc00fff, {22, 11}}, {0xffc01fff, {22, 12}}, {0xffc03fff, {22, 13}},
-    {0xffc07fff, {22, 14}}, {0xffc0ffff, {22, 15}}, {0xffc1ffff, {22, 16}},
-    {0xffc3ffff, {22, 17}}, {0xffc7ffff, {22, 18}}, {0xffcfffff, {22, 19}},
-    {0xffdfffff, {22, 20}}, {0xffe00000, {21, 31}}, {0xffe00001, {21, 0}},
-    {0xffe00003, {21, 1}},  {0xffe00007, {21, 2}},  {0xffe0000f, {21, 3}},
-    {0xffe0001f, {21, 4}},  {0xffe0003f, {21, 5}},  {0xffe0007f, {21, 6}},
-    {0xffe000ff, {21, 7}},  {0xffe001ff, {21, 8}},  {0xffe003ff, {21, 9}},
-    {0xffe007ff, {21, 10}}, {0xffe00fff, {21, 11}}, {0xffe01fff, {21, 12}},
-    {0xffe03fff, {21, 13}}, {0xffe07fff, {21, 14}}, {0xffe0ffff, {21, 15}},
-    {0xffe1ffff, {21, 16}}, {0xffe3ffff, {21, 17}}, {0xffe7ffff, {21, 18}},
-    {0xffefffff, {21, 19}}, {0xfff00000, {20, 31}}, {0xfff00001, {20, 0}},
-    {0xfff00003, {20, 1}},  {0xfff00007, {20, 2}},  {0xfff0000f, {20, 3}},
-    {0xfff0001f, {20, 4}},  {0xfff0003f, {20, 5}},  {0xfff0007f, {20, 6}},
-    {0xfff000ff, {20, 7}},  {0xfff001ff, {20, 8}},  {0xfff003ff, {20, 9}},
-    {0xfff007ff, {20, 10}}, {0xfff00fff, {20, 11}}, {0xfff01fff, {20, 12}},
-    {0xfff03fff, {20, 13}}, {0xfff07fff, {20, 14}}, {0xfff0ffff, {20, 15}},
-    {0xfff1ffff, {20, 16}}, {0xfff3ffff, {20, 17}}, {0xfff7ffff, {20, 18}},
-    {0xfff80000, {19, 31}}, {0xfff80001, {19, 0}},  {0xfff80003, {19, 1}},
-    {0xfff80007, {19, 2}},  {0xfff8000f, {19, 3}},  {0xfff8001f, {19, 4}},
-    {0xfff8003f, {19, 5}},  {0xfff8007f, {19, 6}},  {0xfff800ff, {19, 7}},
-    {0xfff801ff, {19, 8}},  {0xfff803ff, {19, 9}},  {0xfff807ff, {19, 10}},
-    {0xfff80fff, {19, 11}}, {0xfff81fff, {19, 12}}, {0xfff83fff, {19, 13}},
-    {0xfff87fff, {19, 14}}, {0xfff8ffff, {19, 15}}, {0xfff9ffff, {19, 16}},
-    {0xfffbffff, {19, 17}}, {0xfffc0000, {18, 31}}, {0xfffc0001, {18, 0}},
-    {0xfffc0003, {18, 1}},  {0xfffc0007, {18, 2}},  {0xfffc000f, {18, 3}},
-    {0xfffc001f, {18, 4}},  {0xfffc003f, {18, 5}},  {0xfffc007f, {18, 6}},
-    {0xfffc00ff, {18, 7}},  {0xfffc01ff, {18, 8}},  {0xfffc03ff, {18, 9}},
-    {0xfffc07ff, {18, 10}}, {0xfffc0fff, {18, 11}}, {0xfffc1fff, {18, 12}},
-    {0xfffc3fff, {18, 13}}, {0xfffc7fff, {18, 14}}, {0xfffcffff, {18, 15}},
-    {0xfffdffff, {18, 16}}, {0xfffe0000, {17, 31}}, {0xfffe0001, {17, 0}},
-    {0xfffe0003, {17, 1}},  {0xfffe0007, {17, 2}},  {0xfffe000f, {17, 3}},
-    {0xfffe001f, {17, 4}},  {0xfffe003f, {17, 5}},  {0xfffe007f, {17, 6}},
-    {0xfffe00ff, {17, 7}},  {0xfffe01ff, {17, 8}},  {0xfffe03ff, {17, 9}},
-    {0xfffe07ff, {17, 10}}, {0xfffe0fff, {17, 11}}, {0xfffe1fff, {17, 12}},
-    {0xfffe3fff, {17, 13}}, {0xfffe7fff, {17, 14}}, {0xfffeffff, {17, 15}},
-    {0xffff0000, {16, 31}}, {0xffff0001, {16, 0}},  {0xffff0003, {16, 1}},
-    {0xffff0007, {16, 2}},  {0xffff000f, {16, 3}},  {0xffff001f, {16, 4}},
-    {0xffff003f, {16, 5}},  {0xffff007f, {16, 6}},  {0xffff00ff, {16, 7}},
-    {0xffff01ff, {16, 8}},  {0xffff03ff, {16, 9}},  {0xffff07ff, {16, 10}},
-    {0xffff0fff, {16, 11}}, {0xffff1fff, {16, 12}}, {0xffff3fff, {16, 13}},
-    {0xffff7fff, {16, 14}}, {0xffff8000, {15, 31}}, {0xffff8001, {15, 0}},
-    {0xffff8003, {15, 1}},  {0xffff8007, {15, 2}},  {0xffff800f, {15, 3}},
-    {0xffff801f, {15, 4}},  {0xffff803f, {15, 5}},  {0xffff807f, {15, 6}},
-    {0xffff80ff, {15, 7}},  {0xffff81ff, {15, 8}},  {0xffff83ff, {15, 9}},
-    {0xffff87ff, {15, 10}}, {0xffff8fff, {15, 11}}, {0xffff9fff, {15, 12}},
-    {0xffffbfff, {15, 13}}, {0xffffc000, {14, 31}}, {0xffffc001, {14, 0}},
-    {0xffffc003, {14, 1}},  {0xffffc007, {14, 2}},  {0xffffc00f, {14, 3}},
-    {0xffffc01f, {14, 4}},  {0xffffc03f, {14, 5}},  {0xffffc07f, {14, 6}},
-    {0xffffc0ff, {14, 7}},  {0xffffc1ff, {14, 8}},  {0xffffc3ff, {14, 9}},
-    {0xffffc7ff, {14, 10}}, {0xffffcfff, {14, 11}}, {0xffffdfff, {14, 12}},
-    {0xffffe000, {13, 31}}, {0xffffe001, {13, 0}},  {0xffffe003, {13, 1}},
-    {0xffffe007, {13, 2}},  {0xffffe00f, {13, 3}},  {0xffffe01f, {13, 4}},
-    {0xffffe03f, {13, 5}},  {0xffffe07f, {13, 6}},  {0xffffe0ff, {13, 7}},
-    {0xffffe1ff, {13, 8}},  {0xffffe3ff, {13, 9}},  {0xffffe7ff, {13, 10}},
-    {0xffffefff, {13, 11}}, {0xfffff000, {12, 31}}, {0xfffff001, {12, 0}},
-    {0xfffff003, {12, 1}},  {0xfffff007, {12, 2}},  {0xfffff00f, {12, 3}},
-    {0xfffff01f, {12, 4}},  {0xfffff03f, {12, 5}},  {0xfffff07f, {12, 6}},
-    {0xfffff0ff, {12, 7}},  {0xfffff1ff, {12, 8}},  {0xfffff3ff, {12, 9}},
-    {0xfffff7ff, {12, 10}}, {0xfffff800, {11, 31}}, {0xfffff801, {11, 0}},
-    {0xfffff803, {11, 1}},  {0xfffff807, {11, 2}},  {0xfffff80f, {11, 3}},
-    {0xfffff81f, {11, 4}},  {0xfffff83f, {11, 5}},  {0xfffff87f, {11, 6}},
-    {0xfffff8ff, {11, 7}},  {0xfffff9ff, {11, 8}},  {0xfffffbff, {11, 9}},
-    {0xfffffc00, {10, 31}}, {0xfffffc01, {10, 0}},  {0xfffffc03, {10, 1}},
-    {0xfffffc07, {10, 2}},  {0xfffffc0f, {10, 3}},  {0xfffffc1f, {10, 4}},
-    {0xfffffc3f, {10, 5}},  {0xfffffc7f, {10, 6}},  {0xfffffcff, {10, 7}},
-    {0xfffffdff, {10, 8}},  {0xfffffe00, {9, 31}},  {0xfffffe01, {9, 0}},
-    {0xfffffe03, {9, 1}},   {0xfffffe07, {9, 2}},   {0xfffffe0f, {9, 3}},
-    {0xfffffe1f, {9, 4}},   {0xfffffe3f, {9, 5}},   {0xfffffe7f, {9, 6}},
-    {0xfffffeff, {9, 7}},   {0xffffff00, {8, 31}},  {0xffffff01, {8, 0}},
-    {0xffffff03, {8, 1}},   {0xffffff07, {8, 2}},   {0xffffff0f, {8, 3}},
-    {0xffffff1f, {8, 4}},   {0xffffff3f, {8, 5}},   {0xffffff7f, {8, 6}},
-    {0xffffff80, {7, 31}},  {0xffffff81, {7, 0}},   {0xffffff83, {7, 1}},
-    {0xffffff87, {7, 2}},   {0xffffff8f, {7, 3}},   {0xffffff9f, {7, 4}},
-    {0xffffffbf, {7, 5}},   {0xffffffc0, {6, 31}},  {0xffffffc1, {6, 0}},
-    {0xffffffc3, {6, 1}},   {0xffffffc7, {6, 2}},   {0xffffffcf, {6, 3}},
-    {0xffffffdf, {6, 4}},   {0xffffffe0, {5, 31}},  {0xffffffe1, {5, 0}},
-    {0xffffffe3, {5, 1}},   {0xffffffe7, {5, 2}},   {0xffffffef, {5, 3}},
-    {0xfffffff0, {4, 31}},  {0xfffffff1, {4, 0}},   {0xfffffff3, {4, 1}},
-    {0xfffffff7, {4, 2}},   {0xfffffff8, {3, 31}},  {0xfffffff9, {3, 0}},
-    {0xfffffffb, {3, 1}},   {0xfffffffc, {2, 31}},  {0xfffffffd, {2, 0}},
-    {0xfffffffe, {1, 31}}};
+    {0xe0000000, {29, 31}}, {0xf0000000, {28, 31}}, {0xf8000000, {27, 31}},
+    {0xfc000000, {26, 31}}, {0xfe000000, {25, 31}}, {0xff000000, {24, 31}},
+    {0xff800000, {23, 31}}, {0xffc00000, {22, 31}}, {0xffe00000, {21, 31}},
+    {0xfff00000, {20, 31}}, {0xfff80000, {19, 31}}, {0xfffc0000, {18, 31}},
+    {0xfffe0000, {17, 31}}, {0xffff0000, {16, 31}}, {0xffff8000, {15, 31}},
+    {0xffffc000, {14, 31}}, {0xffffe000, {13, 31}}, {0xfffff000, {12, 31}},
+    {0xfffff800, {11, 31}}, {0xfffffc00, {10, 31}}, {0xfffffe00, {9, 31}},
+    {0xffffff00, {8, 31}},  {0xffffff80, {7, 31}},  {0xffffffc0, {6, 31}},
+    {0xffffffe0, {5, 31}},  {0xfffffff0, {4, 31}},  {0xfffffff8, {3, 31}},
+    {0xfffffffc, {2, 31}},  {0xfffffffe, {1, 31}}};
 
 ASMParser::ASMParser(pair<unsigned, unsigned> lineno,
                      vector<pair<Symbol *, vector<IR *>>> &funcIRs,
@@ -610,9 +455,9 @@ void ASMParser::initFrame() {
 }
 
 bool ASMParser::isByteShiftImm(unsigned imm) {
-  unsigned mask = 0xff;
+  unsigned mask = 0xffffff;
   for (int i = 0; i < 16; i++) {
-    if (!(imm & (~mask)))
+    if (!(imm & mask))
       return true;
     mask = (mask << 2) | (mask >> 30);
   }
@@ -700,16 +545,11 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
                  new ASMItem(ASMItem::LSL, num2power2Map[val].second)}));
   else if (num2rotateMap.find(val) != num2rotateMap.end() &&
-           (val & 0x80000001) == 0x80000001)
+           !num2rotateMap[val].first)
     asms.push_back(
         new ASM(ASM::RSB,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
-                 new ASMItem(ASMItem::LSL, num2rotateMap[val].second + 2)}));
-  else if (num2rotateMap.find(val) != num2rotateMap.end() && (val & 0x3) == 0x1)
-    asms.push_back(
-        new ASM(ASM::SUB,
-                {new ASMItem(target), new ASMItem(source), new ASMItem(source),
-                 new ASMItem(ASMItem::LSL, num2rotateMap[val].first)}));
+                 new ASMItem(ASMItem::LSL, num2rotateMap[val].second + 1)}));
   else if (num2power2Map.find(val) != num2power2Map.end()) {
     asms.push_back(
         new ASM(ASM::ADD,
@@ -722,12 +562,10 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
     asms.push_back(
         new ASM(ASM::RSB,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
-                 new ASMItem(ASMItem::LSL, (num2rotateMap[val].second -
-                                            num2rotateMap[val].first + 33) %
-                                               32)}));
-    asms.push_back(
-        new ASM(ASM::ROR, {new ASMItem(target), new ASMItem(target),
-                           new ASMItem(32 - num2rotateMap[val].first)}));
+                 new ASMItem(ASMItem::LSL, num2rotateMap[val].second -
+                                               num2rotateMap[val].first + 1)}));
+    asms.push_back(new ASM(ASM::LSL, {new ASMItem(target), new ASMItem(target),
+                                      new ASMItem(num2rotateMap[val].first)}));
   } else {
     loadImmToReg(asms, target, (unsigned)val);
     asms.push_back(new ASM(ASM::MUL, {new ASMItem(target), new ASMItem(source),
@@ -931,15 +769,15 @@ void ASMParser::parseCall(vector<ASM *> &asms, IR *ir) {
         iCnt++;
         continue;
       }
-      loadFromSP(asms, Reg::A1, ir->items[i]->iVal);
+      loadImmToReg(asms, Reg::A1, (unsigned)ir->items[i]->iVal);
       storeFromSP(asms, Reg::A1, offset);
     } else if (ir->items[i]->type == IRItem::FLOAT) {
-      if (iCnt < 4) {
-        iCnt++;
+      if (fCnt < 16) {
+        fCnt++;
         continue;
       }
-      loadFromSP(asms, Reg::S0, ir->items[i]->fVal);
-      storeFromSP(asms, Reg::S0, offset);
+      loadImmToReg(asms, Reg::A1, (unsigned)ir->items[i]->iVal);
+      storeFromSP(asms, Reg::A1, offset);
     }
     offset += 4;
   }
@@ -969,7 +807,7 @@ void ASMParser::parseCall(vector<ASM *> &asms, IR *ir) {
         loadImmToReg(asms, aIRegs[iCnt++], (unsigned)ir->items[i]->iVal);
     } else if (ir->items[i]->type == IRItem::FLOAT) {
       if (fCnt < 16)
-        loadFromSP(asms, aFRegs[fCnt++], ir->items[i]->fVal);
+        loadImmToReg(asms, aFRegs[fCnt++], ir->items[i]->fVal);
     }
   }
   if (!ir->items[0]->symbol->name.compare("_sysy_starttime"))
@@ -1189,7 +1027,7 @@ void ASMParser::parseDivItempInt(vector<ASM *> &asms, IR *ir) {
       asms.push_back(new ASM(
           ASM::SMMLA,
           {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(Reg::A2),
+           new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
            new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal])}));
     if (shift)
@@ -1210,7 +1048,8 @@ void ASMParser::parseDivItempInt(vector<ASM *> &asms, IR *ir) {
           new ASM(ASM::ADD,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(Reg::A2), new ASMItem(ASMItem::LSR, 31)}));
+                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(ASMItem::LSR, 31)}));
     else if (!flag && magic <= 0x7fffffff)
       asms.push_back(
           new ASM(ASM::RSB,
@@ -1418,17 +1257,16 @@ void ASMParser::parseLCmpItempInt(vector<ASM *> &asms, IR *ir) {
   bool flag = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end();
   if (flag)
     loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-  if (isByteShiftImm(ir->items[2]->iVal)) {
-    loadImmToReg(asms, Reg::A2, (unsigned)ir->items[2]->iVal);
+  if (isByteShiftImm(ir->items[2]->iVal))
     asms.push_back(new ASM(
         ASM::CMP, {new ASMItem(flag ? Reg::A1 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(ir->items[2]->iVal)}));
-  } else if (isByteShiftImm(-ir->items[2]->iVal)) {
+  else if (isByteShiftImm(-ir->items[2]->iVal))
     asms.push_back(new ASM(
         ASM::CMN, {new ASMItem(flag ? Reg::A1 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(-ir->items[2]->iVal)}));
-  } else if (canBeLoadInSingleInstruction(ir->items[2]->iVal) ||
-             canBeLoadInSingleInstruction(-ir->items[2]->iVal)) {
+  else if (canBeLoadInSingleInstruction(ir->items[2]->iVal) ||
+           canBeLoadInSingleInstruction(-ir->items[2]->iVal)) {
     loadImmToReg(asms, Reg::A2, (unsigned)ir->items[2]->iVal);
     asms.push_back(new ASM(
         ASM::CMP, {new ASMItem(flag ? Reg::A1 : itemp2Reg[ir->items[1]->iVal]),
@@ -1596,7 +1434,7 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
       asms.push_back(new ASM(
           ASM::SMMLA,
           {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(Reg::A2),
+           new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
            new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal])}));
     if (shift)
@@ -1617,24 +1455,26 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
           new ASM(ASM::ADD,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(Reg::A2), new ASMItem(ASMItem::LSR, 31)}));
+                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(ASMItem::LSR, 31)}));
     if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end() &&
         (ir->items[2]->iVal & 0x1) == 0x1)
       asms.push_back(
           new ASM(ASM::ADD,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(ASMItem::LSL,
                                num2power2Map[ir->items[2]->iVal].second)}));
     else if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end()) {
       asms.push_back(
           new ASM(ASM::ADD,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(ASMItem::LSL,
-                               num2power2Map[ir->items[2]->iVal].second)}));
+                               num2power2Map[ir->items[2]->iVal].second -
+                                   num2power2Map[ir->items[2]->iVal].first)}));
       asms.push_back(
           new ASM(ASM::LSL,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
@@ -1644,8 +1484,8 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
       asms.push_back(new ASM(
           ASM::RSB,
           {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-           new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(ASMItem::LSL,
                        num2rotateMap[ir->items[2]->iVal].second -
                            num2rotateMap[ir->items[2]->iVal].first + 1)}));
@@ -1659,7 +1499,7 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
       asms.push_back(
           new ASM(ASM::MUL,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(Reg::A3)}));
     }
     asms.push_back(new ASM(
@@ -1960,24 +1800,20 @@ void ASMParser::parseMovItempSymbol(vector<ASM *> &asms, IR *ir) {
     break;
   }
   for (pair<unsigned, unsigned> temp : temps) {
-    if (itemp2Reg.find(temp.first) == itemp2Reg.end()) {
+    bool flag3 = itemp2Reg.find(temp.first) == itemp2Reg.end();
+    if (flag3)
       loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
+    if (num2powerMap.find(temp.second) == num2powerMap.end()) {
       loadImmToReg(asms, Reg::A4, temp.second);
-      asms.push_back(
-          new ASM(ASM::MUL, {new ASMItem(Reg::A3), new ASMItem(Reg::A3),
-                             new ASMItem(Reg::A4)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    } else {
-      loadImmToReg(asms, Reg::A3, temp.second);
-      asms.push_back(new ASM(ASM::MUL, {new ASMItem(Reg::A3),
-                                        new ASMItem(itemp2Reg[temp.first]),
-                                        new ASMItem(Reg::A3)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    }
+      asms.push_back(new ASM(
+          ASM::MLA, {new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(Reg::A4), new ASMItem(Reg::A2)}));
+    } else
+      asms.push_back(new ASM(
+          ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
   }
   if (offset) {
     loadImmToReg(asms, Reg::A3, offset);
@@ -2292,14 +2128,20 @@ void ASMParser::parseMovSymbolItemp(vector<ASM *> &asms, IR *ir) {
     break;
   }
   for (pair<unsigned, unsigned> temp : temps) {
-    if (itemp2Reg.find(temp.first) == itemp2Reg.end()) {
-      loadFromSP(asms, Reg::A4, spillOffsets[temp.first]);
-      mulRegValue(asms, Reg::A3, Reg::A4, temp.second);
+    bool flag3 = itemp2Reg.find(temp.first) == itemp2Reg.end();
+    if (flag3)
+      loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
+    if (num2powerMap.find(temp.second) == num2powerMap.end()) {
+      loadImmToReg(asms, Reg::A4, temp.second);
+      asms.push_back(new ASM(
+          ASM::MLA, {new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(Reg::A4), new ASMItem(Reg::A2)}));
     } else
-      mulRegValue(asms, Reg::A3, itemp2Reg[temp.first], temp.second);
-    asms.push_back(
-        new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                           new ASMItem(Reg::A3)}));
+      asms.push_back(new ASM(
+          ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
   }
   if (offset) {
     loadImmToReg(asms, Reg::A3, offset);
@@ -2485,21 +2327,13 @@ void ASMParser::parseMulItempInt(vector<ASM *> &asms, IR *ir) {
          new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
          new ASMItem(ASMItem::LSL, num2power2Map[ir->items[2]->iVal].second)}));
   else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end() &&
-           (ir->items[2]->iVal & 0x80000001) == 0x80000001)
+           !num2rotateMap[ir->items[2]->iVal].first)
     asms.push_back(new ASM(
         ASM::RSB, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(ASMItem::LSL,
-                               num2rotateMap[ir->items[2]->iVal].second + 2)}));
-  else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end() &&
-           (ir->items[2]->iVal & 0x3) == 0x1)
-    asms.push_back(new ASM(
-        ASM::SUB,
-        {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::LSL, num2rotateMap[ir->items[2]->iVal].first)}));
+                               num2rotateMap[ir->items[2]->iVal].second + 1)}));
   else if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end()) {
     asms.push_back(new ASM(
         ASM::ADD, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
@@ -2514,17 +2348,17 @@ void ASMParser::parseMulItempInt(vector<ASM *> &asms, IR *ir) {
                    new ASMItem(num2power2Map[ir->items[2]->iVal].first)}));
   } else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end()) {
     asms.push_back(new ASM(
-        ASM::RSB, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(ASMItem::LSL,
-                               (num2rotateMap[ir->items[2]->iVal].second -
-                                num2rotateMap[ir->items[2]->iVal].first + 33) %
-                                   32)}));
+        ASM::RSB,
+        {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+         new ASMItem(ASMItem::LSL, num2rotateMap[ir->items[2]->iVal].second -
+                                       num2rotateMap[ir->items[2]->iVal].first +
+                                       1)}));
     asms.push_back(new ASM(
-        ASM::ROR, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+        ASM::LSL, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(32 - num2rotateMap[ir->items[2]->iVal].first)}));
+                   new ASMItem(num2rotateMap[ir->items[2]->iVal].first)}));
   } else {
     loadImmToReg(asms, Reg::A3, (unsigned)ir->items[2]->iVal);
     asms.push_back(new ASM(
@@ -2655,7 +2489,7 @@ void ASMParser::parseSubIntItemp(vector<ASM *> &asms, IR *ir) {
     asms.push_back(new ASM(
         ASM::RSB, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag3 ? Reg::A3 : itemp2Reg[ir->items[2]->iVal]),
-                   new ASMItem(ir->items[2]->iVal)}));
+                   new ASMItem(ir->items[1]->iVal)}));
   } else if (canBeLoadInSingleInstruction(ir->items[1]->iVal)) {
     loadImmToReg(asms, Reg::A2, (unsigned)ir->items[1]->iVal);
     asms.push_back(new ASM(

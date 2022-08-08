@@ -19,10 +19,12 @@ private:
   std::vector<IR *> toRecycleIRs;
 
   void optimize();
+  void passInBlock(unsigned, unsigned);
   void removeDeadCode();
   void removeDuplicatedJumps();
   void removeDuplicatedLabels();
   void removeDuplicatedSymbols();
+  void simplePass();
   void singleVar2Reg();
 
 public:

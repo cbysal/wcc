@@ -167,6 +167,10 @@ string ASM::toString() {
       break;
     }
     break;
+  case MLA:
+    s += "mla " + regTypeStr[items[0]->reg] + ", " + regTypeStr[items[1]->reg] +
+         ", " + regTypeStr[items[2]->reg] + ", " + regTypeStr[items[3]->reg];
+    break;
   case MOV:
     s += "mov";
     if (cond != ASM::AL)
@@ -282,7 +286,7 @@ string ASM::toString() {
         s += ", asr #" + to_string(items[3]->iVal);
         break;
       case ASMItem::LSL:
-        s += ", LSL #" + to_string(items[3]->iVal);
+        s += ", lsl #" + to_string(items[3]->iVal);
         break;
       default:
         break;
@@ -328,6 +332,17 @@ string ASM::toString() {
     default:
       break;
     }
+    if (items.size() >= 4)
+      switch (items[3]->type) {
+      case ASMItem::ASR:
+        s += ", asr #" + to_string(items[3]->iVal);
+        break;
+      case ASMItem::LSL:
+        s += ", lsl #" + to_string(items[3]->iVal);
+        break;
+      default:
+        break;
+      }
     break;
   case TAG:
     s += ".word " + items[0]->sVal + "-l" + to_string(items[1]->iVal) + "-8";

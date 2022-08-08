@@ -52,6 +52,7 @@ void IROptimizer::optimize() {
   removeDeadCode();
   singleVar2Reg();
   removeDeadCode();
+  // simplePass();
   removeDuplicatedJumps();
   removeDuplicatedLabels();
   removeDuplicatedSymbols();
@@ -231,6 +232,57 @@ void IROptimizer::removeDuplicatedSymbols() {
        it != localVars.end(); it++)
     it->second = vector<Symbol *>(newLocalVars[it->first].begin(),
                                   newLocalVars[it->first].end());
+}
+
+void IROptimizer::simplePass() {
+  for (pair<Symbol *, vector<IR *>> &func : funcs) {
+    unsigned left = 0, right = 0;
+    vector<IR *> &irs = func.second;
+    vector<IR *> newIRs;
+    while (right < irs.size()) {
+      while (right < irs.size()) {
+        if (right + 1 < irs.size() && irs[right + 1]->type == IR::LABEL)
+          break;
+        if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
+            irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
+            irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
+            irs[right]->type == IR::GOTO)
+          break;
+        right++;
+      }
+      if (right == irs.size())
+        right--;
+      unordered_map<unsigned, unsigned> passMap;
+      unordered_map<unsigned, unsigned> defCounter;
+      for (unsigned i = left; i <= right; i++) {
+        if (irs[i]->items.size() == 2 &&
+            irs[i]->items[0]->type == IRItem::ITEMP &&
+            irs[i]->items[1]->type == IRItem::INT) {
+          defCounter[irs[i]->items[0]->iVal]++;
+          passMap[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+        }
+      }
+      unordered_map<unsigned, unsigned> temp2Int;
+      for (pair<unsigned, unsigned> pass : passMap)
+        if (defCounter[pass.first] == 1)
+          temp2Int.insert(pass);
+      for (unsigned i = left; i <= right; i++) {
+        if (!irs[i]->items.empty() && irs[i]->items[0]->type == IRItem::ITEMP &&
+            temp2Int.find(irs[i]->items[0]->iVal) != temp2Int.end())
+          continue;
+        for (IRItem *item : irs[i]->items)
+          if (item->type == IRItem::ITEMP &&
+              temp2Int.find(item->iVal) != temp2Int.end()) {
+            item->type = IRItem::INT;
+            item->iVal = temp2Int[item->iVal];
+          }
+        newIRs.push_back(irs[i]);
+      }
+      right++;
+      left = right;
+    }
+    irs = newIRs;
+  }
 }
 
 void IROptimizer::singleVar2Reg() {
