@@ -28,7 +28,6 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::LABEL, "LABEL"},
     {IR::LE, "LE"},
     {IR::LT, "LT"},
-    {IR::MEMSET_ZERO, "MEMSET_ZERO"},
     {IR::MOD, "MOD"},
     {IR::MOV, "MOV"},
     {IR::MUL, "MUL"},

@@ -41,7 +41,6 @@ public:
     L_NOT_EXP,
     L_OR_EXP,
     L_VAL,
-    MEMSET_ZERO,
     MOD_EXP,
     MUL_EXP,
     NE_EXP,
