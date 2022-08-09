@@ -10,13 +10,13 @@
 class ASMOptimizer {
 private:
   bool isProcessed;
-  std::vector<std::pair<Symbol *, std::vector<ASM *>>> funcASMs;
+  std::unordered_map<Symbol *, std::vector<ASM *>> funcASMs;
 
 public:
-  ASMOptimizer(const std::vector<std::pair<Symbol *, std::vector<ASM *>>> &);
+  ASMOptimizer(const std::unordered_map<Symbol *, std::vector<ASM *>> &);
   ~ASMOptimizer();
 
-  std::vector<std::pair<Symbol *, std::vector<ASM *>>> getFuncASMs();
+  std::unordered_map<Symbol *, std::vector<ASM *>> getFuncASMs();
   void optimize();
 };
 

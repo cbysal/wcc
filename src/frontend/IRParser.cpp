@@ -12,8 +12,9 @@ IRParser::IRParser(AST *root, vector<Symbol *> &symbols) {
 }
 
 IRParser::~IRParser() {
-  for (const pair<Symbol *, vector<IR *>> &func : funcs)
-    for (IR *ir : func.second)
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
+       it != funcs.end(); it++)
+    for (IR *ir : it->second)
       delete ir;
 }
 
@@ -777,7 +778,7 @@ void IRParser::parseRoot(AST *root) {
       consts.push_back(node->symbol);
       break;
     case AST::FUNC_DEF:
-      funcs.emplace_back(node->symbol, parseFuncDef(node, node->symbol));
+      funcs[node->symbol] = parseFuncDef(node, node->symbol);
       break;
     case AST::GLOBAL_VAR_DEF:
       globalVars.push_back(node->symbol);
@@ -826,7 +827,7 @@ unordered_map<Symbol *, vector<Symbol *>> IRParser::getLocalVars() {
   return localVars;
 }
 
-vector<pair<Symbol *, vector<IR *>>> IRParser::getFuncs() {
+unordered_map<Symbol *, vector<IR *>> IRParser::getFuncs() {
   if (!isProcessed)
     parseRoot(root);
   return funcs;

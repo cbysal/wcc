@@ -7,7 +7,7 @@ using namespace std;
 SSAOptimizer::SSAOptimizer(
     const vector<Symbol *> &consts, const vector<Symbol *> &globalVars,
     const unordered_map<Symbol *, vector<Symbol *>> &localVars,
-    const vector<pair<Symbol *, vector<IR *>>> &funcs, unsigned tempId) {
+    const unordered_map<Symbol *, vector<IR *>> &funcs, unsigned tempId) {
   this->isProcessed = false;
   this->consts = consts;
   this->globalVars = globalVars;
@@ -29,7 +29,7 @@ vector<Symbol *> SSAOptimizer::getConsts() {
   return consts;
 }
 
-vector<pair<Symbol *, vector<IR *>>> SSAOptimizer::getFuncs() {
+unordered_map<Symbol *, vector<IR *>> SSAOptimizer::getFuncs() {
   if (!isProcessed)
     optimize();
   return funcs;
@@ -41,8 +41,7 @@ vector<Symbol *> SSAOptimizer::getGlobalVars() {
   return globalVars;
 }
 
-unordered_map<Symbol *, vector<Symbol *>>
-SSAOptimizer::getLocalVars() {
+unordered_map<Symbol *, vector<Symbol *>> SSAOptimizer::getLocalVars() {
   if (!isProcessed)
     optimize();
   return localVars;

@@ -340,7 +340,7 @@ static unordered_map<unsigned, pair<unsigned, unsigned>> num2rotateMap = {
     {0xfffffffc, {2, 31}},  {0xfffffffe, {1, 31}}};
 
 ASMParser::ASMParser(pair<unsigned, unsigned> lineno,
-                     vector<pair<Symbol *, vector<IR *>>> &funcIRs,
+                     unordered_map<Symbol *, vector<IR *>> &funcIRs,
                      vector<Symbol *> &consts, vector<Symbol *> &globalVars,
                      unordered_map<Symbol *, vector<Symbol *>> &localVars) {
   this->isProcessed = false;
@@ -354,8 +354,9 @@ ASMParser::ASMParser(pair<unsigned, unsigned> lineno,
 }
 
 ASMParser::~ASMParser() {
-  for (const pair<Symbol *, vector<ASM *>> &funcASM : funcASMs)
-    for (ASM *a : funcASM.second)
+  for (unordered_map<Symbol *, vector<ASM *>>::iterator it = funcASMs.begin();
+       it != funcASMs.end(); it++)
+    for (ASM *a : it->second)
       delete a;
 }
 
@@ -385,7 +386,7 @@ bool ASMParser::canBeLoadInSingleInstruction(unsigned imm) {
   return false;
 }
 
-vector<pair<Symbol *, vector<ASM *>>> ASMParser::getFuncASMs() {
+unordered_map<Symbol *, vector<ASM *>> ASMParser::getFuncASMs() {
   if (!isProcessed)
     parse();
   return funcASMs;
@@ -576,10 +577,9 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
 void ASMParser::parse() {
   isProcessed = true;
   preProcess();
-  for (pair<Symbol *, vector<IR *>> &funcIR : funcIRs) {
-    vector<ASM *> asms = parseFunc(funcIR.first, funcIR.second);
-    funcASMs.emplace_back(funcIR.first, asms);
-  }
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++)
+    funcASMs[it->first] = parseFunc(it->first, it->second);
 }
 
 void ASMParser::parseAdd(vector<ASM *> &asms, IR *ir) {
@@ -2593,10 +2593,11 @@ void ASMParser::preProcess() {
   for (Symbol *symbol : globalVars)
     symbol->name = "var" + to_string(id++);
   id = 0;
-  for (pair<Symbol *, vector<IR *>> &funcIR : funcIRs) {
-    if (funcIR.first->name.compare("main"))
-      funcIR.first->name = "f" + to_string(id++);
-    for (IR *ir : funcIR.second)
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    if (it->first->name.compare("main"))
+      it->first->name = "f" + to_string(id++);
+    for (IR *ir : it->second)
       if (ir->type == IR::LABEL)
         irLabels[ir] = labelId++;
   }

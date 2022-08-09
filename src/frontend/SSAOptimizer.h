@@ -14,7 +14,7 @@ private:
   std::vector<Symbol *> consts;
   std::vector<Symbol *> globalVars;
   std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
+  std::unordered_map<Symbol *, std::vector<IR *>> funcs;
   std::vector<IR *> toRecycleIRs;
 
   void optimize();
@@ -22,12 +22,12 @@ private:
 public:
   SSAOptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
                const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
-               const std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
+               const std::unordered_map<Symbol *, std::vector<IR *>> &,
                unsigned);
   ~SSAOptimizer();
 
   std::vector<Symbol *> getConsts();
-  std::vector<std::pair<Symbol *, std::vector<IR *>>> getFuncs();
+  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
   std::vector<Symbol *> getGlobalVars();
   std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
   unsigned getTempId();
@@ -44,8 +44,6 @@ public:
 
     graph work(graph &);
   } domT;
-
-  
 };
 
 #endif

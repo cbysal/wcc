@@ -17,7 +17,7 @@ private:
   std::vector<Symbol *> consts;
   std::vector<Symbol *> globalVars;
   std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcs;
+  std::unordered_map<Symbol *, std::vector<IR *>> funcs;
   unsigned tempId;
   IR *funcEnd;
 
@@ -45,7 +45,7 @@ public:
   std::vector<Symbol *> getConsts();
   std::vector<Symbol *> getGlobalVars();
   std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
-  std::vector<std::pair<Symbol *, std::vector<IR *>>> getFuncs();
+  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
   unsigned getTempId();
 
   IRParser(AST *, std::vector<Symbol *> &);

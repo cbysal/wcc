@@ -3,14 +3,14 @@
 using namespace std;
 
 ASMOptimizer::ASMOptimizer(
-    const vector<pair<Symbol *, vector<ASM *>>> &funcASMs) {
+    const unordered_map<Symbol *, vector<ASM *>> &funcASMs) {
   this->isProcessed = false;
   this->funcASMs = funcASMs;
 }
 
 ASMOptimizer::~ASMOptimizer() {}
 
-vector<pair<Symbol *, vector<ASM *>>> ASMOptimizer::getFuncASMs() {
+unordered_map<Symbol *, vector<ASM *>> ASMOptimizer::getFuncASMs() {
   if (!isProcessed)
     optimize();
   return funcASMs;

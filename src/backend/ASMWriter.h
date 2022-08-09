@@ -14,12 +14,12 @@ private:
   std::string asmFile;
   std::vector<Symbol *> consts;
   std::vector<Symbol *> globalVars;
-  std::vector<std::pair<Symbol *, std::vector<ASM *>>> funcASMs;
+  std::unordered_map<Symbol *, std::vector<ASM *>> funcASMs;
 
 public:
   ASMWriter(const std::string &, const std::vector<Symbol *> &,
             const std::vector<Symbol *> &,
-            const std::vector<std::pair<Symbol *, std::vector<ASM *>>> &);
+            const std::unordered_map<Symbol *, std::vector<ASM *>> &);
   ~ASMWriter();
 
   void write();

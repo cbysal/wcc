@@ -6,7 +6,7 @@ using namespace std;
 
 ASMWriter::ASMWriter(const string &asmFile, const vector<Symbol *> &consts,
                      const vector<Symbol *> &globalVars,
-                     const vector<pair<Symbol *, vector<ASM *>>> &funcASMs) {
+                     const unordered_map<Symbol *, vector<ASM *>> &funcASMs) {
   this->isProcessed = false;
   this->asmFile = asmFile;
   this->consts = consts;
@@ -77,11 +77,14 @@ void ASMWriter::write() {
     }
   }
   fprintf(file, "\t.text\n");
-  for (pair<Symbol *, vector<ASM *>> &funcASM : funcASMs) {
-    fprintf(file, "\t.global %s\n", funcASM.first->name.data());
-    fprintf(file, "%s:\n", funcASM.first->name.data());
-    for (unsigned i = 0; i < funcASM.second.size(); i++)
-      fprintf(file, "%s\n", funcASM.second[i]->toString().data());
+  for (unordered_map<Symbol *, vector<ASM *>>::iterator it = funcASMs.begin();
+       it != funcASMs.end(); it++) {
+    Symbol *func = it->first;
+    vector<ASM *> &asms = it->second;
+    fprintf(file, "\t.global %s\n", func->name.data());
+    fprintf(file, "%s:\n", func->name.data());
+    for (unsigned i = 0; i < asms.size(); i++)
+      fprintf(file, "%s\n", asms[i]->toString().data());
   }
   fprintf(file, "\t.section .note.GNU-stack,\"\",%%progbits\n");
   fclose(file);

@@ -30,9 +30,9 @@ private:
   std::vector<Symbol *> consts;
   std::vector<Symbol *> globalVars;
   std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::vector<std::pair<Symbol *, std::vector<IR *>>> funcIRs;
+  std::unordered_map<Symbol *, std::vector<IR *>> funcIRs;
   std::unordered_map<IR *, unsigned> irLabels;
-  std::vector<std::pair<Symbol *, std::vector<ASM *>>> funcASMs;
+  std::unordered_map<Symbol *, std::vector<ASM *>> funcASMs;
   std::vector<unsigned> usedRegNum;
   unsigned savedRegs;
   unsigned frameOffset;
@@ -127,10 +127,10 @@ private:
   void switchLCmpLogic(IR *);
 
 public:
-  std::vector<std::pair<Symbol *, std::vector<ASM *>>> getFuncASMs();
+  std::unordered_map<Symbol *, std::vector<ASM *>> getFuncASMs();
 
   ASMParser(std::pair<unsigned, unsigned>,
-            std::vector<std::pair<Symbol *, std::vector<IR *>>> &,
+            std::unordered_map<Symbol *, std::vector<IR *>> &,
             std::vector<Symbol *> &, std::vector<Symbol *> &,
             std::unordered_map<Symbol *, std::vector<Symbol *>> &);
   ~ASMParser();

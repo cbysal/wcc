@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     vector<Symbol *> globalVars = irParser->getGlobalVars();
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
-    vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
         new IROptimizer(consts, globalVars, localVars, funcs, tempId);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
-    vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+    unordered_map<Symbol *, vector<ASM *>> funcASMs = asmParser->getFuncASMs();
     ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
     funcASMs = asmOptimizer->getFuncASMs();
     ASMWriter *asmWriter = new ASMWriter(target, consts, globalVars, funcASMs);
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     vector<Symbol *> globalVars = irParser->getGlobalVars();
     unordered_map<Symbol *, vector<Symbol *>> localVars =
         irParser->getLocalVars();
-    vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+    unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
     IROptimizer *irOptimizer =
         new IROptimizer(consts, globalVars, localVars, funcs, tempId);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
-    vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+    unordered_map<Symbol *, vector<ASM *>> funcASMs = asmParser->getFuncASMs();
     ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
     funcASMs = asmOptimizer->getFuncASMs();
     ASMWriter *asmWriter =
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
       vector<Symbol *> globalVars = irParser->getGlobalVars();
       unordered_map<Symbol *, vector<Symbol *>> localVars =
           irParser->getLocalVars();
-      vector<pair<Symbol *, vector<IR *>>> funcs = irParser->getFuncs();
+      unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
       unsigned tempId = irParser->getTempId();
       IROptimizer *irOptimizer =
           new IROptimizer(consts, globalVars, localVars, funcs, tempId);
@@ -174,7 +174,8 @@ int main(int argc, char *argv[]) {
       tempId = irOptimizer->getTempId();
       ASMParser *asmParser =
           new ASMParser(lineno, funcs, consts, globalVars, localVars);
-      vector<pair<Symbol *, vector<ASM *>>> funcASMs = asmParser->getFuncASMs();
+      unordered_map<Symbol *, vector<ASM *>> funcASMs =
+          asmParser->getFuncASMs();
       ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
       funcASMs = asmOptimizer->getFuncASMs();
       ASMWriter *asmWriter =
