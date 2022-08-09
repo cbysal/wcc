@@ -1,3 +1,4 @@
+#include <queue>
 #include <unordered_set>
 
 #include "IROptimizer.h"
@@ -59,84 +60,185 @@ void IROptimizer::optimize() {
 }
 
 void IROptimizer::removeDeadCode() {
+  unordered_set<Symbol *> todoFuncs;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
-       it != funcs.end(); it++) {
-    Symbol *func = it->first;
-    vector<IR *> &irs = it->second;
-    unordered_set<int> usedTemps;
-    unordered_set<Symbol *> usedSymbols;
-    unordered_set<IR *> jumpIRs;
-    for (Symbol *symbol : func->params)
-      usedSymbols.insert(symbol);
-    for (IR *ir : irs) {
-      if (ir->type == IR::BEQ || ir->type == IR::BGE || ir->type == IR::BGT ||
-          ir->type == IR::BLE || ir->type == IR::BLT || ir->type == IR::BNE) {
-        jumpIRs.insert(ir->items[0]->ir);
-        if (ir->items[1]->type == IRItem::ITEMP ||
-            ir->items[1]->type == IRItem::FTEMP)
-          usedTemps.insert(ir->items[1]->iVal);
-        if (ir->items[2]->type == IRItem::ITEMP ||
-            ir->items[2]->type == IRItem::FTEMP)
-          usedTemps.insert(ir->items[2]->iVal);
-      }
-      if (ir->type == IR::GOTO)
-        jumpIRs.insert(ir->items[0]->ir);
-      if (ir->type == IR::CALL)
-        for (unsigned i = 1; i < ir->items.size(); i++)
-          usedTemps.insert(ir->items[i]->iVal);
-      if (ir->type == IR::MOV && ir->items[0]->type == IRItem::SYMBOL &&
-          ir->items[0]->symbol->symbolType == Symbol::GLOBAL_VAR)
-        usedSymbols.insert(ir->items[0]->symbol);
-      if (ir->type == IR::MOV && ir->items[1]->type == IRItem::SYMBOL &&
-          ir->items[1]->symbol->symbolType == Symbol::GLOBAL_VAR)
-        usedSymbols.insert(ir->items[1]->symbol);
-      if (ir->type == IR::MOV && ir->items[0]->type == IRItem::RETURN)
-        usedTemps.insert(ir->items[1]->iVal);
+       it != funcs.end(); it++)
+    if (!it->first->name.compare("main")) {
+      todoFuncs.insert(it->first);
+      break;
     }
-    unsigned size = 0;
-    while (size != usedTemps.size() + usedSymbols.size()) {
-      size = usedTemps.size() + usedSymbols.size();
-      for (IR *ir : irs)
-        for (IRItem *item : ir->items)
-          if ((item->type == IRItem::SYMBOL &&
-               usedSymbols.find(item->symbol) != usedSymbols.end()) ||
-              ((item->type == IRItem::ITEMP || item->type == IRItem::FTEMP) &&
-               usedTemps.find(item->iVal) != usedTemps.end())) {
-            for (IRItem *aItem : ir->items) {
-              if (aItem->type == IRItem::SYMBOL)
-                usedSymbols.insert(aItem->symbol);
-              if (aItem->type == IRItem::ITEMP || aItem->type == IRItem::FTEMP)
-                usedTemps.insert(aItem->iVal);
-            }
-            break;
-          }
-    }
-    vector<IR *> newIRs;
-    for (IR *ir : irs) {
-      if (jumpIRs.find(ir) != jumpIRs.end() || ir->type == IR::BEQ ||
-          ir->type == IR::BGE || ir->type == IR::BGT || ir->type == IR::BLE ||
-          ir->type == IR::BLT || ir->type == IR::BNE || ir->type == IR::CALL ||
-          ir->type == IR::GOTO || ir->type == IR::LABEL ||
-          ir->type == IR::MEMSET_ZERO) {
-        newIRs.push_back(ir);
+  unordered_set<unsigned> temps;
+  unordered_set<Symbol *> symbols;
+  unordered_map<Symbol *, unordered_set<unsigned>> symbol2Temp;
+  unordered_map<unsigned, unordered_set<Symbol *>> temp2Symbol;
+  unordered_map<unsigned, unordered_set<unsigned>> temp2Temp;
+  unsigned originSize;
+  do {
+    originSize = todoFuncs.size() + temps.size() + symbols.size();
+    for (Symbol *func : todoFuncs) {
+      if (funcs.find(func) == funcs.end())
         continue;
-      }
-      bool flag = false;
-      for (IRItem *item : ir->items)
-        if ((item->type == IRItem::SYMBOL &&
-             usedSymbols.find(item->symbol) != usedSymbols.end()) ||
-            ((item->type == IRItem::ITEMP || item->type == IRItem::FTEMP) &&
-             usedTemps.find(item->iVal) != usedTemps.end())) {
-          flag = true;
+      for (Symbol *param : func->params)
+        if (!param->dimensions.empty())
+          symbols.insert(param);
+      for (IR *ir : funcs[func]) {
+        if (ir->type == IR::BEQ || ir->type == IR::BGE || ir->type == IR::BGT ||
+            ir->type == IR::BLE || ir->type == IR::BLT || ir->type == IR::BNE) {
+          if (ir->items[1]->type == IRItem::FTEMP ||
+              ir->items[1]->type == IRItem::ITEMP)
+            temps.insert(ir->items[1]->iVal);
+          if (ir->items[2]->type == IRItem::FTEMP ||
+              ir->items[2]->type == IRItem::ITEMP)
+            temps.insert(ir->items[2]->iVal);
+        } else if (ir->type == IR::CALL) {
+          todoFuncs.insert(ir->items[0]->symbol);
+          for (unsigned i = 1; i < ir->items.size(); i++)
+            if (ir->items[i]->type == IRItem::FTEMP ||
+                ir->items[i]->type == IRItem::ITEMP)
+              temps.insert(ir->items[i]->iVal);
+        } else if (ir->type == IR::MOV &&
+                   ir->items[0]->type == IRItem::RETURN) {
+          if ((ir->items[1]->type == IRItem::FTEMP ||
+               ir->items[1]->type == IRItem::ITEMP))
+            temps.insert(ir->items[1]->iVal);
+          else if (ir->items[1]->type == IRItem::SYMBOL) {
+            symbols.insert(ir->items[1]->symbol);
+            for (unsigned i = 2; i < ir->items.size(); i++)
+              if ((ir->items[1]->type == IRItem::FTEMP ||
+                   ir->items[1]->type == IRItem::ITEMP))
+                temps.insert(ir->items[i]->iVal);
+          }
+        }
+        switch (ir->type) {
+        case IR::ADD:
+        case IR::DIV:
+        case IR::EQ:
+        case IR::GE:
+        case IR::GT:
+        case IR::LE:
+        case IR::LT:
+        case IR::MOD:
+        case IR::MUL:
+        case IR::NE:
+        case IR::SUB:
+          if (ir->items[1]->type == IRItem::FTEMP ||
+              ir->items[1]->type == IRItem::ITEMP)
+            temp2Temp[ir->items[0]->iVal].insert(ir->items[1]->iVal);
+          if (ir->items[2]->type == IRItem::FTEMP ||
+              ir->items[2]->type == IRItem::ITEMP)
+            temp2Temp[ir->items[0]->iVal].insert(ir->items[2]->iVal);
+          break;
+        case IR::F2I:
+        case IR::I2F:
+        case IR::L_NOT:
+        case IR::NEG:
+          temp2Temp[ir->items[0]->iVal].insert(ir->items[1]->iVal);
+          break;
+        case IR::MOV:
+          if (ir->items[0]->type == IRItem::FTEMP ||
+              ir->items[0]->type == IRItem::ITEMP) {
+            for (unsigned i = 1; i < ir->items.size(); i++) {
+              if (ir->items[i]->type == IRItem::FTEMP ||
+                  ir->items[i]->type == IRItem::ITEMP)
+                temp2Temp[ir->items[0]->iVal].insert(ir->items[i]->iVal);
+              else if (ir->items[i]->type == IRItem::SYMBOL)
+                temp2Symbol[ir->items[0]->iVal].insert(ir->items[i]->symbol);
+            }
+          } else if (ir->items[0]->type == IRItem::SYMBOL) {
+            for (unsigned i = 1; i < ir->items.size(); i++)
+              if (ir->items[i]->type == IRItem::FTEMP ||
+                  ir->items[i]->type == IRItem::ITEMP)
+                symbol2Temp[ir->items[0]->symbol].insert(ir->items[i]->iVal);
+          }
+          break;
+        default:
           break;
         }
-      if (flag)
-        newIRs.push_back(ir);
-      else
-        jumpIRs.find(ir);
+      }
+      queue<unsigned> toAddTemps;
+      for (unsigned temp : temps)
+        toAddTemps.push(temp);
+      queue<Symbol *> toAddSymbols;
+      for (Symbol *symbol : symbols)
+        toAddSymbols.push(symbol);
+      while (!toAddSymbols.empty() || !toAddTemps.empty()) {
+        while (!toAddSymbols.empty()) {
+          Symbol *symbol = toAddSymbols.front();
+          toAddSymbols.pop();
+          if (symbol2Temp.find(symbol) != symbol2Temp.end())
+            for (unsigned newTemp : symbol2Temp[symbol])
+              if (temps.find(newTemp) == temps.end()) {
+                temps.insert(newTemp);
+                toAddTemps.push(newTemp);
+              }
+        }
+        while (!toAddTemps.empty()) {
+          unsigned temp = toAddTemps.front();
+          toAddTemps.pop();
+          if (temp2Symbol.find(temp) != temp2Symbol.end())
+            for (Symbol *newSymbol : temp2Symbol[temp])
+              if (symbols.find(newSymbol) == symbols.end()) {
+                symbols.insert(newSymbol);
+                toAddSymbols.push(newSymbol);
+              }
+          if (temp2Temp.find(temp) != temp2Temp.end())
+            for (unsigned newTemp : temp2Temp[temp])
+              if (temps.find(newTemp) == temps.end()) {
+                temps.insert(newTemp);
+                toAddTemps.push(newTemp);
+              }
+        }
+      }
     }
-    irs = newIRs;
+  } while (originSize < todoFuncs.size() + temps.size() + symbols.size());
+  unordered_map<Symbol *, vector<Symbol *>> newLocalVars;
+  unordered_map<Symbol *, vector<IR *>> newFuncs;
+  for (Symbol *func : todoFuncs) {
+    if (funcs.find(func) == funcs.end())
+      continue;
+    vector<IR *> newIRs;
+    for (IR *ir : funcs[func]) {
+      if (ir->type == IR::CALL || ir->type == IR::GOTO || ir->type == IR::LABEL)
+        newIRs.push_back(ir);
+      else {
+        bool flag = true;
+        for (IRItem *item : ir->items)
+          if (((item->type == IRItem::FTEMP || item->type == IRItem::ITEMP) &&
+               temps.find(item->iVal) == temps.end()) ||
+              (item->type == IRItem::SYMBOL &&
+               symbols.find(item->symbol) == symbols.end())) {
+            flag = false;
+            break;
+          }
+        if (flag)
+          newIRs.push_back(ir);
+      }
+    }
+    newFuncs[func] = newIRs;
+    vector<Symbol *> newLocals;
+    for (Symbol *symbol : symbols)
+      if (symbol->symbolType == Symbol::LOCAL_VAR)
+        newLocals.push_back(symbol);
+    newLocalVars[func] = newLocals;
   }
+  vector<Symbol *> newConsts;
+  vector<Symbol *> newGlobalVars;
+  for (Symbol *symbol : symbols) {
+    switch (symbol->symbolType) {
+    case Symbol::CONST:
+      newConsts.push_back(symbol);
+      break;
+    case Symbol::GLOBAL_VAR:
+      globalVars.push_back(symbol);
+      break;
+    default:
+      break;
+    }
+  }
+  funcs = newFuncs;
+  consts = newConsts;
+  globalVars = newGlobalVars;
+  localVars = newLocalVars;
 }
 
 void IROptimizer::removeDuplicatedJumps() {

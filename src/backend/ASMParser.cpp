@@ -182,7 +182,7 @@ static unordered_map<unsigned, pair<unsigned, unsigned>> num2power2Map = {
     {0x81000000, {24, 31}}, {0x82000000, {25, 31}}, {0x84000000, {26, 31}},
     {0x88000000, {27, 31}}, {0x90000000, {28, 31}}, {0xa0000000, {29, 31}},
     {0xc0000000, {30, 31}}};
-static unordered_map<unsigned, pair<unsigned, unsigned>> num2rotateMap = {
+static unordered_map<unsigned, pair<unsigned, unsigned>> num2lineMap = {
     {0x00000007, {0, 2}},   {0x0000000e, {1, 3}},   {0x0000000f, {0, 3}},
     {0x0000001c, {2, 4}},   {0x0000001e, {1, 4}},   {0x0000001f, {0, 4}},
     {0x00000038, {3, 5}},   {0x0000003c, {2, 5}},   {0x0000003e, {1, 5}},
@@ -545,12 +545,12 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
         new ASM(ASM::ADD,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
                  new ASMItem(ASMItem::LSL, num2power2Map[val].second)}));
-  else if (num2rotateMap.find(val) != num2rotateMap.end() &&
-           !num2rotateMap[val].first)
+  else if (num2lineMap.find(val) != num2lineMap.end() &&
+           !num2lineMap[val].first)
     asms.push_back(
         new ASM(ASM::RSB,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
-                 new ASMItem(ASMItem::LSL, num2rotateMap[val].second + 1)}));
+                 new ASMItem(ASMItem::LSL, num2lineMap[val].second + 1)}));
   else if (num2power2Map.find(val) != num2power2Map.end()) {
     asms.push_back(
         new ASM(ASM::ADD,
@@ -559,14 +559,14 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
                                                num2power2Map[val].first)}));
     asms.push_back(new ASM(ASM::LSL, {new ASMItem(target), new ASMItem(target),
                                       new ASMItem(num2power2Map[val].first)}));
-  } else if (num2rotateMap.find(val) != num2rotateMap.end()) {
+  } else if (num2lineMap.find(val) != num2lineMap.end()) {
     asms.push_back(
         new ASM(ASM::RSB,
                 {new ASMItem(target), new ASMItem(source), new ASMItem(source),
-                 new ASMItem(ASMItem::LSL, num2rotateMap[val].second -
-                                               num2rotateMap[val].first + 1)}));
+                 new ASMItem(ASMItem::LSL, num2lineMap[val].second -
+                                               num2lineMap[val].first + 1)}));
     asms.push_back(new ASM(ASM::LSL, {new ASMItem(target), new ASMItem(target),
-                                      new ASMItem(num2rotateMap[val].first)}));
+                                      new ASMItem(num2lineMap[val].first)}));
   } else {
     loadImmToReg(asms, target, (unsigned)val);
     asms.push_back(new ASM(ASM::MUL, {new ASMItem(target), new ASMItem(source),
@@ -993,18 +993,7 @@ void ASMParser::parseDivItempInt(vector<ASM *> &asms, IR *ir) {
     asms.push_back(new ASM(
         ASM::MOV, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(0)}));
-  else if (num2powerMap.find(abs(ir->items[2]->iVal)) != num2powerMap.end()) {
-    asms.push_back(new ASM(
-        ASM::ASR, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(num2powerMap[ir->items[2]->iVal])}));
-    if (ir->items[2]->iVal < 0)
-      asms.push_back(
-          new ASM(ASM::RSB,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(0)}));
-  } else {
+  else {
     unsigned div = ir->items[2]->iVal;
     bool flag = true;
     if (((int)div) < 0) {
@@ -1403,20 +1392,7 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
     asms.push_back(new ASM(
         ASM::MOV, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(0)}));
-  else if (num2powerMap.find(abs(ir->items[2]->iVal)) != num2powerMap.end() &&
-           num2powerMap[abs(ir->items[2]->iVal)] <= 8)
-    asms.push_back(new ASM(
-        ASM::AND, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(abs(ir->items[2]->iVal) - 1)}));
-  else if (num2powerMap.find(abs(ir->items[2]->iVal)) != num2powerMap.end() &&
-           num2powerMap[abs(ir->items[2]->iVal)] > 8) {
-    loadImmToReg(asms, Reg::A1, (unsigned)abs(ir->items[2]->iVal) - 1);
-    asms.push_back(new ASM(
-        ASM::AND, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-                   new ASMItem(Reg::A1)}));
-  } else {
+  else {
     unsigned div = abs(ir->items[2]->iVal);
     unsigned shift = 0;
     while (1ull << (shift + 32) <= (0x7fffffff - 0x80000000 % div) *
@@ -1480,20 +1456,20 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(num2power2Map[ir->items[2]->iVal].first)}));
-    } else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end()) {
+    } else if (num2lineMap.find(ir->items[2]->iVal) != num2lineMap.end()) {
       asms.push_back(new ASM(
           ASM::RSB,
           {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
            new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(ASMItem::LSL,
-                       num2rotateMap[ir->items[2]->iVal].second -
-                           num2rotateMap[ir->items[2]->iVal].first + 1)}));
+           new ASMItem(ASMItem::LSL, num2lineMap[ir->items[2]->iVal].second -
+                                         num2lineMap[ir->items[2]->iVal].first +
+                                         1)}));
       asms.push_back(
           new ASM(ASM::LSL,
                   {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(num2rotateMap[ir->items[2]->iVal].first)}));
+                   new ASMItem(num2lineMap[ir->items[2]->iVal].first)}));
     } else {
       loadImmToReg(asms, Reg::A3, (unsigned)ir->items[2]->iVal);
       asms.push_back(
@@ -2326,14 +2302,14 @@ void ASMParser::parseMulItempInt(vector<ASM *> &asms, IR *ir) {
          new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
          new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
          new ASMItem(ASMItem::LSL, num2power2Map[ir->items[2]->iVal].second)}));
-  else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end() &&
-           !num2rotateMap[ir->items[2]->iVal].first)
+  else if (num2lineMap.find(ir->items[2]->iVal) != num2lineMap.end() &&
+           !num2lineMap[ir->items[2]->iVal].first)
     asms.push_back(new ASM(
         ASM::RSB, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(ASMItem::LSL,
-                               num2rotateMap[ir->items[2]->iVal].second + 1)}));
+                               num2lineMap[ir->items[2]->iVal].second + 1)}));
   else if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end()) {
     asms.push_back(new ASM(
         ASM::ADD, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
@@ -2346,19 +2322,19 @@ void ASMParser::parseMulItempInt(vector<ASM *> &asms, IR *ir) {
         ASM::LSL, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(num2power2Map[ir->items[2]->iVal].first)}));
-  } else if (num2rotateMap.find(ir->items[2]->iVal) != num2rotateMap.end()) {
-    asms.push_back(new ASM(
-        ASM::RSB,
-        {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(ASMItem::LSL, num2rotateMap[ir->items[2]->iVal].second -
-                                       num2rotateMap[ir->items[2]->iVal].first +
-                                       1)}));
+  } else if (num2lineMap.find(ir->items[2]->iVal) != num2lineMap.end()) {
+    asms.push_back(
+        new ASM(ASM::RSB,
+                {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                 new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                 new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                 new ASMItem(ASMItem::LSL,
+                             num2lineMap[ir->items[2]->iVal].second -
+                                 num2lineMap[ir->items[2]->iVal].first + 1)}));
     asms.push_back(new ASM(
         ASM::LSL, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
                    new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(num2rotateMap[ir->items[2]->iVal].first)}));
+                   new ASMItem(num2lineMap[ir->items[2]->iVal].first)}));
   } else {
     loadImmToReg(asms, Reg::A3, (unsigned)ir->items[2]->iVal);
     asms.push_back(new ASM(
@@ -2587,20 +2563,23 @@ void ASMParser::popArgs(vector<ASM *> &asms) {
 }
 
 void ASMParser::preProcess() {
-  int id = 0;
-  for (Symbol *symbol : consts)
-    symbol->name = "var" + to_string(id++);
-  for (Symbol *symbol : globalVars)
-    symbol->name = "var" + to_string(id++);
-  id = 0;
+  if (!getenv("DRM")) {
+    int id = 0;
+    for (Symbol *symbol : consts)
+      symbol->name = "var" + to_string(id++);
+    for (Symbol *symbol : globalVars)
+      symbol->name = "var" + to_string(id++);
+    id = 0;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++)
+      if (it->first->name.compare("main"))
+        it->first->name = "f" + to_string(id++);
+  }
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
-       it != funcIRs.end(); it++) {
-    if (it->first->name.compare("main"))
-      it->first->name = "f" + to_string(id++);
+       it != funcIRs.end(); it++)
     for (IR *ir : it->second)
       if (ir->type == IR::LABEL)
         irLabels[ir] = labelId++;
-  }
 }
 
 void ASMParser::saveArgRegs(vector<ASM *> &asms, Symbol *func) {
