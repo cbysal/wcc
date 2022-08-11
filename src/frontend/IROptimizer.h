@@ -18,14 +18,17 @@ private:
   std::unordered_map<Symbol *, std::vector<IR *>> funcs;
   std::vector<IR *> toRecycleIRs;
 
+  void constPass();
   void optimize();
   void passInBlock(unsigned, unsigned);
   void removeDeadCode();
   void removeDuplicatedJumps();
   void removeDuplicatedLabels();
   void removeDuplicatedSymbols();
-  void simplePass();
   void singleVar2Reg();
+  void splitTemps();
+  void splitTempsNotStrict();
+  void standardize(std::vector<IR *> &);
 
 public:
   IROptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,

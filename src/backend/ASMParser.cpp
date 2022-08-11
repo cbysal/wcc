@@ -1199,7 +1199,7 @@ void ASMParser::parseLCmp(vector<ASM *> &asms, IR *ir) {
     parseLCmpFtempFtemp(asms, ir);
   else if (ir->items[1]->type == IRItem::FTEMP &&
            ir->items[2]->type == IRItem::FLOAT)
-    parseAddFtempFloat(asms, ir);
+    parseLCmpFtempFloat(asms, ir);
   else if (ir->items[1]->type == IRItem::FLOAT &&
            ir->items[2]->type == IRItem::FTEMP) {
     switchLCmpLogic(ir);
@@ -2633,40 +2633,40 @@ void ASMParser::storeFromSP(vector<ASM *> &asms, Reg::Type source,
 void ASMParser::switchLCmpLogic(IR *ir) {
   switch (ir->type) {
   case IR::BEQ:
-    ir->type = IR::BNE;
-    break;
-  case IR::BGE:
-    ir->type = IR::BLT;
-    break;
-  case IR::BGT:
-    ir->type = IR::BLE;
-    break;
-  case IR::BLE:
-    ir->type = IR::BGT;
-    break;
-  case IR::BLT:
-    ir->type = IR::BGE;
-    break;
-  case IR::BNE:
     ir->type = IR::BEQ;
     break;
+  case IR::BGE:
+    ir->type = IR::BLE;
+    break;
+  case IR::BGT:
+    ir->type = IR::BLT;
+    break;
+  case IR::BLE:
+    ir->type = IR::BGE;
+    break;
+  case IR::BLT:
+    ir->type = IR::BGT;
+    break;
+  case IR::BNE:
+    ir->type = IR::BNE;
+    break;
   case IR::EQ:
-    ir->type = IR::NE;
+    ir->type = IR::EQ;
     break;
   case IR::GE:
-    ir->type = IR::LT;
-    break;
-  case IR::GT:
     ir->type = IR::LE;
     break;
-  case IR::LE:
-    ir->type = IR::GT;
+  case IR::GT:
+    ir->type = IR::LT;
     break;
-  case IR::LT:
+  case IR::LE:
     ir->type = IR::GE;
     break;
+  case IR::LT:
+    ir->type = IR::GT;
+    break;
   case IR::NE:
-    ir->type = IR::EQ;
+    ir->type = IR::NE;
     break;
   default:
     break;
