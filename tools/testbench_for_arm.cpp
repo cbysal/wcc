@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
   }
   system("make");
   string dir1 = "test_case/functional";
-  string dir2 = "test_case/performance";
+  string dir2 = "test_case/hidden_functional";
+  string dir3 = "test_case/performance";
   vector<string> files;
   for (const filesystem::directory_entry &entry :
        filesystem::directory_iterator(dir1))
@@ -57,6 +58,10 @@ int main(int argc, char *argv[]) {
       files.push_back(entry.path());
   for (const filesystem::directory_entry &entry :
        filesystem::directory_iterator(dir2))
+    if (!entry.path().extension().compare(".sy"))
+      files.push_back(entry.path());
+  for (const filesystem::directory_entry &entry :
+       filesystem::directory_iterator(dir3))
     if (!entry.path().extension().compare(".sy"))
       files.push_back(entry.path());
   sort(files.begin(), files.end());

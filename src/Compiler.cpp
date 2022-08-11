@@ -130,13 +130,17 @@ int main(int argc, char *argv[]) {
     delete lexicalParser;
   } else {
     string dir1 = "test_case/functional";
-    string dir2 = "test_case/performance";
+    string dir2 = "test_case/hidden_functional";
+    string dir3 = "test_case/performance";
     vector<string> files;
     for (const filesystem::directory_entry &entry :
          filesystem::directory_iterator(dir1))
       files.push_back(entry.path());
     for (const filesystem::directory_entry &entry :
          filesystem::directory_iterator(dir2))
+      files.push_back(entry.path());
+    for (const filesystem::directory_entry &entry :
+         filesystem::directory_iterator(dir3))
       files.push_back(entry.path());
     sort(files.begin(), files.end());
     for (const string &file : files) {
