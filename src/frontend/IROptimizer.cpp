@@ -247,7 +247,6 @@ void IROptimizer::removeDeadCode() {
       }
     }
   } while (originSize < todoFuncs.size() + temps.size() + symbols.size());
-  unordered_map<Symbol *, vector<Symbol *>> newLocalVars;
   unordered_map<Symbol *, vector<IR *>> newFuncs;
   for (Symbol *func : todoFuncs) {
     if (funcs.find(func) == funcs.end())
@@ -271,30 +270,27 @@ void IROptimizer::removeDeadCode() {
       }
     }
     newFuncs[func] = newIRs;
-    vector<Symbol *> newLocals;
-    for (Symbol *symbol : symbols)
-      if (symbol->symbolType == Symbol::LOCAL_VAR)
-        newLocals.push_back(symbol);
-    newLocalVars[func] = newLocals;
-  }
-  vector<Symbol *> newConsts;
-  vector<Symbol *> newGlobalVars;
-  for (Symbol *symbol : symbols) {
-    switch (symbol->symbolType) {
-    case Symbol::CONST:
-      newConsts.push_back(symbol);
-      break;
-    case Symbol::GLOBAL_VAR:
-      newGlobalVars.push_back(symbol);
-      break;
-    default:
-      break;
-    }
   }
   funcs = newFuncs;
+  vector<Symbol *> newConsts;
+  for (Symbol *symbol : consts)
+    if (symbols.find(symbol) != symbols.end())
+      newConsts.push_back(symbol);
   consts = newConsts;
+  vector<Symbol *> newGlobalVars;
+  for (Symbol *symbol : globalVars)
+    if (symbols.find(symbol) != symbols.end())
+      newGlobalVars.push_back(symbol);
   globalVars = newGlobalVars;
-  localVars = newLocalVars;
+  for (unordered_map<Symbol *, vector<Symbol *>>::iterator it =
+           localVars.begin();
+       it != localVars.end(); it++) {
+    vector<Symbol *> newLocalVars;
+    for (Symbol *symbol : it->second)
+      if (symbols.find(symbol) != symbols.end())
+        newLocalVars.push_back(symbol);
+    it->second = newLocalVars;
+  }
 }
 
 void IROptimizer::removeDuplicatedJumps() {

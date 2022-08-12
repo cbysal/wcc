@@ -22,6 +22,7 @@ void ASMWriter::write() {
   fprintf(file, "\t.fpu vfpv4\n");
   fprintf(file, "\t.arm\n");
   fprintf(file, "\t.data\n");
+  fprintf(file, "\t.align 2\n");
   for (Symbol *symbol : consts) {
     int size = 4;
     for (int dimension : symbol->dimensions)
@@ -43,6 +44,7 @@ void ASMWriter::write() {
   }
   unordered_set<Symbol *> parsedGlobalVars;
   fprintf(file, "\t.bss\n");
+  fprintf(file, "\t.align 2\n");
   for (Symbol *symbol : globalVars) {
     if (!symbol->dimensions.empty() && symbol->fMap.empty() &&
         symbol->iMap.empty()) {
@@ -56,6 +58,7 @@ void ASMWriter::write() {
     }
   }
   fprintf(file, "\t.data\n");
+  fprintf(file, "\t.align 2\n");
   for (Symbol *symbol : globalVars) {
     if (parsedGlobalVars.find(symbol) != parsedGlobalVars.end())
       continue;
@@ -77,6 +80,7 @@ void ASMWriter::write() {
     }
   }
   fprintf(file, "\t.text\n");
+  fprintf(file, "\t.align 2\n");
   for (unordered_map<Symbol *, vector<ASM *>>::iterator it = funcASMs.begin();
        it != funcASMs.end(); it++) {
     Symbol *func = it->first;

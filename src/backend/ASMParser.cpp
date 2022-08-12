@@ -1591,6 +1591,34 @@ void ASMParser::parseMovFtempReturn(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseMovFtempSymbol(vector<ASM *> &asms, IR *ir) {
+  if (ir->items[1]->symbol->dimensions.empty()) {
+    bool flag1 = ftemp2Reg.find(ir->items[0]->iVal) == ftemp2Reg.end();
+    switch (ir->items[1]->symbol->symbolType) {
+    case Symbol::CONST:
+    case Symbol::GLOBAL_VAR:
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(
+          new ASM(flag1 ? ASM::LDR : ASM::VLDR,
+                  {new ASMItem(flag1 ? Reg::A1 : ftemp2Reg[ir->items[0]->iVal]),
+                   new ASMItem(Reg::A1)}));
+      break;
+    case Symbol::LOCAL_VAR:
+    case Symbol::PARAM:
+      loadFromSP(asms, flag1 ? Reg::A1 : ftemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+      break;
+    default:
+      break;
+    }
+    if (flag1)
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    return;
+  }
   vector<unsigned> sizes({4});
   for (int i = ir->items[1]->symbol->dimensions.size() - 1; i > 0; i--)
     sizes.push_back(sizes.back() * ir->items[1]->symbol->dimensions[i]);
@@ -1626,24 +1654,20 @@ void ASMParser::parseMovFtempSymbol(vector<ASM *> &asms, IR *ir) {
     break;
   }
   for (pair<unsigned, unsigned> temp : temps) {
-    if (itemp2Reg.find(temp.first) == itemp2Reg.end()) {
+    bool flag3 = itemp2Reg.find(temp.first) == itemp2Reg.end();
+    if (flag3)
       loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
+    if (num2powerMap.find(temp.second) == num2powerMap.end()) {
       loadImmToReg(asms, Reg::A4, temp.second);
-      asms.push_back(
-          new ASM(ASM::MUL, {new ASMItem(Reg::A3), new ASMItem(Reg::A3),
-                             new ASMItem(Reg::A4)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    } else {
-      loadImmToReg(asms, Reg::A3, temp.second);
-      asms.push_back(new ASM(ASM::MUL, {new ASMItem(Reg::A3),
-                                        new ASMItem(itemp2Reg[temp.first]),
-                                        new ASMItem(Reg::A3)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    }
+      asms.push_back(new ASM(
+          ASM::MLA, {new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(Reg::A4), new ASMItem(Reg::A2)}));
+    } else
+      asms.push_back(new ASM(
+          ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
   }
   if (offset) {
     loadImmToReg(asms, Reg::A3, offset);
@@ -1891,6 +1915,34 @@ void ASMParser::parseMovReturnSymbol(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseMovSymbolFtemp(vector<ASM *> &asms, IR *ir) {
+  if (ir->items[0]->symbol->dimensions.empty()) {
+    bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
+    if (flag2)
+      loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
+    switch (ir->items[0]->symbol->symbolType) {
+    case Symbol::CONST:
+    case Symbol::GLOBAL_VAR:
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::STR,
+                  {new ASMItem(flag2 ? Reg::A2 : ftemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(Reg::A1)}));
+      break;
+    case Symbol::LOCAL_VAR:
+    case Symbol::PARAM:
+      storeFromSP(asms, flag2 ? Reg::A2 : ftemp2Reg[ir->items[1]->iVal],
+                  offsets[ir->items[0]->symbol]);
+      break;
+    default:
+      break;
+    }
+    return;
+  }
   vector<unsigned> sizes({4});
   for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
     sizes.push_back(sizes.back() * ir->items[0]->symbol->dimensions[i]);
@@ -1926,24 +1978,20 @@ void ASMParser::parseMovSymbolFtemp(vector<ASM *> &asms, IR *ir) {
     break;
   }
   for (pair<unsigned, unsigned> temp : temps) {
-    if (itemp2Reg.find(temp.first) == itemp2Reg.end()) {
+    bool flag3 = itemp2Reg.find(temp.first) == itemp2Reg.end();
+    if (flag3)
       loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
+    if (num2powerMap.find(temp.second) == num2powerMap.end()) {
       loadImmToReg(asms, Reg::A4, temp.second);
-      asms.push_back(
-          new ASM(ASM::MUL, {new ASMItem(Reg::A3), new ASMItem(Reg::A3),
-                             new ASMItem(Reg::A4)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    } else {
-      loadImmToReg(asms, Reg::A3, temp.second);
-      asms.push_back(new ASM(ASM::MUL, {new ASMItem(Reg::A3),
-                                        new ASMItem(itemp2Reg[temp.first]),
-                                        new ASMItem(Reg::A3)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    }
+      asms.push_back(new ASM(
+          ASM::MLA, {new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(Reg::A4), new ASMItem(Reg::A2)}));
+    } else
+      asms.push_back(new ASM(
+          ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
+                     new ASMItem(flag3 ? Reg::A3 : itemp2Reg[temp.first]),
+                     new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
   }
   if (offset) {
     loadImmToReg(asms, Reg::A3, offset);
