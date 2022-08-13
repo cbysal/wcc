@@ -18,7 +18,8 @@ private:
   std::unordered_map<Symbol *, std::vector<IR *>> funcs;
   std::vector<IR *> toRecycleIRs;
 
-  void constPass();
+  void constPassBlock();
+  void constPassGlobal();
   void optimize();
   void passInBlock(unsigned, unsigned);
   void removeDeadCode();

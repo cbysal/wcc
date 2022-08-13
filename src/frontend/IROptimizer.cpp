@@ -52,7 +52,7 @@ unordered_map<Symbol *, vector<Symbol *>> IROptimizer::getLocalVars() {
 
 unsigned IROptimizer::getTempId() { return tempId; }
 
-void IROptimizer::constPass() {
+void IROptimizer::constPassBlock() {
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
        it != funcs.end(); it++) {
     vector<IR *> &irs = it->second;
@@ -102,11 +102,57 @@ void IROptimizer::constPass() {
   }
 }
 
+void IROptimizer::constPassGlobal() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
+       it != funcs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    unordered_map<unsigned, unsigned> temp2Int;
+    unordered_map<unsigned, unsigned> temp2Float;
+    unordered_set<unsigned> multiDef;
+    for (IR *ir : irs) {
+      if (ir->type == IR::MOV) {
+        if (ir->items[0]->type == IRItem::FTEMP &&
+            ir->items[1]->type == IRItem::FLOAT) {
+          if (multiDef.find(ir->items[0]->iVal) == multiDef.end())
+            temp2Float[ir->items[0]->iVal] = ir->items[1]->iVal;
+          else {
+            multiDef.insert(ir->items[0]->iVal);
+            temp2Float.erase(ir->items[0]->iVal);
+          }
+        } else if (ir->items[0]->type == IRItem::ITEMP &&
+                   ir->items[1]->type == IRItem::INT) {
+          if (multiDef.find(ir->items[0]->iVal) == multiDef.end())
+            temp2Int[ir->items[0]->iVal] = ir->items[1]->iVal;
+          else {
+            multiDef.insert(ir->items[0]->iVal);
+            temp2Int.erase(ir->items[0]->iVal);
+          }
+        }
+      }
+    }
+    for (IR *ir : irs) {
+      for (unsigned j = 1; j < ir->items.size(); j++) {
+        if (ir->items[j]->type == IRItem::FTEMP &&
+            temp2Float.find(ir->items[j]->iVal) != temp2Float.end()) {
+          ir->items[j]->type = IRItem::FLOAT;
+          ir->items[j]->iVal = temp2Float[ir->items[j]->iVal];
+        } else if (ir->items[j]->type == IRItem::ITEMP &&
+                   temp2Int.find(ir->items[j]->iVal) != temp2Int.end()) {
+          ir->items[j]->type = IRItem::INT;
+          ir->items[j]->iVal = temp2Int[ir->items[j]->iVal];
+        }
+      }
+    }
+    standardize(irs);
+  }
+}
+
 void IROptimizer::optimize() {
   isProcessed = true;
   singleVar2Reg();
   removeDeadCode();
-  constPass();
+  constPassGlobal();
+  constPassBlock();
   removeDeadCode();
   // splitTempsNotStrict();
   // splitTemps();
