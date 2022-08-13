@@ -1081,12 +1081,11 @@ void ASMParser::parseF2I(vector<ASM *> &asms, IR *ir) {
     loadFromSP(asms, Reg::S0, spillOffsets[ir->items[1]->iVal]);
   asms.push_back(
       new ASM(ASM::VCVTFS,
-              {new ASMItem(flag2 ? Reg::S0 : ftemp2Reg[ir->items[1]->iVal]),
+              {new ASMItem(Reg::S0),
                new ASMItem(flag2 ? Reg::S0 : ftemp2Reg[ir->items[1]->iVal])}));
-  asms.push_back(
-      new ASM(ASM::VMOV,
-              {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-               new ASMItem(flag2 ? Reg::S0 : ftemp2Reg[ir->items[1]->iVal])}));
+  asms.push_back(new ASM(
+      ASM::VMOV, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                  new ASMItem(Reg::S0)}));
   if (flag1)
     storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
 }

@@ -52,6 +52,74 @@ unordered_map<Symbol *, vector<Symbol *>> IROptimizer::getLocalVars() {
 
 unsigned IROptimizer::getTempId() { return tempId; }
 
+void IROptimizer::assignPass() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
+       it != funcs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    unsigned left = 0, right = 0;
+    while (right < irs.size()) {
+      while (right < irs.size()) {
+        if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
+            irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
+            irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
+            irs[right]->type == IR::CALL || irs[right]->type == IR::GOTO ||
+            irs[right]->type == IR::LABEL)
+          break;
+        right++;
+      }
+      right++;
+      unordered_map<unsigned, unsigned> itempAssign;
+      unordered_map<unsigned, unsigned> ftempAssign;
+      for (unsigned i = left; i < right; i++) {
+        for (unsigned j = 1; j < irs[i]->items.size(); j++) {
+          if (irs[i]->items[j]->type == IRItem::FTEMP &&
+              ftempAssign.find(irs[i]->items[j]->iVal) != ftempAssign.end())
+            irs[i]->items[j]->iVal = ftempAssign[irs[i]->items[j]->iVal];
+          else if (irs[i]->items[j]->type == IRItem::ITEMP &&
+                   itempAssign.find(irs[i]->items[j]->iVal) !=
+                       itempAssign.end())
+            irs[i]->items[j]->iVal = itempAssign[irs[i]->items[j]->iVal];
+        }
+        if (!irs[i]->items.empty()) {
+          if (irs[i]->items[0]->type == IRItem::FTEMP) {
+            if (irs[i]->type == IR::MOV &&
+                irs[i]->items[1]->type == IRItem::FTEMP) {
+              ftempAssign[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+            } else
+              ftempAssign.erase(irs[i]->items[0]->iVal);
+            unordered_set<unsigned> eraseSet;
+            for (unordered_map<unsigned, unsigned>::iterator it =
+                     ftempAssign.begin();
+                 it != ftempAssign.end(); it++) {
+              if (it->second == (unsigned)irs[i]->items[0]->iVal)
+                eraseSet.insert(it->first);
+            }
+            for (unsigned eraseItem : eraseSet)
+              ftempAssign.erase(eraseItem);
+          } else if (irs[i]->items[0]->type == IRItem::ITEMP) {
+            if (irs[i]->type == IR::MOV &&
+                irs[i]->items[1]->type == IRItem::ITEMP) {
+              itempAssign[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+            } else
+              itempAssign.erase(irs[i]->items[0]->iVal);
+            unordered_set<unsigned> eraseSet;
+            for (unordered_map<unsigned, unsigned>::iterator it =
+                     itempAssign.begin();
+                 it != itempAssign.end(); it++) {
+              if (it->second == (unsigned)irs[i]->items[0]->iVal)
+                eraseSet.insert(it->first);
+            }
+            for (unsigned eraseItem : eraseSet)
+              itempAssign.erase(eraseItem);
+          }
+        }
+      }
+      left = right;
+    }
+    standardize(irs);
+  }
+}
+
 void IROptimizer::constPassBlock() {
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
        it != funcs.end(); it++) {
@@ -154,8 +222,9 @@ void IROptimizer::optimize() {
   constPassGlobal();
   constPassBlock();
   removeDeadCode();
-  // splitTempsNotStrict();
-  // splitTemps();
+  assignPass();
+  removeDeadCode();
+  splitTemps();
   // removeDuplicatedJumps();
   // removeDuplicatedLabels();
   // removeDuplicatedSymbols();
@@ -593,78 +662,6 @@ void IROptimizer::splitTemps() {
           continue;
         item->iVal = reassignMap[item->iVal];
       }
-    }
-  }
-}
-
-void IROptimizer::splitTempsNotStrict() {
-  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
-       it != funcs.end(); it++) {
-    vector<IR *> &irs = it->second;
-    unsigned left = 0, right = 0;
-    while (right < irs.size()) {
-      while (right < irs.size()) {
-        if (right + 1 < irs.size() && irs[right + 1]->type == IR::LABEL)
-          break;
-        if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
-            irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
-            irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
-            irs[right]->type == IR::GOTO)
-          break;
-        right++;
-      }
-      if (right == irs.size())
-        right--;
-      unsigned lastWrite = right;
-      while (lastWrite > left) {
-        if (irs[lastWrite]->items.empty() ||
-            (irs[lastWrite]->items[0]->type != IRItem::FTEMP &&
-             irs[lastWrite]->items[0]->type != IRItem::ITEMP)) {
-          lastWrite--;
-          continue;
-        }
-        unsigned writeBegin = left;
-        while (writeBegin < lastWrite) {
-          if (!irs[writeBegin]->items.empty() &&
-              (irs[writeBegin]->items[0]->type == IRItem::FTEMP ||
-               irs[writeBegin]->items[0]->type == IRItem::ITEMP) &&
-              irs[writeBegin]->items[0]->iVal ==
-                  irs[lastWrite]->items[0]->iVal) {
-            break;
-          }
-          writeBegin++;
-        }
-        unsigned writeEnd = writeBegin + 1;
-        while (writeEnd < lastWrite) {
-          while (writeEnd < lastWrite) {
-            if (!irs[lastWrite]->items.empty() &&
-                (irs[lastWrite]->items[0]->type == IRItem::FTEMP ||
-                 irs[lastWrite]->items[0]->type == IRItem::ITEMP) &&
-                irs[writeEnd]->items[0]->iVal ==
-                    irs[lastWrite]->items[0]->iVal) {
-              break;
-            }
-            writeEnd++;
-          }
-          irs[writeBegin]->items[0]->iVal = tempId;
-          for (unsigned i = writeBegin + 1; i < writeEnd; i++)
-            for (IRItem *item : irs[i]->items)
-              if ((item->type == IRItem::FTEMP ||
-                   item->type == IRItem::ITEMP) &&
-                  item->iVal == irs[lastWrite]->items[0]->iVal)
-                item->iVal = tempId;
-          for (unsigned i = 1; i < irs[writeEnd]->items.size(); i++)
-            if ((irs[writeEnd]->items[i]->type == IRItem::FTEMP ||
-                 irs[writeEnd]->items[i]->type == IRItem::ITEMP) &&
-                irs[writeEnd]->items[i]->iVal == irs[lastWrite]->items[0]->iVal)
-              irs[writeEnd]->items[i]->iVal = tempId;
-          writeBegin = writeEnd;
-          writeEnd++;
-        }
-        lastWrite--;
-      }
-      right++;
-      left = right;
     }
   }
 }
