@@ -225,6 +225,7 @@ void IROptimizer::optimize() {
   assignPass();
   removeDeadCode();
   splitTemps();
+  removeDeadCode();
   // removeDuplicatedJumps();
   // removeDuplicatedLabels();
   // removeDuplicatedSymbols();
@@ -575,19 +576,19 @@ void IROptimizer::splitTemps() {
         item->iVal = reassignMap[item->iVal];
       }
     }
-    vector<vector<unsigned>> prevMap(irNum);
+    vector<vector<unsigned>> nextMap(irNum);
     vector<set<unsigned>> rMap(tempNum);
     vector<set<unsigned>> wMap(tempNum);
     for (unsigned i = 0; i < irs.size(); i++) {
       if (irs[i]->type == IR::GOTO)
-        prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
+        nextMap[i].push_back(irIdMap[irs[i]->items[0]->ir]);
       else if (irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
                irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
                irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) {
-        prevMap[i + 1].push_back(i);
-        prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
+        nextMap[i].push_back(i + 1);
+        nextMap[i].push_back(irIdMap[irs[i]->items[0]->ir]);
       } else if (i + 1 < irs.size())
-        prevMap[i + 1].push_back(i);
+        nextMap[i].push_back(i + 1);
       for (unsigned j = 0; j < irs[i]->items.size(); j++) {
         if (irs[i]->items[j]->type == IRItem::FTEMP ||
             irs[i]->items[j]->type == IRItem::ITEMP) {
@@ -599,42 +600,60 @@ void IROptimizer::splitTemps() {
       }
     }
     for (unsigned temp = 0; temp < tempNum; temp++) {
-      rMap[temp].insert(irs.size() - 1);
-      vector<pair<unsigned, unsigned>> eraseTargets;
-      for (unsigned source : rMap[temp]) {
-        unsigned minTarget = UINT32_MAX;
-        unsigned maxTarget = 0;
+      unordered_map<unsigned, unordered_set<unsigned>> w2RMap;
+      for (unsigned source : wMap[temp]) {
         unordered_set<unsigned> visited;
         queue<unsigned> frontier;
         frontier.push(source);
-        visited.insert(source);
         while (!frontier.empty()) {
           unsigned cur = frontier.front();
           frontier.pop();
-          for (unsigned prev : prevMap[cur]) {
-            if (visited.find(prev) != visited.end())
+          for (unsigned next : nextMap[cur]) {
+            if (visited.find(next) != visited.end())
               continue;
-            visited.insert(prev);
-            if (wMap[temp].find(prev) == wMap[temp].end())
-              frontier.push(prev);
-            else {
-              minTarget = min(minTarget, prev);
-              maxTarget = max(maxTarget, prev);
-            }
+            visited.insert(next);
+            if (wMap[temp].find(next) == wMap[temp].end())
+              frontier.push(next);
+            if (rMap[temp].find(next) != rMap[temp].end())
+              w2RMap[source].insert(next);
           }
         }
-        if (minTarget < maxTarget && wMap[temp].upper_bound(minTarget) !=
-                                         wMap[temp].upper_bound(maxTarget))
-          eraseTargets.emplace_back(minTarget, maxTarget);
       }
-      for (const pair<unsigned, unsigned> &eraseTarget : eraseTargets)
-        wMap[temp].erase(wMap[temp].upper_bound(eraseTarget.first),
-                         wMap[temp].upper_bound(eraseTarget.second));
-      vector<unsigned> newIndexes(wMap[temp].begin(), wMap[temp].end());
-      newIndexes.push_back(irs.size());
-      for (unsigned i = 0; i < newIndexes.size() - 1; i++) {
-        for (unsigned j = newIndexes[i]; j < newIndexes[i + 1]; j++)
-          for (IRItem *item : irs[j]->items)
+      vector<unsigned> rIds(rMap[temp].begin(), rMap[temp].end());
+      vector<unsigned> unionSet(rMap[temp].size());
+      unordered_map<unsigned, unsigned> rIdMap;
+      for (unsigned i = 0; i < rIds.size(); i++) {
+        unionSet[i] = i;
+        rIdMap[rIds[i]] = i;
+      }
+      vector<pair<unordered_set<unsigned>, unordered_set<unsigned>>> w2R;
+      for (unordered_map<unsigned, unordered_set<unsigned>>::iterator innerIt =
+               w2RMap.begin();
+           innerIt != w2RMap.end(); innerIt++) {
+        w2R.emplace_back(unordered_set({innerIt->first}), innerIt->second);
+      }
+      unsigned w2RSize;
+      do {
+        w2RSize = w2R.size();
+        for (unsigned i = 0; i < w2R.size(); i++)
+          for (unsigned j = i + 1; j < w2R.size(); j++) {
+            unordered_set<unsigned> unionSet;
+            unionSet.insert(w2R[i].second.begin(), w2R[i].second.end());
+            unionSet.insert(w2R[j].second.begin(), w2R[j].second.end());
+            if (w2R[i].second.size() + w2R[j].second.size() > unionSet.size()) {
+              w2R[i].first.insert(w2R[j].first.begin(), w2R[j].first.end());
+              w2R[i].second.insert(w2R[j].second.begin(), w2R[j].second.end());
+              w2R.erase(w2R.begin() + j);
+              j--;
+            }
+          }
+      } while (w2R.size() < w2RSize);
+      for (pair<unordered_set<unsigned>, unordered_set<unsigned>> &w2RItem :
+           w2R) {
+        for (unsigned wId : w2RItem.first)
+          irs[wId]->items[0]->iVal = tempId;
+        for (unsigned rId : w2RItem.second)
+          for (IRItem *item : irs[rId]->items)
             if ((item->type == IRItem::FTEMP || item->type == IRItem::ITEMP) &&
                 (unsigned)item->iVal == temp)
               item->iVal = tempId;

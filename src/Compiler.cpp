@@ -38,19 +38,19 @@ int main(int argc, char *argv[]) {
         irParser->getLocalVars();
     unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
-    IROptimizer *irOptimizer =
-        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = irOptimizer->getConsts();
-    globalVars = irOptimizer->getGlobalVars();
-    localVars = irOptimizer->getLocalVars();
-    funcs = irOptimizer->getFuncs();
-    tempId = irOptimizer->getTempId();
     SSAOptimizer *ssaOptimizer =
         new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
     consts = ssaOptimizer->getConsts();
     globalVars = ssaOptimizer->getGlobalVars();
     localVars = ssaOptimizer->getLocalVars();
     funcs = ssaOptimizer->getFuncs();
+    tempId = ssaOptimizer->getTempId();
+    IROptimizer *irOptimizer =
+        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = irOptimizer->getConsts();
+    globalVars = irOptimizer->getGlobalVars();
+    localVars = irOptimizer->getLocalVars();
+    funcs = irOptimizer->getFuncs();
     tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -83,19 +83,19 @@ int main(int argc, char *argv[]) {
         irParser->getLocalVars();
     unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
     unsigned tempId = irParser->getTempId();
-    IROptimizer *irOptimizer =
-        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = irOptimizer->getConsts();
-    globalVars = irOptimizer->getGlobalVars();
-    localVars = irOptimizer->getLocalVars();
-    funcs = irOptimizer->getFuncs();
-    tempId = irOptimizer->getTempId();
     SSAOptimizer *ssaOptimizer =
         new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
     consts = ssaOptimizer->getConsts();
     globalVars = ssaOptimizer->getGlobalVars();
     localVars = ssaOptimizer->getLocalVars();
     funcs = ssaOptimizer->getFuncs();
+    tempId = ssaOptimizer->getTempId();
+    IROptimizer *irOptimizer =
+        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+    consts = irOptimizer->getConsts();
+    globalVars = irOptimizer->getGlobalVars();
+    localVars = irOptimizer->getLocalVars();
+    funcs = irOptimizer->getFuncs();
     tempId = irOptimizer->getTempId();
     ASMParser *asmParser =
         new ASMParser(lineno, funcs, consts, globalVars, localVars);
@@ -162,19 +162,19 @@ int main(int argc, char *argv[]) {
           irParser->getLocalVars();
       unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
       unsigned tempId = irParser->getTempId();
-      IROptimizer *irOptimizer =
-          new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-      consts = irOptimizer->getConsts();
-      globalVars = irOptimizer->getGlobalVars();
-      localVars = irOptimizer->getLocalVars();
-      funcs = irOptimizer->getFuncs();
-      tempId = irOptimizer->getTempId();
       SSAOptimizer *ssaOptimizer =
           new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
       consts = ssaOptimizer->getConsts();
       globalVars = ssaOptimizer->getGlobalVars();
       localVars = ssaOptimizer->getLocalVars();
       funcs = ssaOptimizer->getFuncs();
+      tempId = ssaOptimizer->getTempId();
+      IROptimizer *irOptimizer =
+          new IROptimizer(consts, globalVars, localVars, funcs, tempId);
+      consts = irOptimizer->getConsts();
+      globalVars = irOptimizer->getGlobalVars();
+      localVars = irOptimizer->getLocalVars();
+      funcs = irOptimizer->getFuncs();
       tempId = irOptimizer->getTempId();
       ASMParser *asmParser =
           new ASMParser(lineno, funcs, consts, globalVars, localVars);
