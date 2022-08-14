@@ -1139,6 +1139,9 @@ vector<ASM *> ASMParser::parseFunc(Symbol *func, vector<IR *> &irs) {
       asms.push_back(
           new ASM(ASM::LABEL, {new ASMItem(ASMItem::LABEL, irLabels[irs[i]])}));
       break;
+    case IR::MEMSET_ZERO:
+      parseMemsetZero(asms, irs[i]);
+      break;
     case IR::MOD:
       parseMod(asms, irs[i]);
       break;
@@ -1322,6 +1325,16 @@ void ASMParser::parseLNot(vector<ASM *> &asms, IR *ir) {
   default:
     break;
   }
+}
+
+void ASMParser::parseMemsetZero(vector<ASM *> &asms, IR *ir) {
+  moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+  asms.push_back(new ASM(ASM::MOV, {new ASMItem(Reg::A2), new ASMItem(0)}));
+  unsigned size = 4;
+  for (int dimension : ir->items[0]->symbol->dimensions)
+    size *= dimension;
+  loadImmToReg(asms, Reg::A3, size);
+  asms.push_back(new ASM(ASM::BL, {new ASMItem("memset")}));
 }
 
 void ASMParser::parseMod(vector<ASM *> &asms, IR *ir) {

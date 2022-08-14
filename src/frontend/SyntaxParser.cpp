@@ -1077,29 +1077,51 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
       } else {
         unordered_map<int, AST *> exps;
         allocInitVal(dimensions, exps, 0, val);
-        unsigned size = 1;
+        vector<pair<int, AST *>> orderedExps(exps.begin(), exps.end());
+        sort(orderedExps.begin(), orderedExps.end());
+        unsigned totalSize = 1;
         for (unsigned dimension : dimensions)
-          size *= dimension;
-        for (unsigned i = 0; i < size; i++) {
-          vector<AST *> dimensionASTs(dimensions.size());
-          unsigned t = i;
-          for (int j = dimensions.size() - 1; j >= 0; j--) {
-            dimensionASTs[j] = new AST((int)t % dimensions[j]);
-            t /= dimensions[j];
-          }
-          if (exps.find(i) == exps.end()) {
-            items.push_back(
-                new AST(AST::ASSIGN_STMT, false,
-                        {new AST(AST::L_VAL, false, symbol, dimensionASTs),
-                         new AST(0)}));
-          } else {
-            AST *expVal = exps[i];
+          totalSize *= dimension;
+        if (totalSize > 1024 && orderedExps.size() <= totalSize / 2) {
+          items.push_back(new AST(AST::MEMSET_ZERO, false, symbol, {}));
+          for (pair<int, AST *> exp : orderedExps) {
+            vector<AST *> dimensionASTs(dimensions.size());
+            unsigned t = exp.first;
+            for (int j = dimensions.size() - 1; j >= 0; j--) {
+              dimensionASTs[j] = new AST((int)t % dimensions[j]);
+              t /= dimensions[j];
+            }
+            AST *expVal = exp.second;
             if ((type == Symbol::FLOAT) ^ expVal->isFloat)
               expVal = expVal->transIF();
             items.push_back(new AST(AST::ASSIGN_STMT, false,
                                     {new AST(AST::L_VAL, type == Symbol::FLOAT,
                                              symbol, dimensionASTs),
                                      expVal}));
+          }
+        } else {
+          for (unsigned i = 0; i < totalSize; i++) {
+            vector<AST *> dimensionASTs(dimensions.size());
+            unsigned t = i;
+            for (int j = dimensions.size() - 1; j >= 0; j--) {
+              dimensionASTs[j] = new AST((int)t % dimensions[j]);
+              t /= dimensions[j];
+            }
+            if (exps.find(i) == exps.end()) {
+              items.push_back(
+                  new AST(AST::ASSIGN_STMT, false,
+                          {new AST(AST::L_VAL, false, symbol, dimensionASTs),
+                           new AST(0)}));
+            } else {
+              AST *expVal = exps[i];
+              if ((type == Symbol::FLOAT) ^ expVal->isFloat)
+                expVal = expVal->transIF();
+              items.push_back(
+                  new AST(AST::ASSIGN_STMT, false,
+                          {new AST(AST::L_VAL, type == Symbol::FLOAT, symbol,
+                                   dimensionASTs),
+                           expVal}));
+            }
           }
         }
         deleteInitVal(val);

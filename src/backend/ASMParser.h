@@ -82,6 +82,7 @@ private:
   void parseLCmpItempInt(std::vector<ASM *> &, IR *);
   void parseLCmpItempItemp(std::vector<ASM *> &, IR *);
   void parseLNot(std::vector<ASM *> &, IR *);
+  void parseMemsetZero(std::vector<ASM *> &, IR *);
   void parseMod(std::vector<ASM *> &, IR *);
   void parseModIntItemp(std::vector<ASM *> &, IR *);
   void parseModItempInt(std::vector<ASM *> &, IR *);

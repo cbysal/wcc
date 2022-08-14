@@ -86,6 +86,8 @@ vector<IR *> IRParser::parseAST(AST *root, Symbol *func, IR *whileBegin,
   }
   case AST::L_VAL:
     return parseRVal(root, func);
+  case AST::MEMSET_ZERO:
+    return {new IR(IR::MEMSET_ZERO, {new IRItem(root->symbol)})};
   case AST::NEG_EXP: {
     vector<IR *> irs = parseAST(root->nodes[0], func, nullptr, nullptr);
     irs.push_back(new IR(IR::NEG, {new IRItem(lastResult(irs)->type, tempId++),

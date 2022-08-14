@@ -33,6 +33,7 @@ public:
     LABEL,
     LE,
     LT,
+    MEMSET_ZERO,
     MOD,
     MOV,
     MUL,

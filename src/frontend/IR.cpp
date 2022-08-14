@@ -7,33 +7,20 @@ using namespace std;
 int irIdCount = 0;
 
 unordered_map<IR::IRType, string> irTypeStr = {
-    {IR::ADD, "ADD"},
-    {IR::BEQ, "BEQ"},
-    {IR::BGE, "BGE"},
-    {IR::BGT, "BGT"},
-    {IR::BLE, "BLE"},
-    {IR::BLT, "BLT"},
-    {IR::BNE, "BNE"},
-    {IR::BREAK, "BREAK"},
-    {IR::CALL, "CALL"},
-    {IR::CONTINUE, "CONTINUE"},
-    {IR::DIV, "DIV"},
-    {IR::EQ, "EQ"},
-    {IR::F2I, "F2I"},
-    {IR::GE, "GE"},
-    {IR::GOTO, "GOTO"},
-    {IR::GT, "GT"},
-    {IR::I2F, "I2F"},
-    {IR::L_NOT, "L_NOT"},
-    {IR::LABEL, "LABEL"},
-    {IR::LE, "LE"},
-    {IR::LT, "LT"},
-    {IR::MOD, "MOD"},
-    {IR::MOV, "MOV"},
-    {IR::MUL, "MUL"},
-    {IR::NE, "NE"},
-    {IR::NEG, "NEG"},
-    {IR::SUB, "SUB"}};
+    {IR::ADD, "ADD"},     {IR::BEQ, "BEQ"},
+    {IR::BGE, "BGE"},     {IR::BGT, "BGT"},
+    {IR::BLE, "BLE"},     {IR::BLT, "BLT"},
+    {IR::BNE, "BNE"},     {IR::BREAK, "BREAK"},
+    {IR::CALL, "CALL"},   {IR::CONTINUE, "CONTINUE"},
+    {IR::DIV, "DIV"},     {IR::EQ, "EQ"},
+    {IR::F2I, "F2I"},     {IR::GE, "GE"},
+    {IR::GOTO, "GOTO"},   {IR::GT, "GT"},
+    {IR::I2F, "I2F"},     {IR::L_NOT, "L_NOT"},
+    {IR::LABEL, "LABEL"}, {IR::LE, "LE"},
+    {IR::LT, "LT"},       {IR::MEMSET_ZERO, "MEMSET_ZERO"},
+    {IR::MOD, "MOD"},     {IR::MOV, "MOV"},
+    {IR::MUL, "MUL"},     {IR::NE, "NE"},
+    {IR::NEG, "NEG"},     {IR::SUB, "SUB"}};
 
 IR::IR(IRType type) {
   this->irId = irIdCount++;

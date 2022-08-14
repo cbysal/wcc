@@ -1,10 +1,10 @@
 #include "SSAOptimizer.h"
 #include <functional>
+#include <iostream>
 #include <numeric>
 #include <stack>
 #include <string>
 #include <vector>
-#include <iostream>
 
 using namespace std;
 
@@ -34,7 +34,8 @@ void SSAOptimizer::process() {
     preprocess();
     insertPhi();
     renameVariables(0);
-    debug(func.first);
+    if (getenv("DEBUG"))
+      debug(func.first);
     // optimize();
     translateSSA();
   }
@@ -59,8 +60,7 @@ vector<Symbol *> SSAOptimizer::getGlobalVars() {
   return globalVars;
 }
 
-unordered_map<Symbol *, vector<Symbol *>>
-SSAOptimizer::getLocalVars() {
+unordered_map<Symbol *, vector<Symbol *>> SSAOptimizer::getLocalVars() {
   if (!isProcessed)
     process();
   return localVars;
@@ -450,7 +450,7 @@ void SSAOptimizer::insertPhi() {
 }
 
 void SSAOptimizer::renameVariables(int u) {
-  unordered_map<SSAvar*, int> pushCnt;
+  unordered_map<SSAvar *, int> pushCnt;
   // Right-hand side of statement are all phi-function
   for (auto &ir : ssaIRs[u]) {
     if (!ir->phi)
@@ -511,6 +511,4 @@ void SSAOptimizer::renameVariables(int u) {
       varStack[var].pop();
 }
 
-void SSAOptimizer::translateSSA() {
-
-}
+void SSAOptimizer::translateSSA() {}
