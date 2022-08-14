@@ -1,6 +1,10 @@
 #include "SSAOptimizer.h"
+#include <functional>
 #include <numeric>
+#include <stack>
+#include <string>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -21,35 +25,158 @@ SSAOptimizer::~SSAOptimizer() {
     delete ir;
 }
 
-void SSAOptimizer::optimize() { isProcessed = true; }
+void SSAOptimizer::process() {
+  isProcessed = true;
+  for (auto &func : funcs) {
+    clear();
+    funIR = func.second;
+    funVar = localVars[func.first];
+    preprocess();
+    insertPhi();
+    renameVariables(0);
+    debug(func.first);
+    // optimize();
+    translateSSA();
+  }
+  clear();
+}
 
 vector<Symbol *> SSAOptimizer::getConsts() {
   if (!isProcessed)
-    optimize();
+    process();
   return consts;
 }
 
 unordered_map<Symbol *, vector<IR *>> SSAOptimizer::getFuncs() {
   if (!isProcessed)
-    optimize();
+    process();
   return funcs;
 }
 
 vector<Symbol *> SSAOptimizer::getGlobalVars() {
   if (!isProcessed)
-    optimize();
+    process();
   return globalVars;
 }
 
-unordered_map<Symbol *, vector<Symbol *>> SSAOptimizer::getLocalVars() {
+unordered_map<Symbol *, vector<Symbol *>>
+SSAOptimizer::getLocalVars() {
   if (!isProcessed)
-    optimize();
+    process();
   return localVars;
 }
 
 unsigned SSAOptimizer::getTempId() { return tempId; }
 
-vector<vector<int>> SSAOptimizer::dominatorTree::work(vector<vector<int>> &_G) {
+void SSAOptimizer::clear() {
+  G.clear();
+  block.clear();
+  ssaIRs.clear();
+  usedVar.clear();
+  blockDef.clear();
+
+  RET = NULL;
+  floatCon.clear();
+  intCon.clear();
+  label.clear();
+  tmpVar.clear();
+  symVar.clear();
+
+  varStack.clear();
+  varVersion.clear();
+
+  for (auto var : ssaVars)
+    delete var;
+  ssaVars.clear();
+}
+
+string SSAOptimizer::SSAIR::toString() {
+  static unordered_map<IR::IRType, string> irTypeStr = {
+      {IR::ADD, "ADD"},     {IR::BEQ, "BEQ"},
+      {IR::BGE, "BGE"},     {IR::BGT, "BGT"},
+      {IR::BLE, "BLE"},     {IR::BLT, "BLT"},
+      {IR::BNE, "BNE"},     {IR::BREAK, "BREAK"},
+      {IR::CALL, "CALL"},   {IR::CONTINUE, "CONTINUE"},
+      {IR::DIV, "DIV"},     {IR::EQ, "EQ"},
+      {IR::F2I, "F2I"},     {IR::GE, "GE"},
+      {IR::GOTO, "GOTO"},   {IR::GT, "GT"},
+      {IR::I2F, "I2F"},     {IR::L_NOT, "L_NOT"},
+      {IR::LABEL, "LABEL"}, {IR::LE, "LE"},
+      {IR::LT, "LT"},       {IR::MOD, "MOD"},
+      {IR::MOV, "MOV"},     {IR::MUL, "MUL"},
+      {IR::NE, "NE"},       {IR::NEG, "NEG"},
+      {IR::SUB, "SUB"}};
+  auto itemToString = [](SSAItem *it) {
+    auto x = it->var;
+    string y = ".v" + to_string(it->vid);
+    switch (x->type) {
+    case SSAvar::LOCAL:
+      if (x->tmpID == -1)
+        return x->symbol->name + y;
+      else
+        return "%" + to_string(x->tmpID) + y;
+    case SSAvar::CONST:
+      if (x->data == SSAvar::FLOAT)
+        return to_string(x->fval);
+      else
+        return to_string(x->ival);
+    case SSAvar::GLOBAL:
+      return x->symbol->name + ".g";
+    case SSAvar::RETURN:
+      return string("ret");
+    case SSAvar::LEBAL:
+      return to_string(x->ival);
+    case SSAvar::FUNC:
+      return x->symbol->name;
+    }
+    return string();
+  };
+  string s;
+  if (L != NULL)
+    s += itemToString(L) + " = ";
+  if (type != IR::MOV) {
+    s += irTypeStr[type] + ' ';
+    for (auto x : R)
+      s += itemToString(x) + ", ";
+    s.pop_back(), s.pop_back();
+  } else {
+    if (phi)
+      s += "phi(";
+    for (auto x : R)
+      s += itemToString(x) + ", ";
+    s.pop_back(), s.pop_back();
+    if (phi)
+      s += ")";
+  }
+  return s;
+}
+
+void SSAOptimizer::debug(Symbol *f) {
+  cout << "--------------------------------------------------------------------"
+          "------------\n";
+  cout << f->name << '\n';
+  cout << "Control Flow Graph:"
+       << "\n";
+  for (size_t u = 0; u < ssaIRs.size(); ++u)
+    for (auto v : G[u])
+      cout << u << " " << v << "\n";
+  cout << "Dominator Tree:"
+       << "\n";
+  for (size_t u = 0; u < ssaIRs.size(); ++u)
+    for (auto v : T[u])
+      cout << u << " " << v << "\n";
+  cout << "\n";
+  for (size_t i = 0; i < ssaIRs.size(); ++i) {
+    cout << "l" + to_string(i) + ":\n";
+    for (auto &sir : ssaIRs[i])
+      cout << "\t" << sir->toString() << "\n";
+  }
+  cout << "\n";
+}
+
+using graph = vector<vector<int>>;
+
+void SSAOptimizer::dominatorTree::work(graph &_G, graph &T, graph &DF) {
   G = _G;
   n = G.size();
   sG.assign(n, {});
@@ -58,9 +185,31 @@ vector<vector<int>> SSAOptimizer::dominatorTree::work(vector<vector<int>> &_G) {
     for (auto v : G[u])
       iG[v].push_back(u);
   ord.clear(), ord.reserve(n);
-  p.resize(n), dfn = fa = idom = p;
+  p.assign(n, 0), dfn = fa = p;
+  idom.assign(n, -1);
   iota(p.begin(), p.end(), 0), sdom = mn = p;
-  return LengauerTarjan(0);
+  LengauerTarjan(0);
+  T.assign(n, {});
+  DF.assign(n, {});
+  // Build dominator tree
+  for (int u = 0; u < n; ++u)
+    if (idom[u] != -1 && idom[u] != u)
+      T[idom[u]].push_back(u);
+  // Get dominator frontier
+  function<void(int)> dfs = [&](int u) {
+    for (int v : T[u]) {
+      dfs(v);
+      for (auto z : DF[v])
+        if (idom[z] != u)
+          DF[u].push_back(z);
+    }
+    for (int v : G[u])
+      if (idom[v] != u)
+        DF[u].push_back(v);
+    sort(DF[u].begin(), DF[u].end());
+    DF[u].erase(unique(DF[u].begin(), DF[u].end()), DF[u].end());
+  };
+  dfs(0);
 }
 
 void SSAOptimizer::dominatorTree::dfs(int u) {
@@ -70,37 +219,298 @@ void SSAOptimizer::dominatorTree::dfs(int u) {
       fa[v] = u, dfs(v);
 }
 
-int SSAOptimizer::dominatorTree::GF(int u) {
+int SSAOptimizer::dominatorTree::getFther(int u) {
   if (u == p[u])
     return u;
-  int &f = p[u], pu = GF(f);
+  int &f = p[u], pu = getFther(f);
   if (dfn[sdom[mn[f]]] < dfn[sdom[mn[u]]])
     mn[u] = mn[f];
   return f = pu;
 }
 
-vector<vector<int>> SSAOptimizer::dominatorTree::LengauerTarjan(int rt) {
+void SSAOptimizer::dominatorTree::LengauerTarjan(int rt) {
   dfs(rt);
   for (int i = ord.size() - 1, u; i; --i) {
     u = ord[i];
     for (int v : iG[u]) {
       if (!dfn[v])
         continue;
-      GF(v);
+      getFther(v);
       if (dfn[sdom[mn[v]]] < dfn[sdom[u]])
         sdom[u] = sdom[mn[v]];
     }
     sG[sdom[u]].push_back(u);
     u = p[u] = fa[u];
     for (int v : sG[u])
-      GF(v), idom[v] = u == sdom[mn[v]] ? u : mn[v];
+      getFther(v), idom[v] = u == sdom[mn[v]] ? u : mn[v];
     sG[u].clear();
   }
   for (int u : ord)
     if (idom[u] != sdom[u])
       idom[u] = idom[idom[u]];
-  vector<vector<int>> res(n);
-  for (int u = 1; u < n; ++u)
-    res[idom[u]].push_back(u);
-  return res;
+}
+
+SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
+  switch (x->type) {
+  case IRItem::INT:
+    data = INT;
+    ival = x->iVal;
+    type = CONST;
+    break;
+  case IRItem::FLOAT:
+    data = FLOAT;
+    fval = x->fVal;
+    type = CONST;
+    break;
+  case IRItem::FTEMP:
+  case IRItem::ITEMP:
+    tmpID = x->iVal;
+    type = LOCAL;
+    data = x->type == IRItem::FTEMP ? FLOAT : INT;
+    break;
+  case IRItem::IR_T:
+    ival = x->iVal;
+    type = LEBAL;
+    break;
+  case IRItem::RETURN:
+    type = RETURN;
+    break;
+  default: {
+    symbol = x->symbol;
+    auto sType = symbol->symbolType;
+    if (sType == Symbol::FUNC)
+      type = FUNC;
+    else if ((sType == Symbol::LOCAL_VAR && x->symbol->dimensions.empty()) ||
+             sType == Symbol::PARAM) {
+      type = LOCAL;
+      tmpID = -1; // not temporary
+    } else
+      type = GLOBAL;
+    data = x->symbol->dataType == Symbol::FLOAT ? FLOAT : INT;
+    break;
+  }
+  }
+}
+
+SSAOptimizer::SSAItem::SSAItem(SSAvar *v, int i = 0) {
+  var = v;
+  vid = i;
+}
+
+SSAOptimizer::SSAIR::SSAIR(IR::IRType ty, SSAItem *l, vector<SSAItem *> r,
+                           int isPhi = 0) {
+  type = ty;
+  L = l;
+  R.swap(r);
+  phi = isPhi;
+}
+
+SSAOptimizer::SSAvar *SSAOptimizer::getSSAvar(IRItem *x) {
+  switch (x->type) {
+  case IRItem::RETURN:
+    if (RET == NULL) {
+      RET = new SSAvar(x);
+      ssaVars.push_back(RET);
+    }
+    return RET;
+  case IRItem::INT:
+    if (!intCon.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      intCon[x->iVal] = ssaVars.back();
+    }
+    return intCon[x->iVal];
+  case IRItem::FLOAT:
+    if (!floatCon.count(x->fVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      floatCon[x->fVal] = ssaVars.back();
+    }
+    return floatCon[x->fVal];
+  case IRItem::IR_T:
+    if (!label.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      label[x->iVal] = ssaVars.back();
+    }
+    return label[x->iVal];
+  case IRItem::ITEMP:
+  case IRItem::FTEMP:
+    if (!tmpVar.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      tmpVar[x->iVal] = ssaVars.back();
+    }
+    return tmpVar[x->iVal];
+  default:
+    if (!symVar.count(x->symbol)) {
+      ssaVars.push_back(new SSAvar(x));
+      symVar[x->symbol] = ssaVars.back();
+    }
+    return symVar[x->symbol];
+  }
+}
+
+void SSAOptimizer::preprocess() {
+  int cnt = 0;
+  unordered_map<IR *, int> belong;
+
+  // Part blocks: begin with label, end with goto or branch
+  block.push_back({});
+  for (auto &ir : funIR) {
+    if (!block.back().empty() && ir->type == IR::LABEL) {
+      ++cnt;
+      block.push_back({});
+    }
+    block.back().push_back(ir);
+    belong[ir] = cnt;
+    if (ir->type == IR::GOTO || branch.count(ir->type)) {
+      ++cnt;
+      block.push_back({});
+    }
+  }
+  ++cnt;
+
+  // Build flow graph
+  G.resize(cnt);
+  for (int u = 0, v; u < cnt - 1; ++u) {
+    v = u + 1;
+    if (block[u].back()->type == IR::GOTO)
+      v = belong[block[u].back()->items[0]->ir];
+    G[u].push_back(v);
+  }
+  for (auto &ir : funIR)
+    if (branch.count(ir->type)) {
+      int u = belong[ir], v = belong[ir->items[0]->ir];
+      G[u].push_back(v);
+    }
+
+  // Get dominator tree and dominance frontier
+  domT.work(G, T, DF);
+
+  // Preprocess all variables used in function, variables used and defined by
+  // each block. At the same time, convert the IR of each block to SSAIR
+  usedVar.resize(block.size());
+  ssaIRs.resize(block.size());
+  for (size_t bid = 0; bid < block.size(); ++bid) {
+    for (auto &bir : block[bid]) {
+      if (bir->type == IR::LABEL)
+        continue;
+      for (size_t i = 0; i < bir->items.size(); ++i) {
+        auto &it = bir->items[i];
+        if (it->type == IRItem::IR_T)
+          it->iVal = belong[it->ir];
+        auto var = getSSAvar(it);
+        if (it->type == IRItem::ITEMP || it->type == IRItem::FTEMP ||
+            (it->type == IRItem::SYMBOL &&
+             it->symbol->symbolType == Symbol::LOCAL_VAR &&
+             it->symbol->dimensions.empty())) {
+          usedVar[bid].insert(var);
+          if (i == 0 && !noDef.count(bir->type)) {
+            blockDef[var].push_back(bid);
+          }
+        }
+      }
+    }
+  }
+
+  // Initialize the stack into which variables will be put.
+  for (auto &var : ssaVars) {
+    varVersion[var] = -1;
+    varStack[var].push(new SSAItem(var));
+  }
+}
+
+void SSAOptimizer::insertPhi() {
+  // This indicates that phi-function for V has been inserted into X
+  vector<set<SSAvar *>> inserted(block.size());
+  // This represents that X has been added to W for variable V
+  vector<set<SSAvar *>> work(block.size());
+  for (auto &var : ssaVars) {
+    if (var->type != SSAvar::LOCAL)
+      continue;
+    set<int> W;
+    for (auto bid : blockDef[var]) {
+      W.insert(bid);
+      work[bid].insert(var);
+    }
+    while (!W.empty()) {
+      int x = *W.begin();
+      W.erase(x);
+      for (int y : DF[x]) {
+        if (inserted[y].count(var))
+          continue;
+        // if (usedVar[y].count(var)) { // Pruned SSA
+        inserted[y].insert(var);
+        ssaIRs[y].push_back(new SSAIR(IR::MOV, new SSAItem(var), {}, 1));
+        // }
+        if (!work[y].count(var)) {
+          work[y].insert(var);
+          W.insert(y);
+        }
+      }
+    }
+  }
+}
+
+void SSAOptimizer::renameVariables(int u) {
+  unordered_map<SSAvar*, int> pushCnt;
+  // Right-hand side of statement are all phi-function
+  for (auto &ir : ssaIRs[u]) {
+    if (!ir->phi)
+      break;
+    auto x = ir->L->var;
+    ir->L = new SSAItem(x, varVersion[x] + 1);
+    varVersion[x] += 1;
+    varStack[x].push(ir->L);
+    pushCnt[x] += 1;
+  }
+  // Phi-function is not included on the right-hand side of statement
+  for (auto &bir : block[u]) {
+    if (bir->type == IR::LABEL)
+      continue;
+    int ins = 1;
+    SSAItem *L = NULL;
+    vector<SSAItem *> R;
+    if (noDef.count(bir->type)) {
+      for (auto x : bir->items)
+        R.push_back(varStack[getSSAvar(x)].top());
+    } else {
+      for (size_t i = 1; i < bir->items.size(); ++i)
+        R.push_back(varStack[getSSAvar(bir->items[i])].top());
+      auto left = getSSAvar(bir->items[0]);
+      if (left->type == SSAvar::GLOBAL || left->type == SSAvar::RETURN) {
+        L = varStack[left].top();
+      } else {
+        // Copy Folding
+        if (bir->type == IR::MOV && R.size() == 1 &&
+            (R[0]->var->type == SSAvar::LOCAL ||
+             R[0]->var->type == SSAvar::CONST)) {
+          ins = 0;
+          varStack[left].push(varStack[R[0]->var].top());
+          pushCnt[left] += 1;
+        } else {
+          L = new SSAItem(left, varVersion[left] + 1);
+          varVersion[left] += 1;
+          varStack[left].push(L);
+          pushCnt[left] += 1;
+        }
+      }
+    }
+    if (ins)
+      ssaIRs[u].push_back(new SSAIR(bir->type, L, R, 0));
+  }
+  for (auto v : G[u]) {
+    for (auto &ir : ssaIRs[v]) {
+      if (!ir->phi)
+        break;
+      ir->R.push_back(varStack[ir->L->var].top());
+    }
+  }
+  for (auto v : T[u]) {
+    renameVariables(v);
+  }
+  for (auto [var, cnt] : pushCnt)
+    while (cnt--)
+      varStack[var].pop();
+}
+
+void SSAOptimizer::translateSSA() {
+
 }
