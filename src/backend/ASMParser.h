@@ -47,13 +47,14 @@ private:
   int calcCallArgSize(const std::vector<IR *> &);
   bool canBeLoadInSingleInstruction(unsigned);
   unsigned float2Unsigned(float);
-  void loadFromSP(std::vector<ASM *> &, Reg::Type, unsigned);
-  void loadImmToReg(std::vector<ASM *> &, Reg::Type, float);
-  void loadImmToReg(std::vector<ASM *> &, Reg::Type, unsigned);
   void initFrame();
   bool isByteShiftImm(unsigned);
   bool isFloatImm(float);
   bool isFloatReg(Reg::Type);
+  void loadFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, unsigned);
+  void loadFromSP(std::vector<ASM *> &, Reg::Type, unsigned);
+  void loadImmToReg(std::vector<ASM *> &, Reg::Type, float);
+  void loadImmToReg(std::vector<ASM *> &, Reg::Type, unsigned);
   void makeFrame(std::vector<ASM *> &, std::vector<IR *> &, Symbol *);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
@@ -102,6 +103,14 @@ private:
   void parseMovItempItemp(std::vector<ASM *> &, IR *);
   void parseMovItempReturn(std::vector<ASM *> &, IR *);
   void parseMovItempSymbol(std::vector<ASM *> &, IR *);
+  void parseMovItempSymbolNone(std::vector<ASM *> &, IR *);
+  void parseMovItempSymbolOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovItempSymbolTemps(std::vector<ASM *> &, IR *,
+                                std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovItempSymbolTempsOffset(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &,
+                                 unsigned);
   void parseMovReturnFloat(std::vector<ASM *> &, IR *);
   void parseMovReturnFtemp(std::vector<ASM *> &, IR *);
   void parseMovReturnInt(std::vector<ASM *> &, IR *);
@@ -123,6 +132,7 @@ private:
   void preProcess();
   void saveUsedRegs(std::vector<ASM *> &);
   void saveArgRegs(std::vector<ASM *> &, Symbol *);
+  void storeFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, unsigned);
   void storeFromSP(std::vector<ASM *> &, Reg::Type, unsigned);
   void switchLCmpLogic(IR *);
 

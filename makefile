@@ -4,15 +4,21 @@ TARGET_DIR = target
 ARCH = $(shell uname -m)
 
 compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
-	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
-	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o \
-	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/ASMParserAdd.o $(TARGET_DIR)/ASMParserBasic.o $(TARGET_DIR)/ASMParserCmp.o \
+	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
+	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
+	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
+	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
 	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
 	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
-	$(TARGET_DIR)/ASMParser.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o $(TARGET_DIR)/ASTOptimizer.o \
-	$(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/IR.o \
-	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/ASMParserAdd.o $(TARGET_DIR)/ASMParserBasic.o $(TARGET_DIR)/ASMParserCmp.o \
+	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
+	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
+	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
+	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
+	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
 	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
 	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
@@ -25,8 +31,29 @@ $(TARGET_DIR)/ASMItem.o: src/backend/ASMItem.cpp src/backend/ASMItem.h
 $(TARGET_DIR)/ASMOptimizer.o: src/backend/ASMOptimizer.cpp src/backend/ASMOptimizer.h
 	$(CC) $(CFLAGS) -c src/backend/ASMOptimizer.cpp -o $(TARGET_DIR)/ASMOptimizer.o
 
-$(TARGET_DIR)/ASMParser.o: src/backend/ASMParser.cpp src/backend/ASMParser.h
-	$(CC) $(CFLAGS) -c src/backend/ASMParser.cpp -o $(TARGET_DIR)/ASMParser.o
+$(TARGET_DIR)/ASMParserAdd.o: src/backend/ASMParserAdd.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserAdd.cpp -o $(TARGET_DIR)/ASMParserAdd.o
+
+$(TARGET_DIR)/ASMParserBasic.o: src/backend/ASMParserBasic.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserBasic.cpp -o $(TARGET_DIR)/ASMParserBasic.o
+
+$(TARGET_DIR)/ASMParserCmp.o: src/backend/ASMParserCmp.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserCmp.cpp -o $(TARGET_DIR)/ASMParserCmp.o
+
+$(TARGET_DIR)/ASMParserDiv.o: src/backend/ASMParserDiv.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserDiv.cpp -o $(TARGET_DIR)/ASMParserDiv.o
+
+$(TARGET_DIR)/ASMParserMod.o: src/backend/ASMParserMod.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserMod.cpp -o $(TARGET_DIR)/ASMParserMod.o
+
+$(TARGET_DIR)/ASMParserMov.o: src/backend/ASMParserMov.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserMov.cpp -o $(TARGET_DIR)/ASMParserMov.o
+
+$(TARGET_DIR)/ASMParserMul.o: src/backend/ASMParserMul.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserMul.cpp -o $(TARGET_DIR)/ASMParserMul.o
+
+$(TARGET_DIR)/ASMParserSub.o: src/backend/ASMParserSub.cpp src/backend/ASMParser.h
+	$(CC) $(CFLAGS) -c src/backend/ASMParserSub.cpp -o $(TARGET_DIR)/ASMParserSub.o
 
 $(TARGET_DIR)/ASMWriter.o: src/backend/ASMWriter.cpp src/backend/ASMWriter.h
 	$(CC) $(CFLAGS) -c src/backend/ASMWriter.cpp -o $(TARGET_DIR)/ASMWriter.o
@@ -45,6 +72,9 @@ $(TARGET_DIR)/Compiler.o: src/Compiler.cpp src
 
 $(TARGET_DIR)/ColoringRegAllocator.o: src/backend/ColoringRegAllocator.cpp src/backend/ColoringRegAllocator.h
 	$(CC) $(CFLAGS) -c src/backend/ColoringRegAllocator.cpp -o $(TARGET_DIR)/ColoringRegAllocator.o
+
+$(TARGET_DIR)/HardCoding.o: src/backend/HardCoding.cpp src/backend/HardCoding.h
+	$(CC) $(CFLAGS) -c src/backend/HardCoding.cpp -o $(TARGET_DIR)/HardCoding.o
 
 $(TARGET_DIR)/IR.o: src/frontend/IR.cpp src/frontend/IR.h
 	$(CC) $(CFLAGS) -c src/frontend/IR.cpp -o $(TARGET_DIR)/IR.o
