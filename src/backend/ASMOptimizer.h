@@ -18,6 +18,7 @@ public:
 
   std::unordered_map<Symbol *, std::vector<ASM *>> getFuncASMs();
   void optimize();
+  void peepholeOptimize();
 };
 
 #endif

@@ -28,6 +28,7 @@ public:
     MOVW,
     MUL,
     MVN,
+    NOP,
     POP,
     PUSH,
     ROR,
