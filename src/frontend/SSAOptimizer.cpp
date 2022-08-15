@@ -3,8 +3,7 @@
 #include <iostream>
 #include <numeric>
 #include <stack>
-#include <string>
-#include <vector>
+#include <unordered_set>
 
 using namespace std;
 
@@ -34,9 +33,9 @@ void SSAOptimizer::process() {
     preprocess();
     insertPhi();
     renameVariables(0);
+    optimize();
     if (getenv("DEBUG"))
       debug(func.first);
-    // optimize();
     translateSSA();
   }
   clear();
@@ -88,6 +87,10 @@ void SSAOptimizer::clear() {
   for (auto var : ssaVars)
     delete var;
   ssaVars.clear();
+
+  csePhiTable.clear();
+  cseExpTable.clear();
+  cseCopyTable.clear();
 }
 
 string SSAOptimizer::SSAIR::toString() {
@@ -105,7 +108,7 @@ string SSAOptimizer::SSAIR::toString() {
       {IR::LT, "LT"},       {IR::MOD, "MOD"},
       {IR::MOV, "MOV"},     {IR::MUL, "MUL"},
       {IR::NE, "NE"},       {IR::NEG, "NEG"},
-      {IR::SUB, "SUB"}};
+      {IR::SUB, "SUB"},     {IR::MEMSET_ZERO, "MEMSET_ZERO"}};
   auto itemToString = [](SSAItem *it) {
     auto x = it->var;
     string y = ".v" + to_string(it->vid);
@@ -144,7 +147,8 @@ string SSAOptimizer::SSAIR::toString() {
       s += "phi(";
     for (auto x : R)
       s += itemToString(x) + ", ";
-    s.pop_back(), s.pop_back();
+    if (s.back() == ' ')
+      s.pop_back(), s.pop_back();
     if (phi)
       s += ")";
   }
@@ -251,6 +255,7 @@ void SSAOptimizer::dominatorTree::LengauerTarjan(int rt) {
 }
 
 SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
+  symbol = NULL;
   switch (x->type) {
   case IRItem::INT:
     data = INT;
@@ -412,8 +417,11 @@ void SSAOptimizer::preprocess() {
 
   // Initialize the stack into which variables will be put.
   for (auto &var : ssaVars) {
-    varVersion[var] = -1;
-    varStack[var].push(new SSAItem(var));
+    int vid = -1;
+    if (var->symbol && var->symbol->symbolType == Symbol::PARAM)
+      ++vid;
+    varVersion[var] = vid + 1;
+    varStack[var].push(new SSAItem(var, vid)); // -1 represent undefined
   }
 }
 
@@ -456,7 +464,7 @@ void SSAOptimizer::renameVariables(int u) {
     if (!ir->phi)
       break;
     auto x = ir->L->var;
-    ir->L = new SSAItem(x, varVersion[x] + 1);
+    ir->L = new SSAItem(x, varVersion[x]);
     varVersion[x] += 1;
     varStack[x].push(ir->L);
     pushCnt[x] += 1;
@@ -474,8 +482,10 @@ void SSAOptimizer::renameVariables(int u) {
     } else {
       for (size_t i = 1; i < bir->items.size(); ++i)
         R.push_back(varStack[getSSAvar(bir->items[i])].top());
+      if (bir->type != IR::MOV && R.size() == 1)
+        R.push_back(NULL);
       auto left = getSSAvar(bir->items[0]);
-      if (left->type == SSAvar::GLOBAL || left->type == SSAvar::RETURN) {
+      if (left->type != SSAvar::LOCAL) {
         L = varStack[left].top();
       } else {
         // Copy Folding
@@ -486,7 +496,7 @@ void SSAOptimizer::renameVariables(int u) {
           varStack[left].push(varStack[R[0]->var].top());
           pushCnt[left] += 1;
         } else {
-          L = new SSAItem(left, varVersion[left] + 1);
+          L = new SSAItem(left, varVersion[left]);
           varVersion[left] += 1;
           varStack[left].push(L);
           pushCnt[left] += 1;
@@ -500,7 +510,8 @@ void SSAOptimizer::renameVariables(int u) {
     for (auto &ir : ssaIRs[v]) {
       if (!ir->phi)
         break;
-      ir->R.push_back(varStack[ir->L->var].top());
+      if (varStack[ir->L->var].top()->vid != -1)
+        ir->R.push_back(varStack[ir->L->var].top());
     }
   }
   for (auto v : T[u]) {
@@ -512,3 +523,150 @@ void SSAOptimizer::renameVariables(int u) {
 }
 
 void SSAOptimizer::translateSSA() {}
+
+void SSAOptimizer::optimize() {
+  removeUselessPhi();
+  copyPropagation();
+  commonSubexpressionElimination(0);
+  deadCodeElimination();
+}
+
+int SSAOptimizer::isCopyIR(SSAIR *x) {
+  return x->type == IR::MOV && x->R.size() == 1 &&
+         x->L->var->type == SSAvar::LOCAL &&
+         (x->R[0]->var->type == SSAvar::LOCAL ||
+          x->R[0]->var->type == SSAvar::CONST);
+}
+
+void SSAOptimizer::removeUselessPhi() {
+  while (1) {
+    unordered_map<SSAItem *, SSAItem *> copy;
+    for (auto &B : ssaIRs) {
+      vector<SSAIR *> new_B;
+      for (auto &ir : B)
+        if (ir->phi) {
+          unordered_set<SSAItem *> st;
+          for (auto &it : ir->R)
+            if (it != ir->L)
+              st.insert(it);
+          if (st.size() == 1) {
+            copy[ir->L] = *st.begin();
+          } else if (st.size() > 1) {
+            ir->R = vector<SSAItem *>(st.begin(), st.end());
+            new_B.push_back(ir);
+          }
+        } else new_B.push_back(ir);
+      B.swap(new_B);
+    }
+    if (copy.empty())
+      return;
+    // copy propagation
+    for (auto &B : ssaIRs)
+      for (auto &ir : B)
+        for (auto &var : ir->R)
+          if (copy.count(var))
+            var = copy[var];
+  }
+}
+
+void SSAOptimizer::copyPropagation() {
+  unordered_map<SSAItem *, SSAItem *> copy;
+  for (auto &B : ssaIRs) {
+    vector<SSAIR *> new_B;
+    for (auto &ir : B) {
+      // copy statement
+      if (isCopyIR(ir)) {
+        copy[ir->L] = ir->R[0];
+      } else
+        new_B.push_back(ir);
+    }
+    B.swap(new_B);
+  }
+  if (copy.empty())
+    return;
+  for (auto &B : ssaIRs)
+    for (auto &ir : B)
+      for (auto &var : ir->R)
+        if (copy.count(var))
+          var = copy[var];
+}
+
+void SSAOptimizer::commonSubexpressionElimination(int u) {
+  vector<SSAIR *> new_B;
+  vector<SSAItem *> usedItem;
+  vector<tuple<IR::IRType, SSAItem *, SSAItem *>> usedExp;
+  vector<vector<SSAItem *>> usedPhi;
+  for (auto &ir : ssaIRs[u]) {
+    if (ir->phi) {
+      if (csePhiTable.count(ir->R)) {
+        cseCopyTable[ir->L] = csePhiTable[ir->R];
+        usedItem.push_back(ir->L);
+      } else {
+        unordered_set<SSAItem *> st;
+        for (auto &it : ir->R)
+          if (it != ir->L)
+            st.insert(it);
+        if (st.size() == 1) {
+          cseCopyTable[ir->L] = cseCopyTable[*st.begin()];
+          usedItem.push_back(ir->L);
+        } else if (st.size() > 1) {
+          ir->R = vector<SSAItem *>(st.begin(), st.end());
+          new_B.push_back(ir);
+        }
+      }
+    } else
+      new_B.push_back(ir);
+  }
+  ssaIRs[u].swap(new_B);
+  new_B.clear();
+  for (auto &ir : ssaIRs[u]) {
+    if (!noDef.count(ir->type)) {
+      for (auto &it : ir->R)
+        if (cseCopyTable.count(it))
+          it = cseCopyTable[it];
+      tuple<IR::IRType, SSAItem *, SSAItem *> Exp = {IR::MOV, NULL, NULL};
+      if (ir->type != IR::MOV)
+        Exp = {ir->type, ir->R[0], ir->R[1]};
+      if (cseExpTable.count(Exp)) {
+        ir->R = {cseExpTable[Exp]};
+        ir->type = IR::MOV;
+      }
+      if (isCopyIR(ir)) {
+        cseCopyTable[ir->L] = ir->R[0];
+        usedItem.push_back(ir->L);
+      } else
+        new_B.push_back(ir);
+      if (ir->type != IR::MOV) {
+        cseExpTable[Exp] = ir->L;
+        usedExp.push_back(Exp);
+      } else if (ir->phi) {
+        csePhiTable[ir->R] = ir->L;
+        usedPhi.push_back(ir->R);
+      }
+    } else {
+      for (auto &it : ir->R)
+        if (cseCopyTable.count(it))
+          it = cseCopyTable[it];
+      new_B.push_back(ir);
+    }
+  }
+  ssaIRs[u].swap(new_B);
+  new_B.clear();
+  for (auto v : G[u]) {
+    for (auto &ir : ssaIRs[v])
+      if (ir->phi)
+        for (auto &it : ir->R)
+          if (cseCopyTable.count(it))
+            it = cseCopyTable[it];
+  }
+  for (auto v : T[u])
+    commonSubexpressionElimination(v);
+  for (auto &x : usedItem)
+    cseCopyTable.erase(x);
+  for (auto &x : usedExp)
+    cseExpTable.erase(x);
+  for (auto &x : usedPhi)
+    csePhiTable.erase(x);
+}
+
+void SSAOptimizer::deadCodeElimination() {};

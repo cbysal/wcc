@@ -2,6 +2,7 @@
 #define __SSA_OPTIMIZER_H__
 
 #include <set>
+#include <map>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -23,12 +24,11 @@ private:
   std::vector<IR *> funIR;      // IR in each function
   std::vector<Symbol *> funVar; // Local variable in each function
 
-  void optimize();
-
-  const std::set<int> branch = std::set<int>{IR::BEQ, IR::BGE, IR::BGT, IR::BGT,
-                                             IR::BLE, IR::BLT, IR::BNE};
-  const std::set<int> noDef = std::set<int>{IR::BEQ, IR::BGE, IR::BGT, IR::BGT,
-                                        IR::BLE, IR::BLT, IR::BNE, IR::CALL, IR::GOTO, IR::LABEL};
+  const std::set<IR::IRType> branch = std::set<IR::IRType>{
+      IR::BEQ, IR::BGE, IR::BGT, IR::BGT, IR::BLE, IR::BLT, IR::BNE};
+  const std::set<IR::IRType> noDef = std::set<IR::IRType>{
+      IR::BEQ, IR::BGE,  IR::BGT,  IR::BGT,   IR::BLE,        IR::BLT,
+      IR::BNE, IR::CALL, IR::GOTO, IR::LABEL, IR::MEMSET_ZERO};
 
   using graph = std::vector<std::vector<int>>;
 
@@ -128,6 +128,19 @@ private:
   void clear();
   // Print SSA
   void debug(Symbol *);
+
+  // Optimize
+  void optimize();
+  int isCopyIR(SSAIR *);
+  void copyPropagation();
+  void removeUselessPhi();
+
+  std::map<std::vector<SSAItem *>, SSAItem *> csePhiTable;
+  std::map<std::tuple<IR::IRType, SSAItem *, SSAItem *>, SSAItem *> cseExpTable;
+  std::unordered_map<SSAItem *, SSAItem *> cseCopyTable;
+  void commonSubexpressionElimination(int);
+
+  void deadCodeElimination();
 
 public:
   SSAOptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
