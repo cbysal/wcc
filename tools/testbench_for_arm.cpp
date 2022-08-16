@@ -43,11 +43,11 @@ void test(const string &syFile) {
 }
 
 int main(int argc, char *argv[]) {
+  system("make");
   if (argc == 2) {
     test(argv[1]);
     return 0;
   }
-  system("make");
   string dir1 = "test_case/functional";
   string dir2 = "test_case/hidden_functional";
   string dir3 = "test_case/performance";

@@ -71,38 +71,71 @@ unsigned ASMParser::float2Unsigned(float fVal) {
 
 void ASMParser::loadFromReg(vector<ASM *> &asms, Reg::Type target,
                             Reg::Type base, unsigned offset) {
-  ASM::ASMOpType op = isFloatReg(target) ? ASM::VLDR : ASM::LDR;
-  unsigned maxOffset = isFloatReg(target) ? 1020 : 4095;
-  if (!offset) {
-    asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(base)}));
-    return;
+  if (isFloatReg(target)) {
+    if (!offset) {
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(base)}));
+      return;
+    }
+    if (offset <= 1020) {
+      asms.push_back(new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(base),
+                                         new ASMItem(offset)}));
+      return;
+    }
+    moveFromReg(asms, Reg::A4, base, offset);
+    asms.push_back(
+        new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(Reg::A4)}));
+  } else {
+    if (!offset) {
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(base)}));
+      return;
+    }
+    if (offset <= 4095) {
+      asms.push_back(new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(base),
+                                        new ASMItem(offset)}));
+      return;
+    }
+    loadImmToReg(asms, Reg::A4, offset);
+    asms.push_back(new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(base),
+                                      new ASMItem(Reg::A4)}));
   }
-  if (offset <= maxOffset) {
-    asms.push_back(new ASM(
-        op, {new ASMItem(target), new ASMItem(base), new ASMItem(offset)}));
-    return;
-  }
-  loadImmToReg(asms, Reg::A4, offset);
-  asms.push_back(new ASM(
-      op, {new ASMItem(target), new ASMItem(base), new ASMItem(Reg::A4)}));
 }
 
 void ASMParser::loadFromSP(vector<ASM *> &asms, Reg::Type target,
                            unsigned offset) {
-  ASM::ASMOpType op = isFloatReg(target) ? ASM::VLDR : ASM::LDR;
-  unsigned maxOffset = isFloatReg(target) ? 1020 : 4095;
-  if (!offset) {
-    asms.push_back(new ASM(op, {new ASMItem(target), new ASMItem(Reg::SP)}));
-    return;
+  if (isFloatReg(target)) {
+    if (!offset) {
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(Reg::SP)}));
+      return;
+    }
+    if (offset <= 1020) {
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(Reg::SP),
+                              new ASMItem(offset)}));
+      return;
+    }
+    loadImmToReg(asms, Reg::A4, offset);
+    asms.push_back(
+        new ASM(ASM::VLDR, {new ASMItem(target), new ASMItem(Reg::SP),
+                            new ASMItem(Reg::A4)}));
+  } else {
+    if (!offset) {
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(Reg::SP)}));
+      return;
+    }
+    if (offset <= 4095) {
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(Reg::SP),
+                             new ASMItem(offset)}));
+      return;
+    }
+    moveFromSP(asms, Reg::A4, offset);
+    asms.push_back(
+        new ASM(ASM::LDR, {new ASMItem(target), new ASMItem(Reg::A4)}));
   }
-  if (offset <= maxOffset) {
-    asms.push_back(new ASM(
-        op, {new ASMItem(target), new ASMItem(Reg::SP), new ASMItem(offset)}));
-    return;
-  }
-  loadImmToReg(asms, Reg::A4, offset);
-  asms.push_back(new ASM(
-      op, {new ASMItem(target), new ASMItem(Reg::SP), new ASMItem(Reg::A4)}));
 }
 
 void ASMParser::loadImmToReg(vector<ASM *> &asms, Reg::Type reg, float val) {

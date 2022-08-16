@@ -105,6 +105,14 @@ private:
   void parseMovFtempFtemp(std::vector<ASM *> &, IR *);
   void parseMovFtempReturn(std::vector<ASM *> &, IR *);
   void parseMovFtempSymbol(std::vector<ASM *> &, IR *);
+  void parseMovFtempSymbolNone(std::vector<ASM *> &, IR *);
+  void parseMovFtempSymbolOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovFtempSymbolTemps(std::vector<ASM *> &, IR *,
+                                std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovFtempSymbolTempsOffset(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &,
+                                 unsigned);
   void parseMovItempInt(std::vector<ASM *> &, IR *);
   void parseMovItempItemp(std::vector<ASM *> &, IR *);
   void parseMovItempReturn(std::vector<ASM *> &, IR *);
