@@ -192,6 +192,28 @@ void ASMParser::makeFrame(vector<ASM *> &asms, vector<IR *> &irs,
   moveFromSP(asms, Reg::SP, (int)savedRegs * 4 - frameOffset);
 }
 
+void ASMParser::moveFromReg(vector<ASM *> &asms, Reg::Type target,
+                            Reg::Type base, int offset) {
+  if (target == base && !offset)
+    return;
+  if (isByteShiftImm(offset))
+    asms.push_back(new ASM(ASM::ADD, {new ASMItem(target), new ASMItem(base),
+                                      new ASMItem(offset)}));
+  else if (isByteShiftImm(-offset))
+    asms.push_back(new ASM(ASM::SUB, {new ASMItem(target), new ASMItem(base),
+                                      new ASMItem(-offset)}));
+  else if (canBeLoadInSingleInstruction(offset) ||
+           canBeLoadInSingleInstruction(-offset)) {
+    loadImmToReg(asms, Reg::A4, (unsigned)offset);
+    asms.push_back(new ASM(ASM::ADD, {new ASMItem(target), new ASMItem(base),
+                                      new ASMItem(Reg::A4)}));
+  } else {
+    loadImmToReg(asms, Reg::A4, (unsigned)(-offset));
+    asms.push_back(new ASM(ASM::SUB, {new ASMItem(target), new ASMItem(base),
+                                      new ASMItem(Reg::A4)}));
+  }
+}
+
 void ASMParser::moveFromSP(vector<ASM *> &asms, Reg::Type target, int offset) {
   if (target == Reg::SP && !offset)
     return;

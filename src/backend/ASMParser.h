@@ -44,6 +44,8 @@ private:
   unsigned startLineno;
   unsigned stopLineno;
 
+  void addTempsToReg(std::vector<ASM *> &,
+                     std::vector<std::pair<unsigned, unsigned>> &, Reg::Type);
   int calcCallArgSize(const std::vector<IR *> &);
   bool canBeLoadInSingleInstruction(unsigned);
   unsigned float2Unsigned(float);
@@ -56,6 +58,10 @@ private:
   void loadImmToReg(std::vector<ASM *> &, Reg::Type, float);
   void loadImmToReg(std::vector<ASM *> &, Reg::Type, unsigned);
   void makeFrame(std::vector<ASM *> &, std::vector<IR *> &, Symbol *);
+  void makeRegFromTemps(std::vector<ASM *> &,
+                        std::vector<std::pair<unsigned, unsigned>> &,
+                        Reg::Type);
+  void moveFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void parse();
