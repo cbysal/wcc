@@ -61,6 +61,8 @@ private:
   void makeRegFromTemps(std::vector<ASM *> &,
                         std::vector<std::pair<unsigned, unsigned>> &,
                         Reg::Type);
+  std::pair<std::vector<std::pair<unsigned, unsigned>>, unsigned>
+  makeTempsOffset(IR *, Symbol *);
   void moveFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
@@ -130,6 +132,14 @@ private:
   void parseMovReturnInt(std::vector<ASM *> &, IR *);
   void parseMovReturnItemp(std::vector<ASM *> &, IR *);
   void parseMovReturnSymbol(std::vector<ASM *> &, IR *);
+  void parseMovReturnSymbolNone(std::vector<ASM *> &, IR *);
+  void parseMovReturnSymbolOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovReturnSymbolTemps(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovReturnSymbolTempsOffset(std::vector<ASM *> &, IR *,
+                                  std::vector<std::pair<unsigned, unsigned>> &,
+                                  unsigned);
   void parseMovSymbolFtemp(std::vector<ASM *> &, IR *);
   void parseMovSymbolFtempNone(std::vector<ASM *> &, IR *);
   void parseMovSymbolFtempOffset(std::vector<ASM *> &, IR *, unsigned);

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <iostream>
 
 #include "ASMParser.h"
 #include "HardCoding.h"
@@ -64,6 +63,23 @@ void ASMParser::makeRegFromTemps(vector<ASM *> &asms,
                        new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
     }
   }
+}
+
+pair<vector<pair<unsigned, unsigned>>, unsigned>
+ASMParser::makeTempsOffset(IR *ir, Symbol *symbol) {
+  vector<unsigned> sizes({4});
+  for (int i = symbol->dimensions.size() - 1; i > 0; i--)
+    sizes.push_back(sizes.back() * symbol->dimensions[i]);
+  reverse(sizes.begin(), sizes.end());
+  unsigned offset = 0;
+  vector<pair<unsigned, unsigned>> temps;
+  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
+    if (ir->items[i + 2]->type == IRItem::INT)
+      offset += ir->items[i + 2]->iVal * sizes[i];
+    else
+      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
+  }
+  return {temps, offset};
 }
 
 void ASMParser::parseMov(vector<ASM *> &asms, IR *ir) {
@@ -157,18 +173,10 @@ void ASMParser::parseMovFtempReturn(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseMovFtempSymbol(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[1]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[1]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[1]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovFtempSymbolOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -181,117 +189,53 @@ void ASMParser::parseMovFtempSymbol(vector<ASM *> &asms, IR *ir) {
 
 void ASMParser::parseMovFtempSymbolNone(vector<ASM *> &asms, IR *ir) {
   bool flag1 = ftemp2Reg.find(ir->items[0]->iVal) == ftemp2Reg.end();
-  if (ir->items[1]->symbol->dimensions.empty()) {
+  switch (ir->items[1]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
     if (flag1) {
-      switch (ir->items[1]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        break;
-      default:
-        break;
-      }
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      switch (ir->items[1]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
-                                new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        loadFromSP(asms, ftemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-        break;
-      default:
-        break;
-      }
+    } else
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
+                              new ASMItem(Reg::A1)}));
+    break;
+  case Symbol::LOCAL_VAR:
+    if (flag1) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else
+      loadFromSP(asms, ftemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    break;
+  case Symbol::PARAM:
+    if (flag1 && ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (flag1 && !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (!flag1 && ir->items[1]->symbol->dimensions.empty())
+      loadFromSP(asms, ftemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    else if (!flag1 && !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
+                              new ASMItem(Reg::A1)}));
     }
-  } else {
-    switch (ir->items[1]->symbol->symbolType) {
-    case Symbol::CONST:
-    case Symbol::GLOBAL_VAR:
-      if (flag1) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
-                                new ASMItem(Reg::A1)}));
-      }
-      break;
-    case Symbol::LOCAL_VAR:
-      if (flag1) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else
-        loadFromSP(asms, ftemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      break;
-    case Symbol::PARAM:
-      if (flag1 && ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && !ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (!flag1 && ir->items[1]->symbol->dimensions.empty())
-        loadFromSP(asms, ftemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      else if (!flag1 && !ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
-                                new ASMItem(Reg::A1)}));
-      }
-      break;
-    default:
-      break;
-    }
+    break;
+  default:
+    break;
   }
 }
 
@@ -301,24 +245,17 @@ void ASMParser::parseMovFtempSymbolOffset(vector<ASM *> &asms, IR *ir,
   switch (ir->items[1]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
     if (flag1) {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
       loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    } else
       loadFromReg(asms, ftemp2Reg[ir->items[0]->iVal], Reg::A1, offset);
-    }
     break;
   case Symbol::LOCAL_VAR:
     if (flag1) {
@@ -329,14 +266,12 @@ void ASMParser::parseMovFtempSymbolOffset(vector<ASM *> &asms, IR *ir,
                  offsets[ir->items[1]->symbol] + offset);
     break;
   case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
     if (flag1) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
       loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    } else
       loadFromReg(asms, ftemp2Reg[ir->items[0]->iVal], Reg::A1, offset);
-    }
     break;
   default:
     break;
@@ -349,62 +284,45 @@ void ASMParser::parseMovFtempSymbolTemps(
   switch (ir->items[1]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       asms.push_back(
           new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
                               new ASMItem(Reg::A1)}));
-    }
     break;
   case Symbol::LOCAL_VAR:
+    moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       asms.push_back(
           new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
                               new ASMItem(Reg::A1)}));
-    }
     break;
   case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       asms.push_back(
           new ASM(ASM::VLDR, {new ASMItem(ftemp2Reg[ir->items[0]->iVal]),
                               new ASMItem(Reg::A1)}));
-    }
     break;
   default:
     break;
@@ -418,59 +336,36 @@ void ASMParser::parseMovFtempSymbolTempsOffset(
   switch (ir->items[1]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
-                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
-                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       loadFromReg(asms, ftemp2Reg[ir->items[0]->iVal], Reg::A1, offset);
-    }
     break;
   case Symbol::LOCAL_VAR:
+    moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       loadFromReg(asms, ftemp2Reg[ir->items[0]->iVal], Reg::A1, offset);
-    }
     break;
   case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
     if (flag1) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-    } else {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      addTempsToReg(asms, temps, Reg::A1);
+    } else
       loadFromReg(asms, ftemp2Reg[ir->items[0]->iVal], Reg::A1, offset);
-    }
     break;
   default:
     break;
@@ -514,18 +409,10 @@ void ASMParser::parseMovItempReturn(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseMovItempSymbol(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[1]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[1]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[1]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovItempSymbolOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -538,135 +425,96 @@ void ASMParser::parseMovItempSymbol(vector<ASM *> &asms, IR *ir) {
 
 void ASMParser::parseMovItempSymbolNone(vector<ASM *> &asms, IR *ir) {
   bool flag1 = itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end();
-  if (ir->items[1]->symbol->dimensions.empty()) {
-    switch (ir->items[1]->symbol->symbolType) {
-    case Symbol::CONST:
-    case Symbol::GLOBAL_VAR:
-      asms.push_back(
-          new ASM(ASM::MOVW,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-      asms.push_back(
-          new ASM(ASM::MOVT,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+  bool isFull = ir->items[1]->symbol->dimensions.size() + 2 == ir->items.size();
+  switch (ir->items[1]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
+    if (flag1 && isFull) {
       asms.push_back(new ASM(
-          ASM::LDR,
-          {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal])}));
-      break;
-    case Symbol::LOCAL_VAR:
-    case Symbol::PARAM:
-      loadFromSP(asms, flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal],
-                 offsets[ir->items[1]->symbol]);
-      break;
-    default:
-      break;
-    }
-    if (flag1)
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-  } else {
-    bool isFull =
-        ir->items[1]->symbol->dimensions.size() + 2 == ir->items.size();
-    switch (ir->items[1]->symbol->symbolType) {
-    case Symbol::CONST:
-    case Symbol::GLOBAL_VAR:
-      if (flag1 && isFull) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && !isFull) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (!flag1 && isFull) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                               new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
-      } else if (!flag1 && !isFull) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      }
-      break;
-    case Symbol::LOCAL_VAR:
-      if (flag1 && isFull) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && !isFull) {
-        moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (!flag1 && isFull)
-        loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      else if (!flag1 && !isFull)
-        moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      break;
-    case Symbol::PARAM:
-      if (flag1 && isFull && ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && isFull && !ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && !isFull && ir->items[1]->symbol->dimensions.empty()) {
-        moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (flag1 && !isFull &&
-                 !ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-        storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
-      } else if (!flag1 && isFull && ir->items[1]->symbol->dimensions.empty())
-        loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      else if (!flag1 && isFull && !ir->items[1]->symbol->dimensions.empty()) {
-        loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-        asms.push_back(
-            new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                               new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
-      } else if (!flag1 && !isFull && ir->items[1]->symbol->dimensions.empty())
-        moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      else if (!flag1 && !isFull && !ir->items[1]->symbol->dimensions.empty())
-        loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
-                   offsets[ir->items[1]->symbol]);
-      break;
-    default:
-      break;
+    } else if (flag1 && !isFull) {
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (!flag1 && isFull) {
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                             new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
+    } else if (!flag1 && !isFull) {
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                      new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                      new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
     }
+    break;
+  case Symbol::LOCAL_VAR:
+    if (flag1 && isFull) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (flag1 && !isFull) {
+      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (!flag1 && isFull)
+      loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    else if (!flag1 && !isFull)
+      moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    break;
+  case Symbol::PARAM:
+    if (flag1 && isFull && ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (flag1 && isFull && !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (flag1 && !isFull && ir->items[1]->symbol->dimensions.empty()) {
+      moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (flag1 && !isFull && !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+    } else if (!flag1 && isFull && ir->items[1]->symbol->dimensions.empty())
+      loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    else if (!flag1 && isFull && !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
+                             new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
+    } else if (!flag1 && !isFull && ir->items[1]->symbol->dimensions.empty())
+      moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    else if (!flag1 && !isFull && !ir->items[1]->symbol->dimensions.empty())
+      loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
+                 offsets[ir->items[1]->symbol]);
+    break;
+  default:
+    break;
   }
 }
 
@@ -769,10 +617,9 @@ void ASMParser::parseMovItempSymbolTemps(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A1),
                       new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       asms.push_back(new ASM(
@@ -790,11 +637,10 @@ void ASMParser::parseMovItempSymbolTemps(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
                       new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A1);
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
       asms.push_back(
           new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+                             new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
     } else if (!flag1 && !isFull) {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
@@ -808,10 +654,9 @@ void ASMParser::parseMovItempSymbolTemps(
   case Symbol::LOCAL_VAR:
     if (flag1 && isFull) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
@@ -820,28 +665,22 @@ void ASMParser::parseMovItempSymbolTemps(
     } else if (!flag1 && isFull) {
       moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
       asms.push_back(
           new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+                             new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
     } else if (!flag1 && !isFull) {
       moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
     }
     break;
   case Symbol::PARAM:
     if (flag1 && isFull) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
@@ -850,11 +689,10 @@ void ASMParser::parseMovItempSymbolTemps(
     } else if (!flag1 && isFull) {
       loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
       asms.push_back(
           new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+                             new ASMItem(itemp2Reg[ir->items[0]->iVal])}));
     } else if (!flag1 && !isFull) {
       loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
@@ -881,11 +719,8 @@ void ASMParser::parseMovItempSymbolTempsOffset(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A1),
                       new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       asms.push_back(new ASM(
@@ -904,12 +739,9 @@ void ASMParser::parseMovItempSymbolTempsOffset(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
                       new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
+      loadFromReg(asms, itemp2Reg[ir->items[0]->iVal],
+                  itemp2Reg[ir->items[0]->iVal], offset);
     } else if (!flag1 && !isFull) {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
@@ -925,11 +757,8 @@ void ASMParser::parseMovItempSymbolTempsOffset(
   case Symbol::LOCAL_VAR:
     if (flag1 && isFull) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
@@ -939,31 +768,22 @@ void ASMParser::parseMovItempSymbolTempsOffset(
     } else if (!flag1 && isFull) {
       moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
+      loadFromReg(asms, itemp2Reg[ir->items[0]->iVal],
+                  itemp2Reg[ir->items[0]->iVal], offset);
     } else if (!flag1 && !isFull) {
       moveFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
+      moveFromReg(asms, itemp2Reg[ir->items[0]->iVal],
+                  itemp2Reg[ir->items[0]->iVal], offset);
     }
     break;
   case Symbol::PARAM:
     if (flag1 && isFull) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
@@ -973,12 +793,9 @@ void ASMParser::parseMovItempSymbolTempsOffset(
     } else if (!flag1 && isFull) {
       loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(itemp2Reg[ir->items[0]->iVal]),
-                             new ASMItem(Reg::A1)}));
+      addTempsToReg(asms, temps, itemp2Reg[ir->items[0]->iVal]);
+      loadFromReg(asms, itemp2Reg[ir->items[0]->iVal],
+                  itemp2Reg[ir->items[0]->iVal], offset);
     } else if (!flag1 && !isFull) {
       loadFromSP(asms, itemp2Reg[ir->items[0]->iVal],
                  offsets[ir->items[1]->symbol]);
@@ -1018,87 +835,189 @@ void ASMParser::parseMovReturnItemp(vector<ASM *> &asms, IR *ir) {
 }
 
 void ASMParser::parseMovReturnSymbol(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[1]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[1]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[1]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
+  if (temps.empty() && offset)
+    parseMovReturnSymbolOffset(asms, ir, offset);
+  else if (temps.empty() && !offset)
+    parseMovReturnSymbolNone(asms, ir);
+  else if (!temps.empty() && offset)
+    parseMovReturnSymbolTempsOffset(asms, ir, temps, offset);
+  else if (!temps.empty() && !offset)
+    parseMovReturnSymbolTemps(asms, ir, temps);
+}
+
+void ASMParser::parseMovReturnSymbolNone(vector<ASM *> &asms, IR *ir) {
   switch (ir->items[1]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     asms.push_back(new ASM(
-        ASM::MOVW, {new ASMItem(Reg::A2),
+        ASM::MOVW, {new ASMItem(Reg::A1),
                     new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
     asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(Reg::A2),
+        ASM::MOVT, {new ASMItem(Reg::A1),
                     new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT) {
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+    } else
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
     break;
   case Symbol::LOCAL_VAR:
-    moveFromSP(asms, Reg::A2, offsets[ir->items[1]->symbol]);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromSP(asms, Reg::S0, offsets[ir->items[1]->symbol]);
+    else
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
     break;
   case Symbol::PARAM:
-    if (ir->items[1]->symbol->dimensions.empty())
-      moveFromSP(asms, Reg::A2, offsets[ir->items[1]->symbol]);
-    else
-      loadFromSP(asms, Reg::A2, offsets[ir->items[1]->symbol]);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT &&
+        ir->items[1]->symbol->dimensions.empty())
+      loadFromSP(asms, Reg::S0, offsets[ir->items[1]->symbol]);
+    else if (ir->items[1]->symbol->dataType == Symbol::FLOAT &&
+             !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+    } else if (ir->items[1]->symbol->dataType != Symbol::FLOAT &&
+               ir->items[1]->symbol->dimensions.empty())
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    else if (ir->items[1]->symbol->dataType != Symbol::FLOAT &&
+             !ir->items[1]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+    }
     break;
   default:
     break;
   }
-  for (pair<unsigned, unsigned> temp : temps) {
-    if (itemp2Reg.find(temp.first) == itemp2Reg.end()) {
-      loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
-      loadImmToReg(asms, Reg::A4, temp.second);
-      asms.push_back(
-          new ASM(ASM::MUL, {new ASMItem(Reg::A3), new ASMItem(Reg::A3),
-                             new ASMItem(Reg::A4)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    } else {
-      loadImmToReg(asms, Reg::A3, temp.second);
-      asms.push_back(new ASM(ASM::MUL, {new ASMItem(Reg::A3),
-                                        new ASMItem(itemp2Reg[temp.first]),
-                                        new ASMItem(Reg::A3)}));
-      asms.push_back(
-          new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
-    }
+}
+
+void ASMParser::parseMovReturnSymbolOffset(vector<ASM *> &asms, IR *ir,
+                                           unsigned offset) {
+  switch (ir->items[1]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromReg(asms, Reg::S0, Reg::A1, offset);
+    else
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
+    break;
+  case Symbol::LOCAL_VAR:
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromSP(asms, Reg::S0, offsets[ir->items[1]->symbol] + offset);
+    else
+      loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol] + offset);
+    break;
+  case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromReg(asms, Reg::S0, Reg::A1, offset);
+    else
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
+    break;
+  default:
+    break;
   }
-  if (offset) {
-    loadImmToReg(asms, Reg::A3, offset);
-    asms.push_back(
-        new ASM(ASM::ADD, {new ASMItem(Reg::A2), new ASMItem(Reg::A2),
-                           new ASMItem(Reg::A3)}));
+}
+
+void ASMParser::parseMovReturnSymbolTemps(
+    vector<ASM *> &asms, IR *ir, vector<pair<unsigned, unsigned>> &temps) {
+  switch (ir->items[1]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+    else
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+    break;
+  case Symbol::LOCAL_VAR:
+    moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+    else
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+    break;
+  case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      asms.push_back(
+          new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+    else
+      asms.push_back(
+          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
+    break;
+  default:
+    break;
   }
-  if (ir->items[1]->symbol->dataType == Symbol::INT)
-    asms.push_back(
-        new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
-  else
-    asms.push_back(
-        new ASM(ASM::VLDR, {new ASMItem(Reg::S0), new ASMItem(Reg::A2)}));
+}
+
+void ASMParser::parseMovReturnSymbolTempsOffset(
+    vector<ASM *> &asms, IR *ir, vector<pair<unsigned, unsigned>> &temps,
+    unsigned offset) {
+  switch (ir->items[1]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
+    asms.push_back(new ASM(
+        ASM::MOVW, {new ASMItem(Reg::A1),
+                    new ASMItem("#:lower16:" + ir->items[1]->symbol->name)}));
+    asms.push_back(new ASM(
+        ASM::MOVT, {new ASMItem(Reg::A1),
+                    new ASMItem("#:upper16:" + ir->items[1]->symbol->name)}));
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromReg(asms, Reg::S0, Reg::A1, offset);
+    else
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
+    break;
+  case Symbol::LOCAL_VAR:
+    moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromReg(asms, Reg::S0, Reg::A1, offset);
+    else
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
+    break;
+  case Symbol::PARAM:
+    loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
+    addTempsToReg(asms, temps, Reg::A1);
+    if (ir->items[1]->symbol->dataType == Symbol::FLOAT)
+      loadFromReg(asms, Reg::S0, Reg::A1, offset);
+    else
+      loadFromReg(asms, Reg::A1, Reg::A1, offset);
+    break;
+  default:
+    break;
+  }
 }
 
 void ASMParser::parseMovSymbolFtemp(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[0]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[0]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovSymbolFtempOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -1111,116 +1030,60 @@ void ASMParser::parseMovSymbolFtemp(vector<ASM *> &asms, IR *ir) {
 
 void ASMParser::parseMovSymbolFtempNone(vector<ASM *> &asms, IR *ir) {
   bool flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
-  if (ir->items[0]->symbol->dimensions.empty()) {
+  switch (ir->items[0]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
     if (flag2) {
-      switch (ir->items[0]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        break;
-      default:
-        break;
-      }
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A2),
+                      new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A2),
+                      new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
-      switch (ir->items[0]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::VSTR, {new ASMItem(ftemp2Reg[ir->items[1]->iVal]),
-                                new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        storeFromSP(asms, ftemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-        break;
-      default:
-        break;
-      }
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::VSTR, {new ASMItem(ftemp2Reg[ir->items[1]->iVal]),
+                              new ASMItem(Reg::A1)}));
     }
-  } else {
-    switch (ir->items[0]->symbol->symbolType) {
-    case Symbol::CONST:
-    case Symbol::GLOBAL_VAR:
-      if (flag2) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-      } else {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::VSTR, {new ASMItem(ftemp2Reg[ir->items[1]->iVal]),
-                                new ASMItem(Reg::A1)}));
-      }
-      break;
-    case Symbol::LOCAL_VAR:
-      if (flag2) {
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      } else
-        storeFromSP(asms, ftemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-      break;
-    case Symbol::PARAM:
-      if (flag2 && ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      } else if (flag2 && !ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-      } else if (!flag2 && ir->items[0]->symbol->dimensions.empty())
-        storeFromSP(asms, ftemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-      else if (!flag2 && !ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        asms.push_back(
-            new ASM(ASM::VSTR, {new ASMItem(ftemp2Reg[ir->items[1]->iVal]),
-                                new ASMItem(Reg::A1)}));
-      }
-      break;
-    default:
-      break;
+    break;
+  case Symbol::LOCAL_VAR:
+    if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+    } else
+      storeFromSP(asms, ftemp2Reg[ir->items[1]->iVal],
+                  offsets[ir->items[0]->symbol]);
+    break;
+  case Symbol::PARAM:
+    if (flag2 && ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+    } else if (flag2 && !ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+    } else if (!flag2 && ir->items[0]->symbol->dimensions.empty())
+      storeFromSP(asms, ftemp2Reg[ir->items[1]->iVal],
+                  offsets[ir->items[0]->symbol]);
+    else if (!flag2 && !ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+      asms.push_back(
+          new ASM(ASM::VSTR, {new ASMItem(ftemp2Reg[ir->items[1]->iVal]),
+                              new ASMItem(Reg::A1)}));
     }
+    break;
+  default:
+    break;
   }
 }
 
@@ -1231,14 +1094,14 @@ void ASMParser::parseMovSymbolFtempOffset(vector<ASM *> &asms, IR *ir,
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-      storeFromReg(asms, Reg::A2, Reg::A1, offset);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1259,9 +1122,9 @@ void ASMParser::parseMovSymbolFtempOffset(vector<ASM *> &asms, IR *ir,
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-      storeFromReg(asms, Reg::A2, Reg::A1, offset);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       storeFromReg(asms, ftemp2Reg[ir->items[1]->iVal], Reg::A1, offset);
@@ -1279,17 +1142,16 @@ void ASMParser::parseMovSymbolFtempTemps(
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1305,12 +1167,11 @@ void ASMParser::parseMovSymbolFtempTemps(
     break;
   case Symbol::LOCAL_VAR:
     if (flag2) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
@@ -1321,12 +1182,11 @@ void ASMParser::parseMovSymbolFtempTemps(
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
@@ -1348,18 +1208,15 @@ void ASMParser::parseMovSymbolFtempTempsOffset(
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1373,13 +1230,10 @@ void ASMParser::parseMovSymbolFtempTempsOffset(
     break;
   case Symbol::LOCAL_VAR:
     if (flag2) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
@@ -1388,13 +1242,10 @@ void ASMParser::parseMovSymbolFtempTempsOffset(
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
@@ -1407,18 +1258,10 @@ void ASMParser::parseMovSymbolFtempTempsOffset(
 }
 
 void ASMParser::parseMovSymbolImm(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[0]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[0]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovSymbolImmOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -1433,29 +1276,28 @@ void ASMParser::parseMovSymbolImmNone(vector<ASM *> &asms, IR *ir) {
   switch (ir->items[0]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     asms.push_back(new ASM(
-        ASM::MOVW, {new ASMItem(Reg::A1),
+        ASM::MOVW, {new ASMItem(Reg::A2),
                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
     asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(Reg::A1),
+        ASM::MOVT, {new ASMItem(Reg::A2),
                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-    loadImmToReg(asms, Reg::A2, (unsigned)ir->items[1]->iVal);
     asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
+        new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     break;
   case Symbol::LOCAL_VAR:
     loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
     break;
   case Symbol::PARAM:
-    if (ir->items[0]->symbol->dimensions.empty()) {
-      loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    if (ir->items[0]->symbol->dimensions.empty())
       storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    } else {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      loadImmToReg(asms, Reg::A2, (unsigned)ir->items[1]->iVal);
+    else {
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     }
     break;
   default:
@@ -1468,23 +1310,23 @@ void ASMParser::parseMovSymbolImmOffset(vector<ASM *> &asms, IR *ir,
   switch (ir->items[0]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     asms.push_back(new ASM(
-        ASM::MOVW, {new ASMItem(Reg::A1),
+        ASM::MOVW, {new ASMItem(Reg::A2),
                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
     asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(Reg::A1),
+        ASM::MOVT, {new ASMItem(Reg::A2),
                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-    loadImmToReg(asms, Reg::A2, (unsigned)ir->items[1]->iVal);
-    storeFromReg(asms, Reg::A2, Reg::A1, offset);
+    storeFromReg(asms, Reg::A1, Reg::A2, offset);
     break;
   case Symbol::LOCAL_VAR:
     loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol] + offset);
     break;
   case Symbol::PARAM:
-    loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    loadImmToReg(asms, Reg::A2, (unsigned)ir->items[1]->iVal);
-    storeFromReg(asms, Reg::A2, Reg::A1, offset);
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+    storeFromReg(asms, Reg::A1, Reg::A2, offset);
     break;
   default:
     break;
@@ -1496,33 +1338,30 @@ void ASMParser::parseMovSymbolImmTemps(
   switch (ir->items[0]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     asms.push_back(new ASM(
-        ASM::MOVW, {new ASMItem(Reg::A1),
+        ASM::MOVW, {new ASMItem(Reg::A2),
                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
     asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(Reg::A1),
+        ASM::MOVT, {new ASMItem(Reg::A2),
                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-    makeRegFromTemps(asms, temps, Reg::A2);
-    loadImmToReg(asms, Reg::A3, (unsigned)ir->items[1]->iVal);
+    addTempsToReg(asms, temps, Reg::A2);
     asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+        new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     break;
   case Symbol::LOCAL_VAR:
-    moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    makeRegFromTemps(asms, temps, Reg::A2);
-    loadImmToReg(asms, Reg::A3, (unsigned)ir->items[1]->iVal);
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+    addTempsToReg(asms, temps, Reg::A2);
     asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+        new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     break;
   case Symbol::PARAM:
-    loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    makeRegFromTemps(asms, temps, Reg::A2);
-    loadImmToReg(asms, Reg::A3, (unsigned)ir->items[1]->iVal);
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+    addTempsToReg(asms, temps, Reg::A2);
     asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+        new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     break;
   default:
     break;
@@ -1535,36 +1374,27 @@ void ASMParser::parseMovSymbolImmTempsOffset(
   switch (ir->items[0]->symbol->symbolType) {
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
     asms.push_back(new ASM(
-        ASM::MOVW, {new ASMItem(Reg::A1),
+        ASM::MOVW, {new ASMItem(Reg::A2),
                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
     asms.push_back(new ASM(
-        ASM::MOVT, {new ASMItem(Reg::A1),
+        ASM::MOVT, {new ASMItem(Reg::A2),
                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-    makeRegFromTemps(asms, temps, Reg::A2);
-    moveFromReg(asms, Reg::A2, Reg::A2, offset);
-    loadImmToReg(asms, Reg::A3, offset);
-    asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+    addTempsToReg(asms, temps, Reg::A2);
+    storeFromReg(asms, Reg::A1, Reg::A2, offset);
     break;
   case Symbol::LOCAL_VAR:
-    moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    makeRegFromTemps(asms, temps, Reg::A2);
-    moveFromReg(asms, Reg::A2, Reg::A2, offset);
-    loadImmToReg(asms, Reg::A3, offset);
-    asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+    addTempsToReg(asms, temps, Reg::A2);
+    storeFromReg(asms, Reg::A1, Reg::A2, offset);
     break;
   case Symbol::PARAM:
-    loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-    makeRegFromTemps(asms, temps, Reg::A2);
-    moveFromReg(asms, Reg::A2, Reg::A2, offset);
-    loadImmToReg(asms, Reg::A3, offset);
-    asms.push_back(
-        new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                           new ASMItem(Reg::A2)}));
+    loadImmToReg(asms, Reg::A1, (unsigned)ir->items[1]->iVal);
+    loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+    addTempsToReg(asms, temps, Reg::A2);
+    storeFromReg(asms, Reg::A1, Reg::A2, offset);
     break;
   default:
     break;
@@ -1572,18 +1402,10 @@ void ASMParser::parseMovSymbolImmTempsOffset(
 }
 
 void ASMParser::parseMovSymbolItemp(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[0]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[0]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovSymbolItempOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -1596,116 +1418,60 @@ void ASMParser::parseMovSymbolItemp(vector<ASM *> &asms, IR *ir) {
 
 void ASMParser::parseMovSymbolItempNone(vector<ASM *> &asms, IR *ir) {
   bool flag2 = itemp2Reg.find(ir->items[1]->iVal) == itemp2Reg.end();
-  if (ir->items[0]->symbol->dimensions.empty()) {
+  switch (ir->items[0]->symbol->symbolType) {
+  case Symbol::CONST:
+  case Symbol::GLOBAL_VAR:
     if (flag2) {
-      switch (ir->items[0]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        break;
-      default:
-        break;
-      }
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A2),
+                      new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A2),
+                      new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
-      switch (ir->items[0]->symbol->symbolType) {
-      case Symbol::CONST:
-      case Symbol::GLOBAL_VAR:
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                               new ASMItem(Reg::A1)}));
-        break;
-      case Symbol::LOCAL_VAR:
-      case Symbol::PARAM:
-        storeFromSP(asms, itemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-        break;
-      default:
-        break;
-      }
+      asms.push_back(new ASM(
+          ASM::MOVW, {new ASMItem(Reg::A1),
+                      new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(new ASM(
+          ASM::MOVT, {new ASMItem(Reg::A1),
+                      new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
+                             new ASMItem(Reg::A1)}));
     }
-  } else {
-    switch (ir->items[0]->symbol->symbolType) {
-    case Symbol::CONST:
-    case Symbol::GLOBAL_VAR:
-      if (flag2) {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-      } else {
-        asms.push_back(
-            new ASM(ASM::MOVW,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::MOVT,
-                    {new ASMItem(Reg::A1),
-                     new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                               new ASMItem(Reg::A1)}));
-      }
-      break;
-    case Symbol::LOCAL_VAR:
-      if (flag2) {
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      } else
-        storeFromSP(asms, itemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-      break;
-    case Symbol::PARAM:
-      if (flag2 && ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
-        storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      } else if (flag2 && !ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(Reg::A2), new ASMItem(Reg::A1)}));
-      } else if (!flag2 && ir->items[0]->symbol->dimensions.empty())
-        storeFromSP(asms, itemp2Reg[ir->items[1]->iVal],
-                    offsets[ir->items[0]->symbol]);
-      else if (!flag2 && !ir->items[0]->symbol->dimensions.empty()) {
-        loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-        asms.push_back(
-            new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                               new ASMItem(Reg::A1)}));
-      }
-      break;
-    default:
-      break;
+    break;
+  case Symbol::LOCAL_VAR:
+    if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+    } else
+      storeFromSP(asms, itemp2Reg[ir->items[1]->iVal],
+                  offsets[ir->items[0]->symbol]);
+    break;
+  case Symbol::PARAM:
+    if (flag2 && ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      storeFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+    } else if (flag2 && !ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+    } else if (!flag2 && ir->items[0]->symbol->dimensions.empty())
+      storeFromSP(asms, itemp2Reg[ir->items[1]->iVal],
+                  offsets[ir->items[0]->symbol]);
+    else if (!flag2 && !ir->items[0]->symbol->dimensions.empty()) {
+      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
+      asms.push_back(
+          new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
+                             new ASMItem(Reg::A1)}));
     }
+    break;
+  default:
+    break;
   }
 }
 
@@ -1716,14 +1482,14 @@ void ASMParser::parseMovSymbolItempOffset(vector<ASM *> &asms, IR *ir,
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-      storeFromReg(asms, Reg::A2, Reg::A1, offset);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1744,9 +1510,9 @@ void ASMParser::parseMovSymbolItempOffset(vector<ASM *> &asms, IR *ir,
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      loadFromSP(asms, Reg::A2, spillOffsets[ir->items[1]->iVal]);
-      storeFromReg(asms, Reg::A2, Reg::A1, offset);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       storeFromReg(asms, itemp2Reg[ir->items[1]->iVal], Reg::A1, offset);
@@ -1764,17 +1530,16 @@ void ASMParser::parseMovSymbolItempTemps(
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1782,42 +1547,40 @@ void ASMParser::parseMovSymbolItempTemps(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A1),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
           new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+                             new ASMItem(Reg::A1)}));
     }
     break;
   case Symbol::LOCAL_VAR:
     if (flag2) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
           new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+                             new ASMItem(Reg::A1)}));
     }
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A1);
       asms.push_back(
           new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+                             new ASMItem(Reg::A1)}));
     }
     break;
   default:
@@ -1833,18 +1596,15 @@ void ASMParser::parseMovSymbolItempTempsOffset(
   case Symbol::CONST:
   case Symbol::GLOBAL_VAR:
     if (flag2) {
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
       asms.push_back(new ASM(
-          ASM::MOVW, {new ASMItem(Reg::A1),
+          ASM::MOVW, {new ASMItem(Reg::A2),
                       new ASMItem("#:lower16:" + ir->items[0]->symbol->name)}));
       asms.push_back(new ASM(
-          ASM::MOVT, {new ASMItem(Reg::A1),
+          ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A1),
@@ -1852,47 +1612,32 @@ void ASMParser::parseMovSymbolItempTempsOffset(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A1),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      storeFromReg(asms, itemp2Reg[ir->items[1]->iVal], Reg::A1, offset);
     }
     break;
   case Symbol::LOCAL_VAR:
     if (flag2) {
-      moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      storeFromReg(asms, itemp2Reg[ir->items[1]->iVal], Reg::A1, offset);
     }
     break;
   case Symbol::PARAM:
     if (flag2) {
-      loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      loadFromSP(asms, Reg::A3, spillOffsets[ir->items[1]->iVal]);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A3), new ASMItem(Reg::A1),
-                             new ASMItem(Reg::A2)}));
+      loadFromSP(asms, Reg::A1, spillOffsets[ir->items[1]->iVal]);
+      loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     } else {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(itemp2Reg[ir->items[1]->iVal]),
-                             new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
+      addTempsToReg(asms, temps, Reg::A1);
+      storeFromReg(asms, itemp2Reg[ir->items[1]->iVal], Reg::A1, offset);
     }
     break;
   default:
@@ -1901,18 +1646,10 @@ void ASMParser::parseMovSymbolItempTempsOffset(
 }
 
 void ASMParser::parseMovSymbolReturn(vector<ASM *> &asms, IR *ir) {
-  vector<unsigned> sizes({4});
-  for (int i = ir->items[0]->symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * ir->items[0]->symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
-  unsigned offset = 0;
-  vector<pair<unsigned, unsigned>> temps;
-  for (unsigned i = 0; i < ir->items.size() - 2; i++) {
-    if (ir->items[i + 2]->type == IRItem::INT)
-      offset += ir->items[i + 2]->iVal * sizes[i];
-    else
-      temps.emplace_back(ir->items[i + 2]->iVal, sizes[i]);
-  }
+  pair<vector<pair<unsigned, unsigned>>, unsigned> tempsOffset =
+      makeTempsOffset(ir, ir->items[0]->symbol);
+  vector<pair<unsigned, unsigned>> &temps = tempsOffset.first;
+  unsigned offset = tempsOffset.second;
   if (temps.empty() && offset)
     parseMovSymbolReturnOffset(asms, ir, offset);
   else if (temps.empty() && !offset)
@@ -2047,10 +1784,9 @@ void ASMParser::parseMovSymbolReturnTemps(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A3);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     }
     break;
   case Symbol::LOCAL_VAR:
@@ -2061,10 +1797,9 @@ void ASMParser::parseMovSymbolReturnTemps(
           new ASM(ASM::VSTR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
     } else {
       moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A3);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     }
     break;
   case Symbol::PARAM:
@@ -2075,10 +1810,9 @@ void ASMParser::parseMovSymbolReturnTemps(
           new ASM(ASM::VSTR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
     } else {
       loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A3);
+      addTempsToReg(asms, temps, Reg::A2);
       asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2)}));
     }
     break;
   default:
@@ -2100,9 +1834,7 @@ void ASMParser::parseMovSymbolReturnTempsOffset(
           ASM::MOVT, {new ASMItem(Reg::A1),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
       addTempsToReg(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::VSTR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+      storeFromReg(asms, Reg::S0, Reg::A1, offset);
     } else {
       asms.push_back(new ASM(
           ASM::MOVW, {new ASMItem(Reg::A2),
@@ -2110,43 +1842,30 @@ void ASMParser::parseMovSymbolReturnTempsOffset(
       asms.push_back(new ASM(
           ASM::MOVT, {new ASMItem(Reg::A2),
                       new ASMItem("#:upper16:" + ir->items[0]->symbol->name)}));
-      makeRegFromTemps(asms, temps, Reg::A3);
-      moveFromReg(asms, Reg::A3, Reg::A3, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     }
     break;
   case Symbol::LOCAL_VAR:
     if (ir->items[0]->symbol->dataType == Symbol::FLOAT) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::VSTR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+      storeFromReg(asms, Reg::S0, Reg::A1, offset);
     } else {
       moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
       makeRegFromTemps(asms, temps, Reg::A2);
-      moveFromReg(asms, Reg::A2, Reg::A2, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     }
     break;
   case Symbol::PARAM:
     if (ir->items[0]->symbol->dataType == Symbol::FLOAT) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[0]->symbol]);
       addTempsToReg(asms, temps, Reg::A1);
-      moveFromReg(asms, Reg::A1, Reg::A1, offset);
-      asms.push_back(
-          new ASM(ASM::VSTR, {new ASMItem(Reg::S0), new ASMItem(Reg::A1)}));
+      storeFromReg(asms, Reg::S0, Reg::A1, offset);
     } else {
       loadFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A3);
-      moveFromReg(asms, Reg::A3, Reg::A3, offset);
-      asms.push_back(
-          new ASM(ASM::STR, {new ASMItem(Reg::A1), new ASMItem(Reg::A2),
-                             new ASMItem(Reg::A3)}));
+      addTempsToReg(asms, temps, Reg::A2);
+      storeFromReg(asms, Reg::A1, Reg::A2, offset);
     }
     break;
   default:
