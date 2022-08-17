@@ -131,9 +131,41 @@ private:
   void parseMovReturnItemp(std::vector<ASM *> &, IR *);
   void parseMovReturnSymbol(std::vector<ASM *> &, IR *);
   void parseMovSymbolFtemp(std::vector<ASM *> &, IR *);
+  void parseMovSymbolFtempNone(std::vector<ASM *> &, IR *);
+  void parseMovSymbolFtempOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovSymbolFtempTemps(std::vector<ASM *> &, IR *,
+                                std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovSymbolFtempTempsOffset(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &,
+                                 unsigned);
   void parseMovSymbolImm(std::vector<ASM *> &, IR *);
+  void parseMovSymbolImmNone(std::vector<ASM *> &, IR *);
+  void parseMovSymbolImmOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovSymbolImmTemps(std::vector<ASM *> &, IR *,
+                              std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovSymbolImmTempsOffset(std::vector<ASM *> &, IR *,
+                               std::vector<std::pair<unsigned, unsigned>> &,
+                               unsigned);
   void parseMovSymbolItemp(std::vector<ASM *> &, IR *);
+  void parseMovSymbolItempNone(std::vector<ASM *> &, IR *);
+  void parseMovSymbolItempOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovSymbolItempTemps(std::vector<ASM *> &, IR *,
+                                std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovSymbolItempTempsOffset(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &,
+                                 unsigned);
   void parseMovSymbolReturn(std::vector<ASM *> &, IR *);
+  void parseMovSymbolReturnNone(std::vector<ASM *> &, IR *);
+  void parseMovSymbolReturnOffset(std::vector<ASM *> &, IR *, unsigned);
+  void parseMovSymbolReturnTemps(std::vector<ASM *> &, IR *,
+                                 std::vector<std::pair<unsigned, unsigned>> &);
+  void
+  parseMovSymbolReturnTempsOffset(std::vector<ASM *> &, IR *,
+                                  std::vector<std::pair<unsigned, unsigned>> &,
+                                  unsigned);
   void parseNeg(std::vector<ASM *> &, IR *);
   void parseSub(std::vector<ASM *> &, IR *);
   void parseSubFloatFtemp(std::vector<ASM *> &, IR *);
