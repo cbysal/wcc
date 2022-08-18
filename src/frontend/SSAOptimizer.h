@@ -31,10 +31,13 @@ private:
     void dfs(int);
     int getFther(int);
     void LengauerTarjan(int);
-    void work(graph &, graph &, graph &);
+    void work(graph &, graph &, graph &, graph &);
   } domT;
 
-  graph G, T, DF; // Control Flow Gaph, Dominator Tree, Dominator Frontier
+  // Control Flow Gaph, Inverse graph of CGF,
+  graph G, iG;
+  // Dominator Tree, Dominator Frontier
+  graph T, DF;
 
   struct SSAvar {
     enum varType {
@@ -58,6 +61,7 @@ private:
     int tmpID;
     Symbol *symbol;
     SSAvar(IRItem *);
+    SSAvar();
   };
 
   struct SSAItem {
@@ -95,6 +99,8 @@ private:
   std::vector<std::vector<IR *>> block;
   // SSAIR of each block after conversion
   std::vector<std::vector<SSAIR *>> ssaIRs;
+  // SSAIR added after each block during conversion of SSA to normal form
+  std::vector<std::vector<SSAIR *>> insIRs;
 
   // All variables that have occurred
   std::vector<SSAvar *> ssaVars;
@@ -113,7 +119,6 @@ private:
   // Minimal SSA
   void insertPhi();
   void renameVariables(int);
-  void translateSSA();
   void clear();
   // Print SSA
   void debug(Symbol *);
@@ -122,16 +127,31 @@ private:
   void optimize();
   int isCopyIR(SSAIR *);
   void copyPropagation();
+  void constantPropagation();
   void removeUselessPhi();
 
   std::map<std::vector<SSAItem *>, SSAItem *> csePhiTable;
   std::map<std::tuple<IR::IRType, SSAItem *, SSAItem *>, SSAItem *> cseExpTable;
   std::unordered_map<SSAItem *, SSAItem *> cseCopyTable;
   void commonSubexpressionElimination(int);
-
+  void moveInvariantExpOut();
   void deadCodeElimination();
 
+  // Translation from SSA Form into Normal Form by Method of Briggs et al.
+  // (I can't understand the implementation of the Method of Sreedhar et al.)
+  void translateSSA();
+  SSAIR *newCopyIR(SSAItem *);
+  // The block to which the definition statement of each variable belongs.
+  std::unordered_map<SSAItem *, int> resrcBelong;
+  void preprocessForPhi();
+
 public:
+
+  std::vector<Symbol *> getConsts();
+  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
+  std::vector<Symbol *> getGlobalVars();
+  std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
+  unsigned getTempId();
   void process();
 };
 

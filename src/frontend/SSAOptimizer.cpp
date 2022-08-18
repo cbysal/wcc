@@ -137,7 +137,8 @@ void SSAOptimizer::debug(Symbol *f) {
 
 using graph = vector<vector<int>>;
 
-void SSAOptimizer::dominatorTree::work(graph &_G, graph &T, graph &DF) {
+void SSAOptimizer::dominatorTree::work(graph &_G, graph &_iG, graph &T,
+                                       graph &DF) {
   G = _G;
   n = G.size();
   sG.assign(n, {});
@@ -145,6 +146,7 @@ void SSAOptimizer::dominatorTree::work(graph &_G, graph &T, graph &DF) {
   for (int u = 0; u < n; ++u)
     for (auto v : G[u])
       iG[v].push_back(u);
+  _iG = iG;
   ord.clear(), ord.reserve(n);
   p.assign(n, 0), dfn = fa = p;
   idom.assign(n, -1);
@@ -211,6 +213,13 @@ void SSAOptimizer::dominatorTree::LengauerTarjan(int rt) {
       idom[u] = idom[idom[u]];
 }
 
+SSAOptimizer::SSAvar::SSAvar() {
+  symbol = NULL;
+  data = INT;
+  tmpID = -1;
+  type = LOCAL;
+}
+
 SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
   symbol = NULL;
   switch (x->type) {
@@ -265,6 +274,14 @@ SSAOptimizer::SSAIR::SSAIR(IR::IRType ty, SSAItem *l, vector<SSAItem *> r,
   L = l;
   R.swap(r);
   phi = isPhi;
+}
+
+SSAOptimizer::SSAIR *SSAOptimizer::newCopyIR(SSAItem *src) {
+  SSAvar *tmp = new SSAvar;
+  tmp->data = src->var->data;
+  tmp->tmpID = (int)tmpVar.size();
+  tmpVar[tmp->tmpID] = tmp;
+  return new SSAIR(IR::MOV, new SSAItem(tmp), {src});
 }
 
 SSAOptimizer::SSAvar *SSAOptimizer::getSSAvar(IRItem *x) {
@@ -344,7 +361,7 @@ void SSAOptimizer::preprocess() {
     }
 
   // Get dominator tree and dominance frontier
-  domT.work(G, T, DF);
+  domT.work(G, iG, T, DF);
 
   // Preprocess all variables used in function, variables used and defined by
   // each block. At the same time, convert the IR of each block to SSAIR
@@ -375,7 +392,8 @@ void SSAOptimizer::preprocess() {
   // Initialize the stack into which variables will be put.
   for (auto &var : ssaVars) {
     int vid = -1;
-    if (var->symbol && var->symbol->symbolType == Symbol::PARAM)
+    if ((var->symbol && var->symbol->symbolType == Symbol::PARAM) ||
+        var->type == SSAvar::CONST)
       ++vid;
     varVersion[var] = vid + 1;
     varStack[var].push(new SSAItem(var, vid)); // -1 represent undefined
@@ -479,12 +497,11 @@ void SSAOptimizer::renameVariables(int u) {
       varStack[var].pop();
 }
 
-void SSAOptimizer::translateSSA() {}
-
 void SSAOptimizer::optimize() {
   removeUselessPhi();
   copyPropagation();
   commonSubexpressionElimination(0);
+  constantPropagation();
   deadCodeElimination();
 }
 
@@ -548,6 +565,8 @@ void SSAOptimizer::copyPropagation() {
         if (copy.count(var))
           var = copy[var];
 }
+
+void SSAOptimizer::constantPropagation() {}
 
 void SSAOptimizer::commonSubexpressionElimination(int u) {
   vector<SSAIR *> new_B;
@@ -628,3 +647,128 @@ void SSAOptimizer::commonSubexpressionElimination(int u) {
 }
 
 void SSAOptimizer::deadCodeElimination(){};
+
+void SSAOptimizer::moveInvariantExpOut(){};
+
+// Method of Sreedhar et al.
+// void SSAOptimizer::translateSSA() {
+//   preprocessForPhi();
+//   // Phi Congruence Class
+//   unordered_map<SSAItem* , set<SSAItem *>> pcc;
+//   unordered_map<SSAItem* , vector<SSAIR *>> phiSrc;
+//   // vector<pair<>>
+//   for (auto &ir : phiIR) {
+//     pcc[ir->L] = {ir->L};
+//     for (auto &x : ir->R) {
+//       pcc[x] = {x};
+//       phiSrc[x].push_back(ir);
+//     }
+//   }
+
+//   insIRs.resize(ssaIRs.size());
+
+//   vector<set<SSAItem *>> LiveIn(ssaIRs.size()), LiveOut(ssaIRs.size());
+
+//   for (auto &ir : phiIR) {
+//     // Candidate Resource Set
+//     set<SSAItem *> crs;
+//     // Unresolved Neighbor Map
+//     unordered_map<SSAItem *, set<SSAItem *>> unmp;
+//     vector<SSAItem *> resrc = {ir->L};
+//     resrc.insert(resrc.end(), ir->R.begin(), ir->R.end());
+//     for (auto &xi : resrc)
+//       for (auto &xj : resrc) {
+//         if (xi == xj || pcc[xi] == pcc[xj])
+//          continue;
+//         int bi = resrcBelong[xi], bj = resrcBelong[xj];
+//         auto process = [&] (set<SSAItem *> &Li, set<SSAItem *> &Lj) {
+//           set<SSAItem *> sij, sji;
+//           set_intersection(pcc[xi].begin(), pcc[xi].end(), Lj.begin(),
+//           Lj.end(),
+//                            inserter(sij, sij.begin()));
+//           set_intersection(pcc[xj].begin(), pcc[xj].end(), Li.begin(),
+//           Li.end(),
+//                            inserter(sji, sji.begin()));
+//           int state = sij.empty() << 1 | sji.empty();
+//           switch (state) {
+//           case 1:
+//             crs.insert(xj);
+//             break;
+//           case 2:
+//             crs.insert(xi);
+//             break;
+//           case 3:
+//             crs.insert(xi);
+//             crs.insert(xj);
+//             break;
+//           default:
+//             unmp[xi].insert(xi);
+//             unmp[xi].insert(xj);
+//             break;
+//           }
+//         };
+//         process(LiveIn[bi], LiveIn[bj]);
+//         process(LiveIn[bi], LiveOut[bj]);
+//         process(LiveOut[bi], LiveIn[bj]);
+//         process(LiveOut[bi], LiveOut[bj]);
+//       }
+
+//     // Process the unresolved resources generated by defualt
+//     for (auto &[var, mp] : unmp)
+//       if (!crs.count(var))
+//         for (auto &xi : mp)
+//           if (!crs.count(xi)) {
+//             crs.insert(var);
+//             break;
+//           }
+
+//     // Insert copy statement
+//     for (auto &xi : crs) {
+//       for (auto &ir : phiSrc[xi]) {
+//         int bel = resrcBelong[ir->L];
+//         // Lk is the predecessor coresponding to xi
+//         for (auto Lk : iG[bel]) {
+//           auto cp = newCopyIR(xi);
+//           auto &xnew = cp->L;
+//           insIRs[Lk].push_back(cp);
+//           for (auto &xj : ir->R)
+//             if (xi == xj)
+//               xj = xnew;
+//           pcc[xnew] = {xnew};
+//           LiveOut[Lk].insert(xnew);
+//           int remove = 1;
+//           for (auto Lj : G[Lk]) {
+//             if (LiveIn[Lj].count(xi))
+//               remove = 0;
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
+
+// Method of Briggs et al.
+void SSAOptimizer::translateSSA() { preprocessForPhi(); }
+
+void SSAOptimizer::preprocessForPhi() {
+  // Replace constant and collect all phi-functions
+  for (auto &B : ssaIRs) {
+    vector<SSAIR *> new_B;
+    for (auto &ir : B) {
+      if (ir->phi) {
+        for (auto &src : ir->R)
+          if (src->var->type == SSAvar::CONST) {
+            new_B.push_back(newCopyIR(src));
+            src = new_B.back()->L;
+          }
+      }
+      new_B.push_back(ir);
+    }
+    B.swap(new_B);
+  }
+
+  // Find the block to which the definition statement of each variable belongs
+  for (size_t i = 0; i < ssaIRs.size(); ++i)
+    for (auto &ir : ssaIRs[i])
+      resrcBelong[ir->L] = i;
+}
