@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include "ASMParser.h"
 #include "HardCoding.h"
 
@@ -26,51 +24,14 @@ void ASMParser::addTempsToReg(vector<ASM *> &asms,
   }
 }
 
-void ASMParser::makeRegFromTemps(vector<ASM *> &asms,
-                                 vector<pair<unsigned, unsigned>> &temps,
-                                 Reg::Type target) {
-  bool first = true;
-  for (pair<unsigned, unsigned> temp : temps) {
-    bool flag = itemp2Reg.find(temp.first) == itemp2Reg.end();
-    if (flag)
-      loadFromSP(asms, Reg::A3, spillOffsets[temp.first]);
-    if (first) {
-      first = false;
-      if (flag)
-        loadFromSP(asms, target, spillOffsets[temp.first]);
-      if (num2powerMap.find(temp.second) == num2powerMap.end()) {
-        loadImmToReg(asms, Reg::A4, temp.second);
-        asms.push_back(new ASM(
-            ASM::MUL, {new ASMItem(target),
-                       new ASMItem(flag ? Reg::A3 : itemp2Reg[temp.first]),
-                       new ASMItem(Reg::A4)}));
-      } else
-        asms.push_back(new ASM(
-            ASM::LSL, {new ASMItem(target),
-                       new ASMItem(flag ? Reg::A3 : itemp2Reg[temp.first]),
-                       new ASMItem(num2powerMap[temp.second])}));
-    } else {
-      if (num2powerMap.find(temp.second) == num2powerMap.end()) {
-        loadImmToReg(asms, Reg::A4, temp.second);
-        asms.push_back(new ASM(
-            ASM::MLA, {new ASMItem(target),
-                       new ASMItem(flag ? Reg::A3 : itemp2Reg[temp.first]),
-                       new ASMItem(Reg::A4), new ASMItem(target)}));
-      } else
-        asms.push_back(new ASM(
-            ASM::ADD, {new ASMItem(target), new ASMItem(target),
-                       new ASMItem(flag ? Reg::A3 : itemp2Reg[temp.first]),
-                       new ASMItem(ASMItem::LSL, num2powerMap[temp.second])}));
-    }
-  }
-}
-
 pair<vector<pair<unsigned, unsigned>>, unsigned>
 ASMParser::makeTempsOffset(IR *ir, Symbol *symbol) {
-  vector<unsigned> sizes({4});
+  if (symbol->dimensions.empty())
+    return {{}, 0};
+  vector<unsigned> sizes(symbol->dimensions.size());
+  sizes.back() = 4;
   for (int i = symbol->dimensions.size() - 1; i > 0; i--)
-    sizes.push_back(sizes.back() * symbol->dimensions[i]);
-  reverse(sizes.begin(), sizes.end());
+    sizes[i - 1] = sizes[i] * symbol->dimensions[i];
   unsigned offset = 0;
   vector<pair<unsigned, unsigned>> temps;
   for (unsigned i = 0; i < ir->items.size() - 2; i++) {
@@ -1853,7 +1814,7 @@ void ASMParser::parseMovSymbolReturnTempsOffset(
       storeFromReg(asms, Reg::S0, Reg::A1, offset);
     } else {
       moveFromSP(asms, Reg::A2, offsets[ir->items[0]->symbol]);
-      makeRegFromTemps(asms, temps, Reg::A2);
+      addTempsToReg(asms, temps, Reg::A2);
       storeFromReg(asms, Reg::A1, Reg::A2, offset);
     }
     break;

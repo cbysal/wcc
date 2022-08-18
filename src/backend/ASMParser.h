@@ -58,9 +58,6 @@ private:
   void loadImmToReg(std::vector<ASM *> &, Reg::Type, float);
   void loadImmToReg(std::vector<ASM *> &, Reg::Type, unsigned);
   void makeFrame(std::vector<ASM *> &, std::vector<IR *> &, Symbol *);
-  void makeRegFromTemps(std::vector<ASM *> &,
-                        std::vector<std::pair<unsigned, unsigned>> &,
-                        Reg::Type);
   std::pair<std::vector<std::pair<unsigned, unsigned>>, unsigned>
   makeTempsOffset(IR *, Symbol *);
   void moveFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
