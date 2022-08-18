@@ -49,7 +49,6 @@ private:
 
 public:
   LinearRegAllocator(const std::vector<IR *> &);
-  ~LinearRegAllocator();
 
   void allocate();
   void betterAllocate();

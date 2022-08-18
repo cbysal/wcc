@@ -11,15 +11,7 @@ class Symbol;
 
 class ASTOptimizer {
 private:
-  bool isProcessed;
-  AST *root;
-  std::vector<Symbol *> symbols;
-
 public:
-  ASTOptimizer(AST *, const std::vector<Symbol *> &);
-  ~ASTOptimizer();
-
-  AST *getAST();
   void optimize();
 };
 

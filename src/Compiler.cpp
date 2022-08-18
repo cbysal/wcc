@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <cstring>
-#include <filesystem>
 #include <iostream>
 #include <unistd.h>
 #include <unordered_set>
 #include <vector>
 
+#include "GlobalData.h"
 #include "backend/ASMOptimizer.h"
 #include "backend/ASMParser.h"
 #include "backend/ASMWriter.h"
@@ -18,93 +18,45 @@
 
 using namespace std;
 
+LexicalParser lexicalParser;
+SyntaxParser syntaxParser;
+ASTOptimizer astOptimizer;
+IRParser irParser;
+SSAOptimizer ssaOptimizer;
+IROptimizer irOptimizer;
+ASMParser asmParser;
+ASMOptimizer asmOptimizer;
+ASMWriter asmWriter;
+
 int main(int argc, char *argv[]) {
   clock_t beginTime = clock();
+  initGlobalData();
   if (argc > 3) {
     string source = argv[4];
     string target = argv[3];
-    LexicalParser *lexicalParser = new LexicalParser(source);
-    pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
-    vector<Token *> tokens = lexicalParser->getTokens();
-    SyntaxParser *syntaxparser = new SyntaxParser(tokens);
-    vector<Symbol *> symbols = syntaxparser->getSymbolTable();
-    AST *root = syntaxparser->getAST();
-    ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
-    root = astOptimizer->getAST();
-    IRParser *irParser = new IRParser(root, symbols);
-    vector<Symbol *> consts = irParser->getConsts();
-    vector<Symbol *> globalVars = irParser->getGlobalVars();
-    unordered_map<Symbol *, vector<Symbol *>> localVars =
-        irParser->getLocalVars();
-    unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
-    unsigned tempId = irParser->getTempId();
-    SSAOptimizer *ssaOptimizer =
-        new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = ssaOptimizer->getConsts();
-    globalVars = ssaOptimizer->getGlobalVars();
-    localVars = ssaOptimizer->getLocalVars();
-    funcs = ssaOptimizer->getFuncs();
-    tempId = ssaOptimizer->getTempId();
-    IROptimizer *irOptimizer =
-        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = irOptimizer->getConsts();
-    globalVars = irOptimizer->getGlobalVars();
-    localVars = irOptimizer->getLocalVars();
-    funcs = irOptimizer->getFuncs();
-    tempId = irOptimizer->getTempId();
-    ASMParser *asmParser =
-        new ASMParser(lineno, funcs, consts, globalVars, localVars);
-    unordered_map<Symbol *, vector<ASM *>> funcASMs = asmParser->getFuncASMs();
-    ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
-    funcASMs = asmOptimizer->getFuncASMs();
-    ASMWriter *asmWriter = new ASMWriter(target, consts, globalVars, funcASMs);
-    asmWriter->write();
-    delete asmWriter;
-    delete asmOptimizer;
-    delete asmParser;
-    delete irOptimizer;
-    delete irParser;
-    delete astOptimizer;
-    delete syntaxparser;
-    delete lexicalParser;
-  } else if (argc == 2) {
-    LexicalParser *lexicalParser = new LexicalParser(argv[1]);
-    pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
-    vector<Token *> tokens = lexicalParser->getTokens();
-    SyntaxParser *syntaxparser = new SyntaxParser(tokens);
-    vector<Symbol *> symbols = syntaxparser->getSymbolTable();
-    AST *root = syntaxparser->getAST();
-    ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
-    root = astOptimizer->getAST();
-    IRParser *irParser = new IRParser(root, symbols);
-    vector<Symbol *> consts = irParser->getConsts();
-    vector<Symbol *> globalVars = irParser->getGlobalVars();
-    unordered_map<Symbol *, vector<Symbol *>> localVars =
-        irParser->getLocalVars();
-    unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
-    unsigned tempId = irParser->getTempId();
-    SSAOptimizer *ssaOptimizer =
-        new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = ssaOptimizer->getConsts();
-    globalVars = ssaOptimizer->getGlobalVars();
-    localVars = ssaOptimizer->getLocalVars();
-    funcs = ssaOptimizer->getFuncs();
-    tempId = ssaOptimizer->getTempId();
-    IROptimizer *irOptimizer =
-        new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-    consts = irOptimizer->getConsts();
-    globalVars = irOptimizer->getGlobalVars();
-    localVars = irOptimizer->getLocalVars();
-    funcs = irOptimizer->getFuncs();
-    tempId = irOptimizer->getTempId();
-    ASMParser *asmParser =
-        new ASMParser(lineno, funcs, consts, globalVars, localVars);
-    unordered_map<Symbol *, vector<ASM *>> funcASMs = asmParser->getFuncASMs();
-    ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
-    funcASMs = asmOptimizer->getFuncASMs();
-    ASMWriter *asmWriter =
-        new ASMWriter("test.s", consts, globalVars, funcASMs);
-    asmWriter->write();
+    lexicalParser.setInput(source);
+    lexicalParser.parse();
+    syntaxParser.parseRoot();
+    astOptimizer.optimize();
+    irParser.parseRoot();
+    ssaOptimizer.process();
+    irOptimizer.optimize();
+    asmParser.parse();
+    asmOptimizer.optimize();
+    asmWriter.setOutput(target);
+    asmWriter.write();
+  } else {
+    lexicalParser.setInput(argv[1]);
+    lexicalParser.parse();
+    syntaxParser.parseRoot();
+    astOptimizer.optimize();
+    irParser.parseRoot();
+    ssaOptimizer.process();
+    irOptimizer.optimize();
+    asmParser.parse();
+    asmOptimizer.optimize();
+    asmWriter.setOutput("test.s");
+    asmWriter.write();
     for (Symbol *symbol : symbols)
       cout << symbol->toString() << endl;
     cout << "----------------------------------------------------------------"
@@ -114,101 +66,12 @@ int main(int argc, char *argv[]) {
       cout << cst->toString() << endl;
     for (Symbol *cst : globalVars)
       cout << cst->toString() << endl;
-    for (pair<Symbol *, vector<IR *>> func : funcs) {
+    for (pair<Symbol *, vector<IR *>> func : funcIRs) {
       cout << func.first->name << endl;
       for (IR *ir : func.second)
         cout << ir->toString() << endl;
     }
     cout << endl;
-    delete asmWriter;
-    delete asmOptimizer;
-    delete asmParser;
-    delete irOptimizer;
-    delete irParser;
-    delete astOptimizer;
-    delete syntaxparser;
-    delete lexicalParser;
-  } else {
-    string dir1 = "test_case/functional";
-    string dir2 = "test_case/hidden_functional";
-    string dir3 = "test_case/performance";
-    vector<string> files;
-    for (const filesystem::directory_entry &entry :
-         filesystem::directory_iterator(dir1))
-      files.push_back(entry.path());
-    for (const filesystem::directory_entry &entry :
-         filesystem::directory_iterator(dir2))
-      files.push_back(entry.path());
-    for (const filesystem::directory_entry &entry :
-         filesystem::directory_iterator(dir3))
-      files.push_back(entry.path());
-    sort(files.begin(), files.end());
-    for (const string &file : files) {
-      if (file.length() < 3 || file.find(".sy") != file.length() - 3)
-        continue;
-      cout << file << endl;
-      LexicalParser *lexicalParser = new LexicalParser(file);
-      pair<unsigned, unsigned> lineno = lexicalParser->getLineno();
-      vector<Token *> tokens = lexicalParser->getTokens();
-      SyntaxParser *syntaxparser = new SyntaxParser(tokens);
-      vector<Symbol *> symbols = syntaxparser->getSymbolTable();
-      AST *root = syntaxparser->getAST();
-      ASTOptimizer *astOptimizer = new ASTOptimizer(root, symbols);
-      root = astOptimizer->getAST();
-      IRParser *irParser = new IRParser(root, symbols);
-      vector<Symbol *> consts = irParser->getConsts();
-      vector<Symbol *> globalVars = irParser->getGlobalVars();
-      unordered_map<Symbol *, vector<Symbol *>> localVars =
-          irParser->getLocalVars();
-      unordered_map<Symbol *, vector<IR *>> funcs = irParser->getFuncs();
-      unsigned tempId = irParser->getTempId();
-      SSAOptimizer *ssaOptimizer =
-          new SSAOptimizer(consts, globalVars, localVars, funcs, tempId);
-      consts = ssaOptimizer->getConsts();
-      globalVars = ssaOptimizer->getGlobalVars();
-      localVars = ssaOptimizer->getLocalVars();
-      funcs = ssaOptimizer->getFuncs();
-      tempId = ssaOptimizer->getTempId();
-      IROptimizer *irOptimizer =
-          new IROptimizer(consts, globalVars, localVars, funcs, tempId);
-      consts = irOptimizer->getConsts();
-      globalVars = irOptimizer->getGlobalVars();
-      localVars = irOptimizer->getLocalVars();
-      funcs = irOptimizer->getFuncs();
-      tempId = irOptimizer->getTempId();
-      ASMParser *asmParser =
-          new ASMParser(lineno, funcs, consts, globalVars, localVars);
-      unordered_map<Symbol *, vector<ASM *>> funcASMs =
-          asmParser->getFuncASMs();
-      ASMOptimizer *asmOptimizer = new ASMOptimizer(funcASMs);
-      funcASMs = asmOptimizer->getFuncASMs();
-      ASMWriter *asmWriter =
-          new ASMWriter("test.s", consts, globalVars, funcASMs);
-      asmWriter->write();
-      for (Symbol *symbol : symbols)
-        cout << symbol->toString() << endl;
-      cout << "----------------------------------------------------------------"
-              "----------------"
-           << endl;
-      for (Symbol *cst : consts)
-        cout << cst->toString() << endl;
-      for (Symbol *cst : globalVars)
-        cout << cst->toString() << endl;
-      for (pair<Symbol *, vector<IR *>> func : funcs) {
-        cout << func.first->name << endl;
-        for (IR *ir : func.second)
-          cout << ir->toString() << endl;
-      }
-      cout << endl;
-      delete asmWriter;
-      delete asmOptimizer;
-      delete asmParser;
-      delete irOptimizer;
-      delete irParser;
-      delete astOptimizer;
-      delete syntaxparser;
-      delete lexicalParser;
-    }
   }
   clock_t endTime = clock();
   cerr << "Time: " << (endTime - beginTime) / 1000000.0 << "s" << endl;

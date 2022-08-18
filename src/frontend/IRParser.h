@@ -11,14 +11,6 @@
 
 class IRParser {
 private:
-  bool isProcessed;
-  AST *root;
-  std::vector<Symbol *> symbols;
-  std::vector<Symbol *> consts;
-  std::vector<Symbol *> globalVars;
-  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::unordered_map<Symbol *, std::vector<IR *>> funcs;
-  unsigned tempId;
   IR *funcEnd;
 
   IRItem *lastResult(const std::vector<IR *> &);
@@ -38,18 +30,10 @@ private:
   std::vector<IR *> parseLVal(AST *, Symbol *);
   std::vector<IR *> parseRVal(AST *, Symbol *);
   std::vector<IR *> parseReturnStmt(AST *, Symbol *);
-  void parseRoot(AST *);
   std::vector<IR *> parseWhileStmt(AST *, Symbol *);
 
 public:
-  std::vector<Symbol *> getConsts();
-  std::vector<Symbol *> getGlobalVars();
-  std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
-  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
-  unsigned getTempId();
-
-  IRParser(AST *, std::vector<Symbol *> &);
-  ~IRParser();
+  void parseRoot();
 };
 
 #endif

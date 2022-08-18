@@ -10,8 +10,7 @@ unordered_map<IR::IRType, string> irTypeStr = {
     {IR::ADD, "ADD"},     {IR::BEQ, "BEQ"},
     {IR::BGE, "BGE"},     {IR::BGT, "BGT"},
     {IR::BLE, "BLE"},     {IR::BLT, "BLT"},
-    {IR::BNE, "BNE"},     {IR::BREAK, "BREAK"},
-    {IR::CALL, "CALL"},   {IR::CONTINUE, "CONTINUE"},
+    {IR::BNE, "BNE"},     {IR::CALL, "CALL"},
     {IR::DIV, "DIV"},     {IR::EQ, "EQ"},
     {IR::F2I, "F2I"},     {IR::GE, "GE"},
     {IR::GOTO, "GOTO"},   {IR::GT, "GT"},
@@ -31,11 +30,6 @@ IR::IR(IRType type, const vector<IRItem *> &items) {
   this->irId = irIdCount++;
   this->type = type;
   this->items = items;
-}
-
-IR::~IR() {
-  for (IRItem *item : items)
-    delete item;
 }
 
 string IR::toString() {

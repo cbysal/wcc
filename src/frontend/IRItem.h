@@ -29,17 +29,13 @@ public:
     int iVal;
     float fVal;
   };
-  std::string name;
 
   IRItem(IR *);
   IRItem(IRItemType);
   IRItem(IRItemType, unsigned);
-  IRItem(IRItemType, const std::string &);
-  IRItem(IRItemType, const std::string &, int);
   IRItem(Symbol *);
   IRItem(float);
   IRItem(int);
-  ~IRItem();
 
   IRItem *clone();
 };

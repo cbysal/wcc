@@ -55,7 +55,6 @@ public:
   Token(float);
   Token(int);
   Token(const std::string &);
-  ~Token();
 };
 
 #endif

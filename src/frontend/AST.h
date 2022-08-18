@@ -66,7 +66,6 @@ public:
   AST(ASTType, bool, const std::vector<AST *> &);
   AST(float);
   AST(int);
-  ~AST();
 
   AST *transIF();
 };

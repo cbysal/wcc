@@ -1,20 +1,11 @@
 #include <unordered_set>
 
+#include "../GlobalData.h"
 #include "ASMWriter.h"
 
 using namespace std;
 
-ASMWriter::ASMWriter(const string &asmFile, const vector<Symbol *> &consts,
-                     const vector<Symbol *> &globalVars,
-                     const unordered_map<Symbol *, vector<ASM *>> &funcASMs) {
-  this->isProcessed = false;
-  this->asmFile = asmFile;
-  this->consts = consts;
-  this->globalVars = globalVars;
-  this->funcASMs = funcASMs;
-}
-
-ASMWriter::~ASMWriter() {}
+void ASMWriter::setOutput(const string &asmFile) { this->asmFile = asmFile; }
 
 void ASMWriter::write() {
   FILE *file = fopen(asmFile.data(), "w");

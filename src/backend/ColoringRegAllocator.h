@@ -52,7 +52,6 @@ private:
 
 public:
   ColoringRegAllocator(const std::vector<IR *> &);
-  ~ColoringRegAllocator();
 
   void allocate();
   void betterAllocate();

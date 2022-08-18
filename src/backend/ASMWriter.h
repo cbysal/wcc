@@ -10,18 +10,10 @@
 
 class ASMWriter {
 private:
-  bool isProcessed;
   std::string asmFile;
-  std::vector<Symbol *> consts;
-  std::vector<Symbol *> globalVars;
-  std::unordered_map<Symbol *, std::vector<ASM *>> funcASMs;
 
 public:
-  ASMWriter(const std::string &, const std::vector<Symbol *> &,
-            const std::vector<Symbol *> &,
-            const std::unordered_map<Symbol *, std::vector<ASM *>> &);
-  ~ASMWriter();
-
+  void setOutput(const std::string &);
   void write();
 };
 

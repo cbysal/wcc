@@ -25,11 +25,6 @@ ASM::ASM(ASMOpType type, CondType cond, const vector<ASMItem *> &items) {
   this->items = items;
 }
 
-ASM::~ASM() {
-  for (ASMItem *item : items)
-    delete item;
-}
-
 string ASM::toString() {
   string s;
   bool first = true;

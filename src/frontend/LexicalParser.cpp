@@ -3,6 +3,7 @@
 #include <regex>
 #include <unordered_map>
 
+#include "../GlobalData.h"
 #include "LexicalParser.h"
 
 using namespace std;
@@ -24,16 +25,9 @@ unordered_map<string, Token::Type> KEYWORDS = {
     {"int", Token::INT},           {"return", Token::RETURN},
     {"void", Token::VOID},         {"while", Token::WHILE}};
 
-LexicalParser::LexicalParser(const string &fileName) {
-  this->fileName = fileName;
-  this->isProcessed = false;
+LexicalParser::LexicalParser() {
   this->head = 0;
   this->lineno = 1;
-}
-
-LexicalParser::~LexicalParser() {
-  for (Token *token : tokens)
-    delete token;
 }
 
 void LexicalParser::readFile() {
@@ -44,11 +38,12 @@ void LexicalParser::readFile() {
   fclose(file);
 }
 
+void LexicalParser::setInput(const string &fileName) {
+  this->fileName = fileName;
+}
+
 void LexicalParser::parse() {
   Token *token;
-  if (isProcessed)
-    return;
-  isProcessed = true;
   readFile();
   while ((token = nextToken()) != nullptr)
     tokens.push_back(token);
@@ -244,22 +239,4 @@ Token *LexicalParser::nextToken() {
   }
   }
   return nullptr;
-}
-
-string &LexicalParser::getContent() {
-  if (!isProcessed)
-    parse();
-  return content;
-}
-
-pair<unsigned, unsigned> LexicalParser::getLineno() {
-  if (!isProcessed)
-    parse();
-  return {startLineno, stopLineno};
-}
-
-vector<Token *> &LexicalParser::getTokens() {
-  if (!isProcessed)
-    parse();
-  return tokens;
 }

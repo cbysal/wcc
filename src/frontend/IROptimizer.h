@@ -10,18 +10,9 @@
 
 class IROptimizer {
 private:
-  bool isProcessed;
-  unsigned tempId;
-  std::vector<Symbol *> consts;
-  std::vector<Symbol *> globalVars;
-  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::unordered_map<Symbol *, std::vector<IR *>> funcs;
-  std::vector<IR *> toRecycleIRs;
-
   void assignPass();
   void constPassBlock();
   void constPassGlobal();
-  void optimize();
   void passInBlock(unsigned, unsigned);
   void removeDeadCode();
   void removeDuplicatedJumps();
@@ -32,17 +23,7 @@ private:
   void standardize(std::vector<IR *> &);
 
 public:
-  IROptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
-              const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
-              const std::unordered_map<Symbol *, std::vector<IR *>> &,
-              unsigned);
-  ~IROptimizer();
-
-  std::vector<Symbol *> getConsts();
-  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
-  std::vector<Symbol *> getGlobalVars();
-  std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
-  unsigned getTempId();
+  void optimize();
 };
 
 #endif

@@ -8,8 +8,8 @@ compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(
 	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
 	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
 	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
-	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
 	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
 	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
@@ -17,8 +17,8 @@ compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(
 	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
 	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
 	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
-	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o \
-	$(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
+	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o \
+	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
 	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
 	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
@@ -72,6 +72,9 @@ $(TARGET_DIR)/Compiler.o: src/Compiler.cpp src
 
 $(TARGET_DIR)/ColoringRegAllocator.o: src/backend/ColoringRegAllocator.cpp src/backend/ColoringRegAllocator.h
 	$(CC) $(CFLAGS) -c src/backend/ColoringRegAllocator.cpp -o $(TARGET_DIR)/ColoringRegAllocator.o
+
+$(TARGET_DIR)/GlobalData.o: src/GlobalData.cpp src/GlobalData.h
+	$(CC) $(CFLAGS) -c src/GlobalData.cpp -o $(TARGET_DIR)/GlobalData.o
 
 $(TARGET_DIR)/HardCoding.o: src/backend/HardCoding.cpp src/backend/HardCoding.h
 	$(CC) $(CFLAGS) -c src/backend/HardCoding.cpp -o $(TARGET_DIR)/HardCoding.o

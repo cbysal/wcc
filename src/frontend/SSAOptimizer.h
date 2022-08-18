@@ -1,8 +1,8 @@
 #ifndef __SSA_OPTIMIZER_H__
 #define __SSA_OPTIMIZER_H__
 
-#include <set>
 #include <map>
+#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -13,14 +13,6 @@
 
 class SSAOptimizer {
 private:
-  bool isProcessed;
-  unsigned tempId;
-  std::vector<Symbol *> consts;
-  std::vector<Symbol *> globalVars;
-  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::unordered_map<Symbol *, std::vector<IR *>> funcs;
-  std::vector<IR *> toRecycleIRs;
-
   std::vector<IR *> funIR;      // IR in each function
   std::vector<Symbol *> funVar; // Local variable in each function
 
@@ -54,10 +46,7 @@ private:
       RETURN
     };
 
-    enum dataType {
-      FLOAT,
-      INT
-    };
+    enum dataType { FLOAT, INT };
 
     union { // Value of constant
       int ival;
@@ -83,7 +72,7 @@ private:
     // Assignment: L <- op(R)
     // Otherwise: L = NULL
     // Notice: "array[i][j][k] <- x" is treated as "array <- [i][j][k], x"
-    SSAItem* L;
+    SSAItem *L;
     std::vector<SSAItem *> R;
 
     // phi = 0: L <- op(R) or L = NULL
@@ -110,13 +99,13 @@ private:
   // All variables that have occurred
   std::vector<SSAvar *> ssaVars;
   // Block X with definition of V
-  std::unordered_map<SSAvar *, std::vector<int> > blockDef;
+  std::unordered_map<SSAvar *, std::vector<int>> blockDef;
 
   // Used variables in each block
   std::vector<std::set<SSAvar *>> usedVar;
 
   // Stack of variable versions
-  std::unordered_map<SSAvar *, std::stack<SSAItem *> > varStack;
+  std::unordered_map<SSAvar *, std::stack<SSAItem *>> varStack;
   // Version of variable
   std::unordered_map<SSAvar *, int> varVersion;
 
@@ -143,18 +132,7 @@ private:
   void deadCodeElimination();
 
 public:
-  SSAOptimizer(const std::vector<Symbol *> &, const std::vector<Symbol *> &,
-               const std::unordered_map<Symbol *, std::vector<Symbol *>> &,
-               const std::unordered_map<Symbol *, std::vector<IR *>> &, unsigned);
-  ~SSAOptimizer();
-
-  std::vector<Symbol *> getConsts();
-  std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
-  std::vector<Symbol *> getGlobalVars();
-  std::unordered_map<Symbol *, std::vector<Symbol *>> getLocalVars();
-  unsigned getTempId();
   void process();
-
 };
 
 #endif

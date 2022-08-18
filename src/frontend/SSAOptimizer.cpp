@@ -1,32 +1,16 @@
-#include "SSAOptimizer.h"
 #include <functional>
 #include <iostream>
 #include <numeric>
 #include <stack>
 #include <unordered_set>
 
+#include "../GlobalData.h"
+#include "SSAOptimizer.h"
+
 using namespace std;
 
-SSAOptimizer::SSAOptimizer(
-    const vector<Symbol *> &consts, const vector<Symbol *> &globalVars,
-    const unordered_map<Symbol *, vector<Symbol *>> &localVars,
-    const unordered_map<Symbol *, vector<IR *>> &funcs, unsigned tempId) {
-  this->isProcessed = false;
-  this->consts = consts;
-  this->globalVars = globalVars;
-  this->localVars = localVars;
-  this->funcs = funcs;
-  this->tempId = tempId;
-}
-
-SSAOptimizer::~SSAOptimizer() {
-  for (IR *ir : toRecycleIRs)
-    delete ir;
-}
-
 void SSAOptimizer::process() {
-  isProcessed = true;
-  for (auto &func : funcs) {
+  for (auto &func : funcIRs) {
     clear();
     funIR = func.second;
     funVar = localVars[func.first];
@@ -40,32 +24,6 @@ void SSAOptimizer::process() {
   }
   clear();
 }
-
-vector<Symbol *> SSAOptimizer::getConsts() {
-  if (!isProcessed)
-    process();
-  return consts;
-}
-
-unordered_map<Symbol *, vector<IR *>> SSAOptimizer::getFuncs() {
-  if (!isProcessed)
-    process();
-  return funcs;
-}
-
-vector<Symbol *> SSAOptimizer::getGlobalVars() {
-  if (!isProcessed)
-    process();
-  return globalVars;
-}
-
-unordered_map<Symbol *, vector<Symbol *>> SSAOptimizer::getLocalVars() {
-  if (!isProcessed)
-    process();
-  return localVars;
-}
-
-unsigned SSAOptimizer::getTempId() { return tempId; }
 
 void SSAOptimizer::clear() {
   G.clear();
@@ -98,8 +56,7 @@ string SSAOptimizer::SSAIR::toString() {
       {IR::ADD, "ADD"},     {IR::BEQ, "BEQ"},
       {IR::BGE, "BGE"},     {IR::BGT, "BGT"},
       {IR::BLE, "BLE"},     {IR::BLT, "BLT"},
-      {IR::BNE, "BNE"},     {IR::BREAK, "BREAK"},
-      {IR::CALL, "CALL"},   {IR::CONTINUE, "CONTINUE"},
+      {IR::BNE, "BNE"},     {IR::CALL, "CALL"},
       {IR::DIV, "DIV"},     {IR::EQ, "EQ"},
       {IR::F2I, "F2I"},     {IR::GE, "GE"},
       {IR::GOTO, "GOTO"},   {IR::GT, "GT"},
@@ -555,7 +512,8 @@ void SSAOptimizer::removeUselessPhi() {
             ir->R = vector<SSAItem *>(st.begin(), st.end());
             new_B.push_back(ir);
           }
-        } else new_B.push_back(ir);
+        } else
+          new_B.push_back(ir);
       B.swap(new_B);
     }
     if (copy.empty())
@@ -669,4 +627,4 @@ void SSAOptimizer::commonSubexpressionElimination(int u) {
     csePhiTable.erase(x);
 }
 
-void SSAOptimizer::deadCodeElimination() {};
+void SSAOptimizer::deadCodeElimination(){};

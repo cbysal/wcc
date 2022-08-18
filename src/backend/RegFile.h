@@ -17,7 +17,6 @@ public:
   enum Type { V, S, SPILL };
 
   RegFile();
-  ~RegFile();
 
   unsigned getUsed(Type);
   void setUsed(Type, unsigned);

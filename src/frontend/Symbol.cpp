@@ -78,8 +78,6 @@ Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
   this->iMap = iMap;
 }
 
-Symbol::~Symbol() {}
-
 string Symbol::toString() {
   bool first = true;
   string s = "(" + symbolTypeStr[symbolType] + ", " + name + ", ";

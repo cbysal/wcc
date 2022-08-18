@@ -1,32 +1,14 @@
 #include <algorithm>
 #include <iostream>
 
+#include "../GlobalData.h"
 #include "ASMParser.h"
 #include "HardCoding.h"
 #include "LinearRegAllocator.h"
 
 using namespace std;
 
-ASMParser::ASMParser(pair<unsigned, unsigned> lineno,
-                     unordered_map<Symbol *, vector<IR *>> &funcIRs,
-                     vector<Symbol *> &consts, vector<Symbol *> &globalVars,
-                     unordered_map<Symbol *, vector<Symbol *>> &localVars) {
-  this->isProcessed = false;
-  this->labelId = 0;
-  this->funcIRs = funcIRs;
-  this->consts = consts;
-  this->globalVars = globalVars;
-  this->localVars = localVars;
-  this->startLineno = lineno.first;
-  this->stopLineno = lineno.second;
-}
-
-ASMParser::~ASMParser() {
-  for (unordered_map<Symbol *, vector<ASM *>>::iterator it = funcASMs.begin();
-       it != funcASMs.end(); it++)
-    for (ASM *a : it->second)
-      delete a;
-}
+ASMParser::ASMParser() { this->labelId = 0; }
 
 int ASMParser::calcCallArgSize(const vector<IR *> &irs) {
   int size = 0;
@@ -52,12 +34,6 @@ bool ASMParser::canBeLoadInSingleInstruction(unsigned imm) {
   if (isByteShiftImm(~imm))
     return true;
   return false;
-}
-
-unordered_map<Symbol *, vector<ASM *>> ASMParser::getFuncASMs() {
-  if (!isProcessed)
-    parse();
-  return funcASMs;
 }
 
 unsigned ASMParser::float2Unsigned(float fVal) {
@@ -200,7 +176,6 @@ void ASMParser::makeFrame(vector<ASM *> &asms, vector<IR *> &irs,
   ftemp2Reg = allocator->getFtemp2Reg();
   temp2SpillReg = allocator->getTemp2SpillReg();
   irs = allocator->getIRs();
-  delete allocator;
   int callArgSize = calcCallArgSize(irs);
   for (unordered_map<unsigned, unsigned>::iterator it = temp2SpillReg.begin();
        it != temp2SpillReg.end(); it++)
@@ -316,7 +291,6 @@ void ASMParser::mulRegValue(vector<ASM *> &asms, Reg::Type target,
 }
 
 void ASMParser::parse() {
-  isProcessed = true;
   preProcess();
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++)
@@ -581,9 +555,7 @@ void ASMParser::popArgs(vector<ASM *> &asms) {
   ASM *tempASM = new ASM(ASM::VPOP, {});
   for (unsigned i = 0; i < usedRegNum[1]; i++)
     tempASM->items.push_back(new ASMItem(vFRegs[i]));
-  if (tempASM->items.empty())
-    delete tempASM;
-  else
+  if (!tempASM->items.empty())
     asms.push_back(tempASM);
   tempASM = new ASM(ASM::POP, {});
   for (unsigned i = 0; i < usedRegNum[0]; i++)
@@ -649,9 +621,7 @@ void ASMParser::saveUsedRegs(vector<ASM *> &asms) {
   tempASM = new ASM(ASM::VPUSH, {});
   for (unsigned i = 0; i < usedRegNum[1]; i++)
     tempASM->items.push_back(new ASMItem(vFRegs[i]));
-  if (tempASM->items.empty())
-    delete tempASM;
-  else
+  if (!tempASM->items.empty())
     asms.push_back(tempASM);
 }
 

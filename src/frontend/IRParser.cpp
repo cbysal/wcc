@@ -1,27 +1,15 @@
 #include <algorithm>
 
+#include "../GlobalData.h"
 #include "IRParser.h"
 
 using namespace std;
-
-IRParser::IRParser(AST *root, vector<Symbol *> &symbols) {
-  this->isProcessed = false;
-  this->tempId = 0;
-  this->root = root;
-  this->symbols = symbols;
-}
-
-IRParser::~IRParser() {
-  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcs.begin();
-       it != funcs.end(); it++)
-    for (IR *ir : it->second)
-      delete ir;
-}
 
 IRItem *IRParser::lastResult(const vector<IR *> &irs) {
   for (int i = irs.size() - 1; i >= 0; i--)
     if (irs[i]->type != IR::LABEL)
       return irs[i]->items[0];
+  exit(-1);
   return nullptr;
 }
 
@@ -307,10 +295,8 @@ vector<IR *> IRParser::parseIfStmt(AST *root, Symbol *func, IR *whileBegin,
     irs4.push_back(label1);
     irs4.insert(irs4.end(), irs3.begin(), irs3.end());
     irs4.push_back(label2);
-  } else {
+  } else
     irs4.push_back(label1);
-    delete label2;
-  }
   return irs4;
 }
 
@@ -770,15 +756,14 @@ vector<IR *> IRParser::parseReturnStmt(AST *root, Symbol *func) {
   return irs;
 }
 
-void IRParser::parseRoot(AST *root) {
-  this->isProcessed = true;
+void IRParser::parseRoot() {
   for (AST *node : root->nodes) {
     switch (node->type) {
     case AST::CONST_DEF:
       consts.push_back(node->symbol);
       break;
     case AST::FUNC_DEF:
-      funcs[node->symbol] = parseFuncDef(node, node->symbol);
+      funcIRs[node->symbol] = parseFuncDef(node, node->symbol);
       break;
     case AST::GLOBAL_VAR_DEF:
       globalVars.push_back(node->symbol);
@@ -808,29 +793,3 @@ vector<IR *> IRParser::parseWhileStmt(AST *root, Symbol *func) {
   irs4.push_back(label4);
   return irs4;
 }
-
-vector<Symbol *> IRParser::getConsts() {
-  if (!isProcessed)
-    parseRoot(root);
-  return consts;
-}
-
-vector<Symbol *> IRParser::getGlobalVars() {
-  if (!isProcessed)
-    parseRoot(root);
-  return globalVars;
-}
-
-unordered_map<Symbol *, vector<Symbol *>> IRParser::getLocalVars() {
-  if (!isProcessed)
-    parseRoot(root);
-  return localVars;
-}
-
-unordered_map<Symbol *, vector<IR *>> IRParser::getFuncs() {
-  if (!isProcessed)
-    parseRoot(root);
-  return funcs;
-}
-
-unsigned IRParser::getTempId() { return tempId; }

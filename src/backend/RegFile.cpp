@@ -13,8 +13,6 @@ RegFile::RegFile() {
                  Reg::S19, Reg::S18, Reg::S17, Reg::S16};
 }
 
-RegFile::~RegFile() {}
-
 unsigned RegFile::getUsed(Type type) {
   switch (type) {
   case V:

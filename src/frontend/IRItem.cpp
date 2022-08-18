@@ -25,19 +25,6 @@ IRItem::IRItem(IRItemType type, unsigned iVal) {
   this->symbol = nullptr;
 }
 
-IRItem::IRItem(IRItemType type, const string &sVal) {
-  this->type = type;
-  this->name = sVal;
-  this->symbol = nullptr;
-}
-
-IRItem::IRItem(IRItemType type, const string &sVal, int iVal) {
-  this->type = type;
-  this->name = sVal;
-  this->iVal = iVal;
-  this->symbol = nullptr;
-}
-
 IRItem::IRItem(Symbol *symbol) {
   this->type = SYMBOL;
   this->symbol = symbol;
@@ -55,13 +42,10 @@ IRItem::IRItem(int iVal) {
   this->symbol = nullptr;
 }
 
-IRItem::~IRItem() {}
-
 IRItem *IRItem::clone() {
   IRItem *cloneItem = new IRItem(type);
   cloneItem->ir = ir;
   cloneItem->symbol = symbol;
   cloneItem->iVal = iVal;
-  cloneItem->name = name;
   return cloneItem;
 }

@@ -3,24 +3,13 @@
 #include <iostream>
 #include <utility>
 
+#include "../GlobalData.h"
 #include "AST.h"
 #include "SyntaxParser.h"
 
 using namespace std;
 
-SyntaxParser::SyntaxParser(vector<Token *> &tokens) {
-  this->rootAST = nullptr;
-  this->isProcessed = false;
-  this->head = 0;
-  this->tokens = tokens;
-}
-
-SyntaxParser::~SyntaxParser() {
-  for (Symbol *&symbol : symbols)
-    delete symbol;
-  if (rootAST)
-    delete rootAST;
-}
+SyntaxParser::SyntaxParser() { this->head = 0; }
 
 void SyntaxParser::allocInitVal(vector<int> array,
                                 unordered_map<int, AST *> &exps, int base,
@@ -63,14 +52,6 @@ void SyntaxParser::allocInitVal(vector<int> array,
     }
     stk.pop_back();
   }
-}
-
-void SyntaxParser::deleteInitVal(AST *root) {
-  for (unsigned i = 0; i < root->nodes.size(); i++)
-    if (root->nodes[i]->type == AST::INIT_VAL)
-      deleteInitVal(root->nodes[i]);
-  root->nodes.clear();
-  delete root;
 }
 
 void SyntaxParser::initSymbols() {
@@ -215,7 +196,6 @@ AST *SyntaxParser::parseAddExp() {
       default:
         break;
       }
-      delete right;
       continue;
     }
     if (!left->isFloat && right->isFloat)
@@ -287,7 +267,6 @@ vector<AST *> SyntaxParser::parseConstDef() {
       head++;
       AST *val = parseAddExp();
       dimensions.push_back(val->iVal);
-      delete val;
       head++;
     }
     head++;
@@ -309,7 +288,6 @@ vector<AST *> SyntaxParser::parseConstDef() {
                    : new Symbol(Symbol::CONST, type, name, val->iVal);
     symbols.push_back(symbol);
     symbolStack.back()[name] = symbol;
-    delete val;
     consts.push_back(new AST(AST::CONST_DEF, false, symbol, {}));
     if (tokens[head]->type == Token::SEMICOLON)
       break;
@@ -416,7 +394,6 @@ AST *SyntaxParser::parseEqExp() {
       default:
         break;
       }
-      delete right;
       continue;
     }
     if (!left->isFloat && right->isFloat)
@@ -506,7 +483,6 @@ Symbol *SyntaxParser::parseFuncParam() {
     head++;
     AST *val = parseAddExp();
     dimensions.push_back(val->iVal);
-    delete val;
     head++;
   }
   return new Symbol(Symbol::PARAM, type, name, dimensions);
@@ -525,7 +501,6 @@ vector<AST *> SyntaxParser::parseGlobalVarDef() {
       head++;
       AST *val = parseAddExp();
       dimensions.push_back(val->iVal);
-      delete val;
       head++;
     }
     Symbol *symbol = nullptr;
@@ -545,7 +520,6 @@ vector<AST *> SyntaxParser::parseGlobalVarDef() {
         parseConstInitVal(dimensions, iMap, 0, val);
         symbol = new Symbol(Symbol::GLOBAL_VAR, type, name, dimensions, iMap);
       }
-      delete val;
     } else {
       if (dimensions.empty())
         symbol = new Symbol(Symbol::GLOBAL_VAR, type, name, 0);
@@ -585,14 +559,8 @@ AST *SyntaxParser::parseIfStmt(Symbol *func) {
   }
   if (cond->type == AST::FLOAT || cond->type == AST::INT) {
     if ((cond->type == AST::FLOAT && cond->fVal) ||
-        (cond->type == AST::INT && cond->iVal)) {
-      delete cond;
-      if (stmt2)
-        delete stmt2;
+        (cond->type == AST::INT && cond->iVal))
       return stmt1;
-    }
-    delete cond;
-    delete stmt1;
     if (stmt2)
       return stmt2;
     else
@@ -630,12 +598,10 @@ AST *SyntaxParser::parseLAndExp() {
                  (right->type == AST::FLOAT ? right->fVal : right->iVal))
               : (left->iVal && right->iVal);
       left->type = AST::INT;
-      delete right;
       continue;
     }
     if ((left->type == AST::FLOAT && left->fVal) ||
         (left->type == AST::INT && left->iVal)) {
-      delete left;
       left = right;
       continue;
     }
@@ -644,14 +610,11 @@ AST *SyntaxParser::parseLAndExp() {
       left->isFloat = false;
       left->type = AST::INT;
       left->iVal = 0;
-      delete right;
       continue;
     }
     if ((right->type == AST::FLOAT && right->fVal) ||
-        (right->type == AST::INT && right->iVal)) {
-      delete right;
+        (right->type == AST::INT && right->iVal))
       continue;
-    }
     left = new AST(AST::L_AND_EXP, false, {left, right});
   }
   return left;
@@ -671,7 +634,6 @@ AST *SyntaxParser::parseLOrExp() {
                  (right->type == AST::FLOAT ? right->fVal : right->iVal))
               : (left->iVal || right->iVal);
       left->type = AST::INT;
-      delete right;
       continue;
     }
     if ((left->type == AST::FLOAT && left->fVal) ||
@@ -679,20 +641,16 @@ AST *SyntaxParser::parseLOrExp() {
       left->isFloat = false;
       left->type = AST::INT;
       left->iVal = 1;
-      delete right;
       continue;
     }
     if ((left->type == AST::FLOAT && !left->fVal) ||
         (left->type == AST::INT && !left->iVal)) {
-      delete left;
       left = right;
       continue;
     }
     if ((right->type == AST::FLOAT && !right->fVal) ||
-        (right->type == AST::INT && !right->iVal)) {
-      delete right;
+        (right->type == AST::INT && !right->iVal))
       continue;
-    }
     left = new AST(AST::L_OR_EXP, false, {left, right});
   }
   return left;
@@ -713,8 +671,6 @@ AST *SyntaxParser::parseLVal() {
   }
   if (symbol->symbolType == Symbol::CONST &&
       array.size() == symbol->dimensions.size()) {
-    for (AST *dimension : dimensions)
-      delete dimension;
     if (symbol->dimensions.empty())
       return symbol->dataType == Symbol::FLOAT ? new AST(symbol->fVal)
                                                : new AST(symbol->iVal);
@@ -781,7 +737,6 @@ AST *SyntaxParser::parseMulExp() {
       default:
         break;
       }
-      delete right;
       continue;
     }
     if (!left->isFloat && right->isFloat)
@@ -858,7 +813,6 @@ AST *SyntaxParser::parseRelExp() {
       default:
         break;
       }
-      delete right;
       continue;
     }
     if (!left->isFloat && right->isFloat)
@@ -884,9 +838,6 @@ AST *SyntaxParser::parseReturnStmt(Symbol *func) {
 }
 
 void SyntaxParser::parseRoot() {
-  if (isProcessed)
-    return;
-  isProcessed = true;
   initSymbols();
   vector<AST *> items;
   while (head < tokens.size()) {
@@ -921,7 +872,7 @@ void SyntaxParser::parseRoot() {
       break;
     }
   }
-  rootAST = new AST(AST::ROOT, false, items);
+  root = new AST(AST::ROOT, false, items);
 }
 
 AST *SyntaxParser::parseStmt(Symbol *func) {
@@ -1005,7 +956,6 @@ AST *SyntaxParser::parseUnaryExp() {
       if (val->nodes[0]->type == AST::L_NOT_EXP) {
         AST *ret = val->nodes[0];
         val->nodes.clear();
-        delete val;
         return ret;
       }
       break;
@@ -1029,7 +979,6 @@ AST *SyntaxParser::parseUnaryExp() {
     case AST::NEG_EXP: {
       AST *ret = val->nodes[0];
       val->nodes.clear();
-      delete val;
       return ret;
     }
     default:
@@ -1060,7 +1009,6 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
       head++;
       AST *val = parseAddExp();
       dimensions.push_back(val->iVal);
-      delete val;
       head++;
     }
     Symbol *symbol = new Symbol(Symbol::LOCAL_VAR, type, name, dimensions);
@@ -1124,7 +1072,6 @@ vector<AST *> SyntaxParser::parseLocalVarDef() {
             }
           }
         }
-        deleteInitVal(val);
       }
     }
     symbols.push_back(symbol);
@@ -1148,22 +1095,7 @@ AST *SyntaxParser::parseWhileStmt(Symbol *func) {
   if (depthInc)
     symbolStack.pop_back();
   if ((cond->type == AST::FLOAT && !cond->fVal) ||
-      (cond->type == AST::INT && !cond->iVal)) {
-    delete cond;
-    delete body;
+      (cond->type == AST::INT && !cond->iVal))
     return new AST(AST::BLANK_STMT, false, {});
-  }
   return new AST(AST::WHILE_STMT, false, {cond, body});
-}
-
-AST *SyntaxParser::getAST() {
-  if (!isProcessed)
-    parseRoot();
-  return rootAST;
-};
-
-vector<Symbol *> &SyntaxParser::getSymbolTable() {
-  if (!isProcessed)
-    parseRoot();
-  return symbols;
 }

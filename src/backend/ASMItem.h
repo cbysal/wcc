@@ -40,7 +40,6 @@ public:
   ASMItem(int);
   ASMItem(unsigned);
   ASMItem(const std::string &);
-  ~ASMItem();
 };
 
 #endif

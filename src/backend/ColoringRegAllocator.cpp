@@ -14,8 +14,6 @@ ColoringRegAllocator::ColoringRegAllocator(const vector<IR *> &irs) {
   // this->coloring = false;
 }
 
-ColoringRegAllocator::~ColoringRegAllocator() { delete regs; }
-
 unordered_map<unsigned, Reg::Type> ColoringRegAllocator::getFtemp2Reg() {
   if (!isProcessed)
     betterAllocate();

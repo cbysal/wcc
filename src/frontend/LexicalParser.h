@@ -10,25 +10,18 @@
 class LexicalParser {
 private:
   std::string fileName;
-  bool isProcessed;
   unsigned long head;
   std::string content;
-  std::vector<Token *> tokens;
   unsigned lineno;
-  unsigned startLineno;
-  unsigned stopLineno;
 
   void readFile();
   Token *nextToken();
-  void parse();
 
 public:
-  LexicalParser(const std::string &);
-  ~LexicalParser();
+  LexicalParser();
 
-  std::string &getContent();
-  std::pair<unsigned, unsigned> getLineno();
-  std::vector<Token *> &getTokens();
+  void setInput(const std::string &);
+  void parse();
 };
 
 #endif

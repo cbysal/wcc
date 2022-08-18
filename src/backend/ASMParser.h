@@ -25,14 +25,8 @@ private:
       Reg::S22, Reg::S23, Reg::S24, Reg::S25, Reg::S26, Reg::S27,
       Reg::S28, Reg::S29, Reg::S30, Reg::S31};
 
-  bool isProcessed;
   unsigned labelId;
-  std::vector<Symbol *> consts;
-  std::vector<Symbol *> globalVars;
-  std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;
-  std::unordered_map<Symbol *, std::vector<IR *>> funcIRs;
   std::unordered_map<IR *, unsigned> irLabels;
-  std::unordered_map<Symbol *, std::vector<ASM *>> funcASMs;
   std::vector<unsigned> usedRegNum;
   unsigned savedRegs;
   unsigned frameOffset;
@@ -41,8 +35,6 @@ private:
   std::unordered_map<unsigned, unsigned> temp2SpillReg;
   std::unordered_map<unsigned, int> spillOffsets;
   std::unordered_map<Symbol *, int> offsets;
-  unsigned startLineno;
-  unsigned stopLineno;
 
   void addTempsToReg(std::vector<ASM *> &,
                      std::vector<std::pair<unsigned, unsigned>> &, Reg::Type);
@@ -63,7 +55,6 @@ private:
   void moveFromReg(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
   void moveFromSP(std::vector<ASM *> &, Reg::Type, int);
   void mulRegValue(std::vector<ASM *> &, Reg::Type, Reg::Type, int);
-  void parse();
   void parseAdd(std::vector<ASM *> &, IR *);
   void parseAddFtempFloat(std::vector<ASM *> &, IR *);
   void parseAddFtempFtemp(std::vector<ASM *> &, IR *);
@@ -190,13 +181,9 @@ private:
   void switchLCmpLogic(IR *);
 
 public:
-  std::unordered_map<Symbol *, std::vector<ASM *>> getFuncASMs();
+  ASMParser();
 
-  ASMParser(std::pair<unsigned, unsigned>,
-            std::unordered_map<Symbol *, std::vector<IR *>> &,
-            std::vector<Symbol *> &, std::vector<Symbol *> &,
-            std::unordered_map<Symbol *, std::vector<Symbol *>> &);
-  ~ASMParser();
+  void parse();
 };
 
 #endif

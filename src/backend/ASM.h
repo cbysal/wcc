@@ -81,7 +81,6 @@ public:
 
   ASM(ASMOpType, const std::vector<ASMItem *> &);
   ASM(ASMOpType, CondType, const std::vector<ASMItem *> &);
-  ~ASM();
 };
 
 #endif

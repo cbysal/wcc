@@ -19,9 +19,7 @@ public:
     BLE,
     BLT,
     BNE,
-    BREAK,
     CALL,
-    CONTINUE,
     DIV,
     EQ,
     F2I,
@@ -50,7 +48,6 @@ public:
 
   IR(IRType);
   IR(IRType, const std::vector<IRItem *> &);
-  ~IR();
 };
 
 #endif

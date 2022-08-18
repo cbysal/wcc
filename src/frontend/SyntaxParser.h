@@ -11,16 +11,11 @@
 
 class SyntaxParser {
 private:
-  AST *rootAST;
-  bool isProcessed;
   unsigned head;
-  std::vector<Token *> tokens;
-  std::vector<Symbol *> symbols;
   std::vector<std::unordered_map<std::string, Symbol *>> symbolStack;
 
   void allocInitVal(std::vector<int>, std::unordered_map<int, AST *> &, int,
                     AST *);
-  void deleteInitVal(AST *);
   void initSymbols();
   Symbol *lastSymbol(std::string &);
   AST *parseAddExp();
@@ -45,17 +40,14 @@ private:
   AST *parseMulExp();
   AST *parseRelExp();
   AST *parseReturnStmt(Symbol *);
-  void parseRoot();
   AST *parseStmt(Symbol *);
   AST *parseUnaryExp();
   AST *parseWhileStmt(Symbol *);
 
 public:
-  SyntaxParser(std::vector<Token *> &tokens);
-  ~SyntaxParser();
+  SyntaxParser();
 
-  AST *getAST();
-  std::vector<Symbol *> &getSymbolTable();
+  void parseRoot();
 };
 
 #endif

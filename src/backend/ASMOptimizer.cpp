@@ -1,25 +1,14 @@
 #include "ASMOptimizer.h"
+#include "../GlobalData.h"
 
 using namespace std;
 
-ASMOptimizer::ASMOptimizer(
-    const unordered_map<Symbol *, vector<ASM *>> &funcASMs) {
-  this->isProcessed = false;
-  this->funcASMs = funcASMs;
-}
+const std::vector<Reg::Type> aRegs = {
+    Reg::A1,  Reg::A2,  Reg::A3,  Reg::A4,  Reg::S0,  Reg::S1, Reg::S2,
+    Reg::S3,  Reg::S4,  Reg::S5,  Reg::S6,  Reg::S7,  Reg::S8, Reg::S9,
+    Reg::S10, Reg::S11, Reg::S12, Reg::S13, Reg::S14, Reg::S15};
 
-ASMOptimizer::~ASMOptimizer() {}
-
-unordered_map<Symbol *, vector<ASM *>> ASMOptimizer::getFuncASMs() {
-  if (!isProcessed)
-    optimize();
-  return funcASMs;
-}
-
-void ASMOptimizer::optimize() {
-  isProcessed = true;
-  peepholeOptimize();
-}
+void ASMOptimizer::optimize() { peepholeOptimize(); }
 
 void ASMOptimizer::peepholeOptimize() {
   for (unordered_map<Symbol *, vector<ASM *>>::iterator it = funcASMs.begin();

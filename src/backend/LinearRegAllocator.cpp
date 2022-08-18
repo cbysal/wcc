@@ -14,8 +14,6 @@ LinearRegAllocator::LinearRegAllocator(const vector<IR *> &irs) {
   this->spillNum = 0;
 }
 
-LinearRegAllocator::~LinearRegAllocator() {}
-
 void LinearRegAllocator::allocate() {
   isProcessed = true;
   preProcess();

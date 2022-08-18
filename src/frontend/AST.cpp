@@ -31,11 +31,6 @@ AST::AST(int iVal) {
   this->symbol = nullptr;
 }
 
-AST::~AST() {
-  for (AST *node : nodes)
-    delete node;
-}
-
 AST *AST::transIF() {
   if (isFloat) {
     if (type == FLOAT) {

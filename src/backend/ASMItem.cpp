@@ -38,5 +38,3 @@ ASMItem::ASMItem(const string &sVal) {
   this->type = TAG;
   this->sVal = sVal;
 }
-
-ASMItem::~ASMItem() {}
