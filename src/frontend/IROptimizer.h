@@ -13,11 +13,9 @@ private:
   void assignPass();
   void constPassBlock();
   void constPassGlobal();
+  void deadCodeElimination();
+  void optimizeFlow();
   void passInBlock(unsigned, unsigned);
-  void removeDeadCode();
-  void removeDuplicatedJumps();
-  void removeDuplicatedLabels();
-  void removeDuplicatedSymbols();
   void singleVar2Reg();
   void splitTemps();
   void standardize(std::vector<IR *> &);

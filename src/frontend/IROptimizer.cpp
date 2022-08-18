@@ -25,7 +25,8 @@ void IROptimizer::assignPass() {
           break;
         right++;
       }
-      right++;
+      if (right < irs.size())
+        right++;
       unordered_map<unsigned, unsigned> itempAssign;
       unordered_map<unsigned, unsigned> ftempAssign;
       for (unsigned i = left; i < right; i++) {
@@ -93,7 +94,8 @@ void IROptimizer::constPassBlock() {
           break;
         right++;
       }
-      right++;
+      if (right < irs.size())
+        right++;
       unordered_map<unsigned, unsigned> temp2Int;
       unordered_map<unsigned, unsigned> temp2Float;
       for (unsigned i = left; i < right; i++) {
@@ -134,28 +136,29 @@ void IROptimizer::constPassGlobal() {
     vector<IR *> &irs = it->second;
     unordered_map<unsigned, unsigned> temp2Int;
     unordered_map<unsigned, unsigned> temp2Float;
-    unordered_set<unsigned> multiDef;
+    unordered_map<unsigned, unsigned> defCounter;
     for (IR *ir : irs) {
       if (ir->type == IR::MOV) {
         if (ir->items[0]->type == IRItem::FTEMP &&
             ir->items[1]->type == IRItem::FLOAT) {
-          if (multiDef.find(ir->items[0]->iVal) == multiDef.end())
-            temp2Float[ir->items[0]->iVal] = ir->items[1]->iVal;
-          else {
-            multiDef.insert(ir->items[0]->iVal);
-            temp2Float.erase(ir->items[0]->iVal);
-          }
+          temp2Float[ir->items[0]->iVal] = ir->items[1]->iVal;
         } else if (ir->items[0]->type == IRItem::ITEMP &&
                    ir->items[1]->type == IRItem::INT) {
-          if (multiDef.find(ir->items[0]->iVal) == multiDef.end())
-            temp2Int[ir->items[0]->iVal] = ir->items[1]->iVal;
-          else {
-            multiDef.insert(ir->items[0]->iVal);
-            temp2Int.erase(ir->items[0]->iVal);
-          }
+          temp2Int[ir->items[0]->iVal] = ir->items[1]->iVal;
+          defCounter[ir->items[0]->iVal]++;
         }
       }
+      if (!ir->items.empty() && (ir->items[0]->type == IRItem::FTEMP ||
+                                 ir->items[0]->type == IRItem::ITEMP))
+        defCounter[ir->items[0]->iVal]++;
     }
+    for (unordered_map<unsigned, unsigned>::iterator innerIt =
+             defCounter.begin();
+         innerIt != defCounter.end(); innerIt++)
+      if (innerIt->second > 1) {
+        temp2Float.erase(innerIt->first);
+        temp2Int.erase(innerIt->first);
+      }
     for (IR *ir : irs) {
       for (unsigned j = 1; j < ir->items.size(); j++) {
         if (ir->items[j]->type == IRItem::FTEMP &&
@@ -173,22 +176,7 @@ void IROptimizer::constPassGlobal() {
   }
 }
 
-void IROptimizer::optimize() {
-  singleVar2Reg();
-  removeDeadCode();
-  constPassGlobal();
-  constPassBlock();
-  removeDeadCode();
-  assignPass();
-  removeDeadCode();
-  splitTemps();
-  removeDeadCode();
-  // removeDuplicatedJumps();
-  // removeDuplicatedLabels();
-  // removeDuplicatedSymbols();
-}
-
-void IROptimizer::removeDeadCode() {
+void IROptimizer::deadCodeElimination() {
   unordered_set<Symbol *> todoFuncs;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++)
@@ -366,106 +354,118 @@ void IROptimizer::removeDeadCode() {
   }
 }
 
-void IROptimizer::removeDuplicatedJumps() {
+void IROptimizer::optimize() {
+  singleVar2Reg();
+  deadCodeElimination();
+  constPassGlobal();
+  constPassBlock();
+  deadCodeElimination();
+  assignPass();
+  deadCodeElimination();
+  splitTemps();
+  deadCodeElimination();
+  unsigned originSize;
+  unsigned processedSize = 0;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++)
+    processedSize += it->second.size();
+  do {
+    originSize = processedSize;
+    optimizeFlow();
+    deadCodeElimination();
+    constPassGlobal();
+    constPassBlock();
+    deadCodeElimination();
+    processedSize = 0;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++)
+      processedSize += it->second.size();
+  } while (originSize != processedSize);
+}
+
+void IROptimizer::optimizeFlow() {
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++) {
-    vector<IR *> &irs = it->second;
-    bool toContinue = false;
+    bool toContinue;
     do {
       toContinue = false;
-      unordered_map<IR *, unsigned> labelIdMap;
+      vector<IR *> &irs = it->second;
+      unordered_map<IR *, unsigned> irIdMap;
       for (unsigned i = 0; i < irs.size(); i++)
-        if (irs[i]->type == IR::LABEL)
-          labelIdMap[irs[i]] = i;
-      unordered_set<IR *> duplicatedJumps;
+        irIdMap[irs[i]] = i;
+      unordered_set<unsigned> usedLabelId;
+      for (IR *ir : irs) {
+        if (ir->type == IR::BEQ || ir->type == IR::BGE || ir->type == IR::BGT ||
+            ir->type == IR::BLE || ir->type == IR::BLT || ir->type == IR::BNE ||
+            ir->type == IR::GOTO) {
+          unsigned labelId = irIdMap[ir->items[0]->ir];
+          while (labelId + 1 < irs.size() &&
+                 irs[labelId + 1]->type == IR::LABEL)
+            labelId++;
+          usedLabelId.insert(labelId);
+          ir->items[0]->ir = irs[labelId];
+        }
+      }
+      vector<IR *> newIRs;
+      for (unsigned i = 0; i < irs.size(); i++)
+        if (irs[i]->type != IR::LABEL ||
+            usedLabelId.find(i) != usedLabelId.end())
+          newIRs.push_back(irs[i]);
+      if (irs.size() != newIRs.size())
+        toContinue = true;
+      irs = newIRs;
+      newIRs.clear();
+      for (unsigned i = 0; i < irs.size(); i++)
+        irIdMap[irs[i]] = i;
+      queue<unsigned> frontier;
+      unsigned beginId = 0;
+      while (irs[beginId]->type == IR::GOTO)
+        beginId = irIdMap[irs[beginId]->items[0]->ir];
+      frontier.push(beginId);
+      unordered_set<unsigned> visited;
+      while (!frontier.empty()) {
+        unsigned curId = frontier.front();
+        frontier.pop();
+        if (visited.find(curId) != visited.end())
+          continue;
+        visited.insert(curId);
+        if (irs[curId]->type == IR::BEQ || irs[curId]->type == IR::BGE ||
+            irs[curId]->type == IR::BGT || irs[curId]->type == IR::BLE ||
+            irs[curId]->type == IR::BLT || irs[curId]->type == IR::BNE) {
+          if (curId + 1 < irs.size())
+            frontier.push(curId + 1);
+          frontier.push(irIdMap[irs[curId]->items[0]->ir]);
+        } else if (irs[curId]->type == IR::GOTO)
+          frontier.push(irIdMap[irs[curId]->items[0]->ir]);
+        else {
+          if (curId + 1 < irs.size())
+            frontier.push(curId + 1);
+        }
+      }
+      for (unsigned i = 0; i < irs.size(); i++)
+        if (visited.find(i) != visited.end())
+          newIRs.push_back(irs[i]);
+      if (irs.size() != newIRs.size())
+        toContinue = true;
+      irs = newIRs;
+      newIRs.clear();
+      irIdMap.clear();
+      for (unsigned i = 0; i < irs.size(); i++)
+        irIdMap[irs[i]] = i;
       for (unsigned i = 0; i < irs.size(); i++) {
         if ((irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
              irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
              irs[i]->type == IR::BLT || irs[i]->type == IR::BNE ||
              irs[i]->type == IR::GOTO) &&
-            labelIdMap[irs[i]->items[0]->ir] > i) {
-          bool flag = true;
-          for (unsigned j = i + 1; j < labelIdMap[irs[i]->items[0]->ir]; j++)
-            if (irs[j]->type != IR::LABEL) {
-              flag = false;
-              break;
-            }
-          if (flag) {
-            toContinue = true;
-            duplicatedJumps.insert(irs[i]);
-          }
-        }
+            irIdMap[irs[i]->items[0]->ir] == i + 1)
+          continue;
+        newIRs.push_back(irs[i]);
       }
-      vector<IR *> newIRs;
-      for (IR *ir : irs)
-        if (duplicatedJumps.find(ir) == duplicatedJumps.end())
-          newIRs.push_back(ir);
+      if (irs.size() != newIRs.size())
+        toContinue = true;
       irs = newIRs;
     } while (toContinue);
   }
-}
-
-void IROptimizer::removeDuplicatedLabels() {
-  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
-       it != funcIRs.end(); it++) {
-    vector<IR *> &irs = it->second;
-    unordered_map<IR *, IR *> labelUnion;
-    for (unsigned i = 0; i < irs.size(); i++) {
-      if (i + 1 < irs.size() && irs[i]->type == IR::LABEL &&
-          irs[i + 1]->type == IR::LABEL) {
-        IR *label = irs[i];
-        while (labelUnion.find(label) != labelUnion.end())
-          label = labelUnion[label];
-        labelUnion[irs[i + 1]] = label;
-      }
-    }
-    vector<IR *> newIRs;
-    for (IR *ir : irs) {
-      if ((ir->type == IR::BEQ || ir->type == IR::BGE || ir->type == IR::BGT ||
-           ir->type == IR::BLE || ir->type == IR::BLT || ir->type == IR::BNE ||
-           ir->type == IR::GOTO) &&
-          labelUnion.find(ir->items[0]->ir) != labelUnion.end())
-        ir->items[0]->ir = labelUnion[ir->items[0]->ir];
-      if (ir->type != IR::LABEL || labelUnion.find(ir) == labelUnion.end())
-        newIRs.push_back(ir);
-    }
-    irs = newIRs;
-  }
-}
-
-void IROptimizer::removeDuplicatedSymbols() {
-  unordered_set<Symbol *> newConsts;
-  unordered_set<Symbol *> newGlobalVars;
-  unordered_map<Symbol *, unordered_set<Symbol *>> newLocalVars;
-  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
-       it != funcIRs.end(); it++) {
-    Symbol *func = it->first;
-    vector<IR *> &irs = it->second;
-    for (IR *ir : irs)
-      for (IRItem *item : ir->items)
-        if (item->symbol) {
-          switch (item->symbol->symbolType) {
-          case Symbol::CONST:
-            newConsts.insert(item->symbol);
-            break;
-          case Symbol::GLOBAL_VAR:
-            newGlobalVars.insert(item->symbol);
-            break;
-          case Symbol::LOCAL_VAR:
-            newLocalVars[func].insert(item->symbol);
-            break;
-          default:
-            break;
-          }
-        }
-  }
-  consts = vector<Symbol *>(newConsts.begin(), newConsts.end());
-  globalVars = vector<Symbol *>(newGlobalVars.begin(), newGlobalVars.end());
-  for (unordered_map<Symbol *, vector<Symbol *>>::iterator it =
-           localVars.begin();
-       it != localVars.end(); it++)
-    it->second = vector<Symbol *>(newLocalVars[it->first].begin(),
-                                  newLocalVars[it->first].end());
 }
 
 void IROptimizer::singleVar2Reg() {

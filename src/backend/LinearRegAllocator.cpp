@@ -293,10 +293,13 @@ void LinearRegAllocator::reassignTempId() {
 void LinearRegAllocator::scanSpan(unsigned cur, unsigned tId,
                                   unordered_set<unsigned> &span,
                                   unordered_set<unsigned> &track) {
-  if (span.find(cur) != span.end() || track.find(cur) != track.end() ||
-      wMap[tId].find(cur) != wMap[tId].end()) {
+  if (span.find(cur) != span.end() || track.find(cur) != track.end()) {
     span.insert(track.begin(), track.end());
     span.insert(cur);
+    return;
+  }
+  if (wMap[tId].find(cur) != wMap[tId].end()) {
+    span.insert(track.begin(), track.end());
     return;
   }
   track.insert(cur);
