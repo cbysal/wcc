@@ -98,8 +98,8 @@ SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
     auto sType = symbol->symbolType;
     if (sType == Symbol::FUNC)
       type = FUNC;
-    else if ((sType == Symbol::LOCAL_VAR && x->symbol->dimensions.empty()) ||
-             sType == Symbol::PARAM) {
+    else if ((sType == Symbol::LOCAL_VAR || sType == Symbol::PARAM) &&
+             x->symbol->dimensions.empty()) {
       type = LOCAL;
       tmpID = -1; // not temporary
     } else
