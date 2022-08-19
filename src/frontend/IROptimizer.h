@@ -16,6 +16,7 @@ private:
   void deadCodeElimination();
   void optimizeFlow();
   void passInBlock(unsigned, unsigned);
+  void peepholeOptimize();
   void singleVar2Reg();
   void splitTemps();
   void standardize(std::vector<IR *> &);

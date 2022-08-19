@@ -372,10 +372,12 @@ void IROptimizer::optimize() {
   do {
     originSize = processedSize;
     optimizeFlow();
+    peepholeOptimize();
     deadCodeElimination();
     constPassGlobal();
     constPassBlock();
     deadCodeElimination();
+    optimizeFlow();
     processedSize = 0;
     for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
          it != funcIRs.end(); it++)
@@ -465,6 +467,82 @@ void IROptimizer::optimizeFlow() {
         toContinue = true;
       irs = newIRs;
     } while (toContinue);
+  }
+}
+
+void IROptimizer::peepholeOptimize() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    vector<IR *> newIRs;
+    irs.push_back(new IR(IR::NOP));
+    irs.push_back(new IR(IR::NOP));
+    irs.push_back(new IR(IR::NOP));
+    for (unsigned i = 0; i < irs.size() - 2; i++) {
+      if ((irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
+           irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
+           irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) &&
+          irs[i]->items[0]->ir == irs[i + 2] && irs[i + 1]->type == IR::GOTO) {
+        switch (irs[i]->type) {
+        case IR::BEQ:
+          irs[i + 1]->type = IR::BNE;
+          break;
+        case IR::BGE:
+          irs[i + 1]->type = IR::BLT;
+          break;
+        case IR::BGT:
+          irs[i + 1]->type = IR::BLE;
+          break;
+        case IR::BLE:
+          irs[i + 1]->type = IR::BGT;
+          break;
+        case IR::BLT:
+          irs[i + 1]->type = IR::BGE;
+          break;
+        case IR::BNE:
+          irs[i + 1]->type = IR::BEQ;
+          break;
+        default:
+          break;
+        }
+        irs[i + 1]->items.push_back(irs[i]->items[1]);
+        irs[i + 1]->items.push_back(irs[i]->items[2]);
+        continue;
+      }
+      if (irs[i]->type == IR::MOV && irs[i + 1]->type == IR::MOV) {
+        if (irs[i]->items[0]->type == IRItem::RETURN &&
+            irs[i + 1]->items[1]->type == IRItem::RETURN &&
+            irs[i]->items[1]->equals(irs[i + 1]->items[0])) {
+          newIRs.push_back(irs[i]);
+          i++;
+          continue;
+        }
+        if (irs[i]->items[1]->type == IRItem::RETURN &&
+            irs[i + 1]->items[0]->type == IRItem::RETURN &&
+            irs[i]->items[1]->equals(irs[i + 1]->items[0])) {
+          newIRs.push_back(irs[i]);
+          i++;
+          continue;
+        }
+        if (irs[i]->items.size() == 2 && irs[i + 1]->items.size() == 2 &&
+            irs[i]->items[0]->type == IRItem::SYMBOL &&
+            irs[i]->items[0]->equals(irs[i + 1]->items[1]))
+          irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+      }
+      if ((irs[i]->type == IR::ADD || irs[i]->type == IR::DIV ||
+           irs[i]->type == IR::SUB || irs[i]->type == IR::MOD ||
+           irs[i]->type == IR::MUL) &&
+          irs[i + 1]->type == IR::MOV && irs[i + 1]->items.size() == 2 &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          irs[i]->items[1]->equals(irs[i + 1]->items[0])) {
+        irs[i]->items[0] = irs[i]->items[1]->clone();
+        swap(irs[i + 1]->items[0], irs[i + 1]->items[1]);
+      }
+      newIRs.push_back(irs[i]);
+    }
+    while (!newIRs.empty() && newIRs.back()->type == IR::NOP)
+      newIRs.pop_back();
+    irs = newIRs;
   }
 }
 

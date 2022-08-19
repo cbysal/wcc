@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../frontend/IR.h"
+#include "ASM.h"
 
 struct BasicBlock {
   unsigned bid;
@@ -26,6 +27,14 @@ struct BasicBlock {
   void display(std::vector<IR *> &irs);
   bool updateOut();
   bool updateIn();
+};
+
+struct AsmBasicBlock {
+  unsigned bid;
+  unsigned first;
+  unsigned last;
+  void display(std::vector<ASM *> asms);
+  AsmBasicBlock(unsigned start) : first(start) {}
 };
 
 #endif

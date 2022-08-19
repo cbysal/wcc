@@ -64,90 +64,73 @@ void ASMParser::parseModItempInt(vector<ASM *> &asms, IR *ir) {
                                        (div - (1ull << (shift + 32)) % div))
       shift++;
     unsigned magic = (1ull << (shift + 32)) / div + 1;
-    loadImmToReg(asms, flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal], magic);
+    loadImmToReg(asms, Reg::A1, magic);
     if (magic <= 0x7fffffff)
-      asms.push_back(new ASM(
-          ASM::SMMUL,
-          {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal])}));
+      asms.push_back(
+          new ASM(ASM::SMMUL,
+                  {new ASMItem(Reg::A1),
+                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(Reg::A1)}));
     else
       asms.push_back(new ASM(
           ASM::SMMLA,
-          {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+          {new ASMItem(Reg::A1),
            new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+           new ASMItem(Reg::A1),
            new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal])}));
     if (shift)
       asms.push_back(
-          new ASM(ASM::ASR,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(shift)}));
+          new ASM(ASM::ASR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+                             new ASMItem(shift)}));
     if (magic <= 0x7fffffff)
       asms.push_back(
           new ASM(ASM::ADD,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                  {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(ASMItem::LSR, 31)}));
     else
       asms.push_back(
           new ASM(ASM::ADD,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                  {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
                    new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
                    new ASMItem(ASMItem::LSR, 31)}));
     if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end() &&
         (ir->items[2]->iVal & 0x1) == 0x1)
-      asms.push_back(
-          new ASM(ASM::ADD,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(ASMItem::LSL,
-                               num2power2Map[ir->items[2]->iVal].second)}));
+      asms.push_back(new ASM(
+          ASM::ADD,
+          {new ASMItem(Reg::A1), new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+           new ASMItem(ASMItem::LSL,
+                       num2power2Map[ir->items[2]->iVal].second)}));
     else if (num2power2Map.find(ir->items[2]->iVal) != num2power2Map.end()) {
-      asms.push_back(
-          new ASM(ASM::ADD,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(ASMItem::LSL,
-                               num2power2Map[ir->items[2]->iVal].second -
-                                   num2power2Map[ir->items[2]->iVal].first)}));
-      asms.push_back(
-          new ASM(ASM::LSL,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(num2power2Map[ir->items[2]->iVal].first)}));
+      asms.push_back(new ASM(
+          ASM::ADD,
+          {new ASMItem(Reg::A1), new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+           new ASMItem(ASMItem::LSL,
+                       num2power2Map[ir->items[2]->iVal].second -
+                           num2power2Map[ir->items[2]->iVal].first)}));
+      asms.push_back(new ASM(
+          ASM::LSL, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+                     new ASMItem(num2power2Map[ir->items[2]->iVal].first)}));
     } else if (num2lineMap.find(ir->items[2]->iVal) != num2lineMap.end()) {
       asms.push_back(new ASM(
           ASM::RSB,
-          {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-           new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+          {new ASMItem(Reg::A1), new ASMItem(Reg::A1), new ASMItem(Reg::A1),
            new ASMItem(ASMItem::LSL, num2lineMap[ir->items[2]->iVal].second -
                                          num2lineMap[ir->items[2]->iVal].first +
                                          1)}));
-      asms.push_back(
-          new ASM(ASM::LSL,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(num2lineMap[ir->items[2]->iVal].first)}));
+      asms.push_back(new ASM(
+          ASM::LSL, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+                     new ASMItem(num2lineMap[ir->items[2]->iVal].first)}));
     } else {
       loadImmToReg(asms, Reg::A3, (unsigned)ir->items[2]->iVal);
       asms.push_back(
-          new ASM(ASM::MUL,
-                  {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-                   new ASMItem(Reg::A3)}));
+          new ASM(ASM::MUL, {new ASMItem(Reg::A1), new ASMItem(Reg::A1),
+                             new ASMItem(Reg::A3)}));
     }
     asms.push_back(new ASM(
-        ASM::SUB,
-        {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
-         new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
-         new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal])}));
+        ASM::SUB, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                   new ASMItem(flag2 ? Reg::A2 : itemp2Reg[ir->items[1]->iVal]),
+                   new ASMItem(Reg::A1)}));
   }
   if (flag1)
     storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);

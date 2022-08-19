@@ -57,8 +57,6 @@ int main(int argc, char *argv[]) {
     asmOptimizer.optimize();
     asmWriter.setOutput("test.s");
     asmWriter.write();
-    for (Symbol *symbol : symbols)
-      cout << symbol->toString() << endl;
     cout << "----------------------------------------------------------------"
             "----------------"
          << endl;

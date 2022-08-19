@@ -131,8 +131,11 @@ void LinearRegAllocator::calcLifespan() {
   for (unsigned i = 0; i < tempNum; i++) {
     for (unsigned rId : rMap[i]) {
       unordered_set<unsigned> span, track;
-      scanSpan(rId, i, span, track);
-      lifespan[i].insert(span.begin(), span.end());
+      for (unsigned prev : prevMap[rId]) {
+        scanSpan(prev, i, span, track);
+        lifespan[i].insert(span.begin(), span.end());
+      }
+      lifespan[i].insert(rId);
     }
   }
 }
@@ -147,7 +150,8 @@ void LinearRegAllocator::calcPrevMap() {
     else if (irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
              irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
              irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) {
-      prevMap[i + 1].push_back(i);
+      if (i + 1 < irNum)
+        prevMap[i + 1].push_back(i);
       prevMap[irIdMap[irs[i]->items[0]->ir]].push_back(i);
     } else if (i + 1 < irNum)
       prevMap[i + 1].push_back(i);

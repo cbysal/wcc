@@ -12,6 +12,8 @@
 class ASMOptimizer {
 private:
   void peepholeOptimize();
+  void scheduleOptimize();
+  std::vector<AsmBasicBlock> buildBlock(std::vector<ASM *>);
 
 public:
   void optimize();

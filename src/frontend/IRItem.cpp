@@ -3,10 +3,10 @@
 using namespace std;
 
 unordered_map<IRItem::IRItemType, string> irItemTypeStr = {
-    {IRItem::FLOAT, "FLOAT"},   {IRItem::FTEMP, "FTEMP"},
-    {IRItem::INT, "INT"},       {IRItem::IR_OFFSET, "IR_OFFSET"},
-    {IRItem::IR_T, "IR_T"},     {IRItem::ITEMP, "ITEMP"},
-    {IRItem::RETURN, "RETURN"}, {IRItem::SYMBOL, "SYMBOL"}};
+    {IRItem::FLOAT, "FLOAT"},  {IRItem::FTEMP, "FTEMP"},
+    {IRItem::INT, "INT"},      {IRItem::IR_T, "IR_T"},
+    {IRItem::ITEMP, "ITEMP"},  {IRItem::RETURN, "RETURN"},
+    {IRItem::SYMBOL, "SYMBOL"}};
 
 IRItem::IRItem(IR *ir) {
   this->type = IR_T;
@@ -48,4 +48,32 @@ IRItem *IRItem::clone() {
   cloneItem->symbol = symbol;
   cloneItem->iVal = iVal;
   return cloneItem;
+}
+
+bool IRItem::equals(IRItem *item) {
+  if (type != item->type)
+    return false;
+  switch (type) {
+  case FLOAT:
+    if (fVal != item->fVal)
+      return false;
+    break;
+  case FTEMP:
+  case INT:
+  case ITEMP:
+    if (iVal != item->iVal)
+      return false;
+    break;
+  case IR_T:
+    if (ir != item->ir)
+      return false;
+    break;
+  case SYMBOL:
+    if (symbol != item->symbol)
+      return false;
+    break;
+  default:
+    break;
+  }
+  return true;
 }

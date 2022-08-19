@@ -37,6 +37,7 @@ public:
     MUL,
     NE,
     NEG,
+    NOP,
     SUB
   };
 

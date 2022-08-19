@@ -16,7 +16,6 @@ public:
     FTEMP,     // float temporary
     INT,       // int const
     ITEMP,     // int temporary
-    IR_OFFSET, // unused
     IR_T,      // destination address of jump
     RETURN,
     SYMBOL
@@ -38,6 +37,7 @@ public:
   IRItem(int);
 
   IRItem *clone();
+  bool equals(IRItem *);
 };
 
 extern std::unordered_map<IRItem::IRItemType, std::string> irItemTypeStr;

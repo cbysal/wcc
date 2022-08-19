@@ -373,6 +373,22 @@ void ASMParser::parseCall(vector<ASM *> &asms, IR *ir) {
   asms.push_back(new ASM(ASM::BL, {new ASMItem(ir->items[0]->symbol->name)}));
 }
 
+void ASMParser::parseF2I(vector<ASM *> &asms, IR *ir) {
+  bool flag1 = itemp2Reg.find(ir->items[0]->iVal) == itemp2Reg.end(),
+       flag2 = ftemp2Reg.find(ir->items[1]->iVal) == ftemp2Reg.end();
+  if (flag2)
+    loadFromSP(asms, Reg::S0, spillOffsets[ir->items[1]->iVal]);
+  asms.push_back(
+      new ASM(ASM::VCVTFS,
+              {new ASMItem(Reg::S0),
+               new ASMItem(flag2 ? Reg::S0 : ftemp2Reg[ir->items[1]->iVal])}));
+  asms.push_back(new ASM(
+      ASM::VMOV, {new ASMItem(flag1 ? Reg::A1 : itemp2Reg[ir->items[0]->iVal]),
+                  new ASMItem(Reg::S0)}));
+  if (flag1)
+    storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
+}
+
 vector<ASM *> ASMParser::parseFunc(Symbol *func, vector<IR *> &irs) {
   vector<ASM *> asms;
   initFrame();
