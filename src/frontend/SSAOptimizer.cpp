@@ -10,19 +10,28 @@
 using namespace std;
 
 void SSAOptimizer::process() {
+  tempId = 0;
   for (auto &func : funcIRs) {
     clear();
     funIR = func.second;
-    funVar = localVars[func.first];
-    preprocess();
-    insertPhi();
-    renameVariables(0);
+    ssaConstruction();
     optimize();
     if (getenv("DEBUG"))
-      debug(func.first);
-    translateSSA();
+      printSSA(func.first);
+    ssaDestruction();
+    func.second.swap(funIR);
+    if (getenv("DEBUG"))
+      printSSA(func.first);
   }
   clear();
+}
+
+void SSAOptimizer::optimize() {
+  removeUselessPhi();
+  copyPropagation();
+  commonSubexpressionElimination(0);
+  constantPropagation();
+  deadCodeElimination();
 }
 
 void SSAOptimizer::clear() {
@@ -49,6 +58,134 @@ void SSAOptimizer::clear() {
   csePhiTable.clear();
   cseExpTable.clear();
   cseCopyTable.clear();
+}
+
+SSAOptimizer::SSAvar::SSAvar() {
+  symbol = NULL;
+  data = INT;
+  tmpID = -1;
+  type = LOCAL;
+}
+
+SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
+  symbol = NULL;
+  switch (x->type) {
+  case IRItem::INT:
+    data = INT;
+    ival = x->iVal;
+    type = CONST;
+    break;
+  case IRItem::FLOAT:
+    data = FLOAT;
+    fval = x->fVal;
+    type = CONST;
+    break;
+  case IRItem::FTEMP:
+  case IRItem::ITEMP:
+    tmpID = x->iVal;
+    type = LOCAL;
+    data = x->type == IRItem::FTEMP ? FLOAT : INT;
+    break;
+  case IRItem::IR_T:
+    ival = x->iVal;
+    type = LEBAL;
+    break;
+  case IRItem::RETURN:
+    type = RETURN;
+    break;
+  default: {
+    symbol = x->symbol;
+    auto sType = symbol->symbolType;
+    if (sType == Symbol::FUNC)
+      type = FUNC;
+    else if ((sType == Symbol::LOCAL_VAR && x->symbol->dimensions.empty()) ||
+             sType == Symbol::PARAM) {
+      type = LOCAL;
+      tmpID = -1; // not temporary
+    } else
+      type = GLOBAL;
+    data = x->symbol->dataType == Symbol::FLOAT ? FLOAT : INT;
+    break;
+  }
+  }
+}
+
+SSAOptimizer::SSAItem::SSAItem(SSAvar *v, int i = 0, int b = 0) {
+  var = v;
+  vid = i;
+  def = b;
+}
+
+SSAOptimizer::SSAItem::SSAItem(SSAItem *a) {
+  var = a->var;
+  vid = a->vid;
+  def = a->def;
+}
+
+SSAOptimizer::SSAIR::SSAIR(IR::IRType ty, SSAItem *l, vector<SSAItem *> r,
+                           int isPhi = 0) {
+  type = ty;
+  L = l;
+  R.swap(r);
+  phi = isPhi;
+}
+
+SSAOptimizer::SSAIR *SSAOptimizer::newCopyIR(SSAItem *src, int loc = -1) {
+  int vid = varVersion[src->var];
+  varVersion[src->var] += 1;
+  // Add a copy instruction to the original place
+  if (loc == -1)
+    loc = src->def;
+  return new SSAIR(IR::MOV, new SSAItem(src->var, vid, loc), {src});
+}
+
+SSAOptimizer::SSAvar *SSAOptimizer::getSSAvar(IRItem *x) {
+  switch (x->type) {
+  case IRItem::RETURN:
+    if (RET == NULL) {
+      RET = new SSAvar(x);
+      ssaVars.push_back(RET);
+    }
+    return RET;
+  case IRItem::INT:
+    if (!intCon.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      intCon[x->iVal] = ssaVars.back();
+    }
+    return intCon[x->iVal];
+  case IRItem::FLOAT:
+    if (!floatCon.count(x->fVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      floatCon[x->fVal] = ssaVars.back();
+    }
+    return floatCon[x->fVal];
+  case IRItem::IR_T:
+    if (!label.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      label[x->iVal] = ssaVars.back();
+    }
+    return label[x->iVal];
+  case IRItem::ITEMP:
+  case IRItem::FTEMP:
+    if (!tmpVar.count(x->iVal)) {
+      ssaVars.push_back(new SSAvar(x));
+      tmpVar[x->iVal] = ssaVars.back();
+    }
+    return tmpVar[x->iVal];
+  default:
+    if (!symVar.count(x->symbol)) {
+      ssaVars.push_back(new SSAvar(x));
+      symVar[x->symbol] = ssaVars.back();
+    }
+    return symVar[x->symbol];
+  }
+}
+
+int SSAOptimizer::isCopyIR(SSAIR *x) {
+  return x->type == IR::MOV && x->R.size() == 1 &&
+         x->L->var->type == SSAvar::LOCAL &&
+         (x->R[0]->var->type == SSAvar::LOCAL ||
+          x->R[0]->var->type == SSAvar::CONST);
 }
 
 string SSAOptimizer::SSAIR::toString() {
@@ -112,7 +249,7 @@ string SSAOptimizer::SSAIR::toString() {
   return s;
 }
 
-void SSAOptimizer::debug(Symbol *f) {
+void SSAOptimizer::printSSA(Symbol *f) {
   cout << "--------------------------------------------------------------------"
           "------------\n";
   cout << f->name << '\n';
@@ -213,120 +350,7 @@ void SSAOptimizer::dominatorTree::LengauerTarjan(int rt) {
       idom[u] = idom[idom[u]];
 }
 
-SSAOptimizer::SSAvar::SSAvar() {
-  symbol = NULL;
-  data = INT;
-  tmpID = -1;
-  type = LOCAL;
-}
-
-SSAOptimizer::SSAvar::SSAvar(IRItem *x) {
-  symbol = NULL;
-  switch (x->type) {
-  case IRItem::INT:
-    data = INT;
-    ival = x->iVal;
-    type = CONST;
-    break;
-  case IRItem::FLOAT:
-    data = FLOAT;
-    fval = x->fVal;
-    type = CONST;
-    break;
-  case IRItem::FTEMP:
-  case IRItem::ITEMP:
-    tmpID = x->iVal;
-    type = LOCAL;
-    data = x->type == IRItem::FTEMP ? FLOAT : INT;
-    break;
-  case IRItem::IR_T:
-    ival = x->iVal;
-    type = LEBAL;
-    break;
-  case IRItem::RETURN:
-    type = RETURN;
-    break;
-  default: {
-    symbol = x->symbol;
-    auto sType = symbol->symbolType;
-    if (sType == Symbol::FUNC)
-      type = FUNC;
-    else if ((sType == Symbol::LOCAL_VAR && x->symbol->dimensions.empty()) ||
-             sType == Symbol::PARAM) {
-      type = LOCAL;
-      tmpID = -1; // not temporary
-    } else
-      type = GLOBAL;
-    data = x->symbol->dataType == Symbol::FLOAT ? FLOAT : INT;
-    break;
-  }
-  }
-}
-
-SSAOptimizer::SSAItem::SSAItem(SSAvar *v, int i = 0) {
-  var = v;
-  vid = i;
-}
-
-SSAOptimizer::SSAIR::SSAIR(IR::IRType ty, SSAItem *l, vector<SSAItem *> r,
-                           int isPhi = 0) {
-  type = ty;
-  L = l;
-  R.swap(r);
-  phi = isPhi;
-}
-
-SSAOptimizer::SSAIR *SSAOptimizer::newCopyIR(SSAItem *src) {
-  SSAvar *tmp = new SSAvar;
-  tmp->data = src->var->data;
-  tmp->tmpID = (int)tmpVar.size();
-  tmpVar[tmp->tmpID] = tmp;
-  return new SSAIR(IR::MOV, new SSAItem(tmp), {src});
-}
-
-SSAOptimizer::SSAvar *SSAOptimizer::getSSAvar(IRItem *x) {
-  switch (x->type) {
-  case IRItem::RETURN:
-    if (RET == NULL) {
-      RET = new SSAvar(x);
-      ssaVars.push_back(RET);
-    }
-    return RET;
-  case IRItem::INT:
-    if (!intCon.count(x->iVal)) {
-      ssaVars.push_back(new SSAvar(x));
-      intCon[x->iVal] = ssaVars.back();
-    }
-    return intCon[x->iVal];
-  case IRItem::FLOAT:
-    if (!floatCon.count(x->fVal)) {
-      ssaVars.push_back(new SSAvar(x));
-      floatCon[x->fVal] = ssaVars.back();
-    }
-    return floatCon[x->fVal];
-  case IRItem::IR_T:
-    if (!label.count(x->iVal)) {
-      ssaVars.push_back(new SSAvar(x));
-      label[x->iVal] = ssaVars.back();
-    }
-    return label[x->iVal];
-  case IRItem::ITEMP:
-  case IRItem::FTEMP:
-    if (!tmpVar.count(x->iVal)) {
-      ssaVars.push_back(new SSAvar(x));
-      tmpVar[x->iVal] = ssaVars.back();
-    }
-    return tmpVar[x->iVal];
-  default:
-    if (!symVar.count(x->symbol)) {
-      ssaVars.push_back(new SSAvar(x));
-      symVar[x->symbol] = ssaVars.back();
-    }
-    return symVar[x->symbol];
-  }
-}
-
-void SSAOptimizer::preprocess() {
+void SSAOptimizer::ssaConstruction() {
   int cnt = 0;
   unordered_map<IR *, int> belong;
 
@@ -398,9 +422,8 @@ void SSAOptimizer::preprocess() {
     varVersion[var] = vid + 1;
     varStack[var].push(new SSAItem(var, vid)); // -1 represent undefined
   }
-}
 
-void SSAOptimizer::insertPhi() {
+  // Insert phi-funtion
   // This indicates that phi-function for V has been inserted into X
   vector<set<SSAvar *>> inserted(block.size());
   // This represents that X has been added to W for variable V
@@ -430,6 +453,8 @@ void SSAOptimizer::insertPhi() {
       }
     }
   }
+
+  renameVariables(0);
 }
 
 void SSAOptimizer::renameVariables(int u) {
@@ -439,7 +464,7 @@ void SSAOptimizer::renameVariables(int u) {
     if (!ir->phi)
       break;
     auto x = ir->L->var;
-    ir->L = new SSAItem(x, varVersion[x]);
+    ir->L = new SSAItem(x, varVersion[x], u);
     varVersion[x] += 1;
     varStack[x].push(ir->L);
     pushCnt[x] += 1;
@@ -468,10 +493,15 @@ void SSAOptimizer::renameVariables(int u) {
             (R[0]->var->type == SSAvar::LOCAL ||
              R[0]->var->type == SSAvar::CONST)) {
           ins = 0;
-          varStack[left].push(varStack[R[0]->var].top());
+          auto right = varStack[R[0]->var].top();
+          if (R[0]->var->type == SSAvar::CONST) {
+            right = new SSAItem(right);
+            right->def = u;
+          }
+          varStack[left].push(right);
           pushCnt[left] += 1;
         } else {
-          L = new SSAItem(left, varVersion[left]);
+          L = new SSAItem(left, varVersion[left], u);
           varVersion[left] += 1;
           varStack[left].push(L);
           pushCnt[left] += 1;
@@ -497,19 +527,94 @@ void SSAOptimizer::renameVariables(int u) {
       varStack[var].pop();
 }
 
-void SSAOptimizer::optimize() {
-  removeUselessPhi();
-  copyPropagation();
-  commonSubexpressionElimination(0);
-  constantPropagation();
-  deadCodeElimination();
-}
+void SSAOptimizer::ssaDestruction() {
+  vector<vector<SSAIR *>> backInsIR(ssaIRs.size());
+  for (auto &B : ssaIRs) {
+    vector<SSAIR *> new_B;
+    for (auto &ir : B) {
+      if (ir->phi) {
+        auto new_ir = newCopyIR(ir->L);
+        swap(ir->L, new_ir->L);
+        auto L = ir->L;
+        new_ir->R = {L};
+        new_B.push_back(new_ir);
+        for (auto &x : ir->R)
+          backInsIR[x->def].push_back(new SSAIR(IR::MOV, L, {x}));
+      } else
+        new_B.push_back(ir);
+    }
+    B.swap(new_B);
+  }
 
-int SSAOptimizer::isCopyIR(SSAIR *x) {
-  return x->type == IR::MOV && x->R.size() == 1 &&
-         x->L->var->type == SSAvar::LOCAL &&
-         (x->R[0]->var->type == SSAvar::LOCAL ||
-          x->R[0]->var->type == SSAvar::CONST);
+  for (size_t i = 0; i < ssaIRs.size(); ++i)
+    if (!backInsIR[i].empty()) {
+      auto &B = ssaIRs[i];
+      auto back = B.empty() ? NULL : B.back();
+      if (back && (branch.count(back->type) || back->type == IR::GOTO))
+        B.pop_back();
+      else
+        back = NULL;
+      B.insert(B.end(), backInsIR[i].begin(), backInsIR[i].end());
+      if (back)
+        B.push_back(back);
+    }
+  
+  vector<vector<IR *>> block(ssaIRs.size());
+  unordered_map<SSAItem *, int> itemMp;
+  for (size_t i = 0; i < ssaIRs.size(); ++i)
+    block[i].push_back(new IR(IR::LABEL));
+  for (size_t i = 0; i < ssaIRs.size(); ++i) {
+    auto &B = ssaIRs[i];
+    for (auto &ir : B) {
+      auto bir = new IR(ir->type);
+      vector<SSAItem *> its;
+      if (ir->L) its.push_back(ir->L);
+      its.insert(its.end(), ir->R.begin(), ir->R.end());
+      for (auto &t : its) {
+        if (!t)
+          continue;
+        auto x = t->var;
+        IRItem *y;
+        switch (x->type) {
+        case SSAvar::CONST:
+          if (x->data == SSAvar::INT)
+            y = new IRItem(x->ival);
+          else
+            y = new IRItem(x->fval);
+          break;
+        case SSAvar::FUNC:
+        case SSAvar::GLOBAL:
+          y = new IRItem(x->symbol);
+          break;
+        case SSAvar::LEBAL:
+          y = new IRItem(IRItem::IR_T);
+          y->ir = block[x->ival][0];
+          break;
+        case SSAvar::RETURN:
+          y = new IRItem(IRItem::RETURN);
+          break;
+        default:
+          if (x->symbol && x->symbol->symbolType == Symbol::PARAM && t->vid == 0)
+            y = new IRItem(x->symbol);
+          else {
+            if (!itemMp.count(t))
+              itemMp[t] = tempId++;
+            if (x->data == SSAvar::INT)
+              y = new IRItem(IRItem::ITEMP, itemMp[t]);
+            else
+              y = new IRItem(IRItem::FTEMP, itemMp[t]);
+          }
+          break;
+        }
+        bir->items.push_back(y);
+      }
+      block[i].push_back(bir);
+    }
+  }
+
+  funIR.clear();
+  for (auto &b : block)
+    funIR.insert(funIR.end(), b.begin(), b.end());
 }
 
 void SSAOptimizer::removeUselessPhi() {
@@ -746,29 +851,3 @@ void SSAOptimizer::moveInvariantExpOut(){};
 //     }
 //   }
 // }
-
-// Method of Briggs et al.
-void SSAOptimizer::translateSSA() { preprocessForPhi(); }
-
-void SSAOptimizer::preprocessForPhi() {
-  // Replace constant and collect all phi-functions
-  for (auto &B : ssaIRs) {
-    vector<SSAIR *> new_B;
-    for (auto &ir : B) {
-      if (ir->phi) {
-        for (auto &src : ir->R)
-          if (src->var->type == SSAvar::CONST) {
-            new_B.push_back(newCopyIR(src));
-            src = new_B.back()->L;
-          }
-      }
-      new_B.push_back(ir);
-    }
-    B.swap(new_B);
-  }
-
-  // Find the block to which the definition statement of each variable belongs
-  for (size_t i = 0; i < ssaIRs.size(); ++i)
-    for (auto &ir : ssaIRs[i])
-      resrcBelong[ir->L] = i;
-}

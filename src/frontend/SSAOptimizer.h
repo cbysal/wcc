@@ -13,8 +13,7 @@
 
 class SSAOptimizer {
 private:
-  std::vector<IR *> funIR;      // IR in each function
-  std::vector<Symbol *> funVar; // Local variable in each function
+  std::vector<IR *> funIR; // IR in each function
 
   const std::set<IR::IRType> branch = std::set<IR::IRType>{
       IR::BEQ, IR::BGE, IR::BGT, IR::BGT, IR::BLE, IR::BLT, IR::BNE};
@@ -67,7 +66,9 @@ private:
   struct SSAItem {
     SSAvar *var;
     int vid; // variable version
-    SSAItem(SSAvar *, int);
+    int def; // defined in which block
+    SSAItem(SSAvar *, int, int);
+    SSAItem(SSAItem *);
   };
 
   struct SSAIR {
@@ -115,21 +116,22 @@ private:
   // Version of variable
   std::unordered_map<SSAvar *, int> varVersion;
 
-  void preprocess();
-  // Minimal SSA
-  void insertPhi();
-  void renameVariables(int);
+  // main function
+  void ssaConstruction();
+  void ssaDestruction();
+  void optimize();
+  void printSSA(Symbol *);
   void clear();
-  // Print SSA
-  void debug(Symbol *);
+
+  // SSA Constrution
+  void preprocess();
+  void insertPhi(); // Minimal SSA
+  void renameVariables(int);
 
   // Optimize
-  void optimize();
-  int isCopyIR(SSAIR *);
   void copyPropagation();
   void constantPropagation();
   void removeUselessPhi();
-
   std::map<std::vector<SSAItem *>, SSAItem *> csePhiTable;
   std::map<std::tuple<IR::IRType, SSAItem *, SSAItem *>, SSAItem *> cseExpTable;
   std::unordered_map<SSAItem *, SSAItem *> cseCopyTable;
@@ -137,16 +139,11 @@ private:
   void moveInvariantExpOut();
   void deadCodeElimination();
 
-  // Translation from SSA Form into Normal Form by Method of Briggs et al.
-  // (I can't understand the implementation of the Method of Sreedhar et al.)
-  void translateSSA();
-  SSAIR *newCopyIR(SSAItem *);
-  // The block to which the definition statement of each variable belongs.
-  std::unordered_map<SSAItem *, int> resrcBelong;
-  void preprocessForPhi();
+  // Utils
+  int isCopyIR(SSAIR *);
+  SSAIR *newCopyIR(SSAItem *, int);
 
 public:
-
   std::vector<Symbol *> getConsts();
   std::unordered_map<Symbol *, std::vector<IR *>> getFuncs();
   std::vector<Symbol *> getGlobalVars();
