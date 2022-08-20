@@ -17,12 +17,14 @@ private:
   void deadCodeElimination();
   std::unordered_set<Symbol *> getInlinableFuncs();
   void funcInline();
+  void global2Local();
   void optimizeFlow();
   void passArr(std::vector<IR *> &);
   void passInBlock(unsigned, unsigned);
   void peepholeOptimize();
   void reassignTempId();
   void singleVar2Reg();
+  void splitArrays();
   void splitTemps();
   void standardize(std::vector<IR *> &);
 

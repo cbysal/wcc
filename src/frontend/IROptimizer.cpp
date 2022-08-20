@@ -355,9 +355,9 @@ void IROptimizer::deadCodeElimination() {
 
 void IROptimizer::funcInline() {
   reassignTempId();
-  unsigned originSize;
+  bool toContinue = false;
   do {
-    originSize = funcIRs.size();
+    toContinue = false;
     unordered_set<Symbol *> toInlineFuncs = getInlinableFuncs();
     for (Symbol *toInlineFunc : toInlineFuncs) {
       for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
@@ -392,6 +392,7 @@ void IROptimizer::funcInline() {
             continue;
           }
           lastIsInlineCall = true;
+          toContinue = true;
           if (toInlineFunc->dataType == Symbol::FLOAT)
             retItem = new IRItem(IRItem::FTEMP, tempId++);
           if (toInlineFunc->dataType == Symbol::INT)
@@ -454,7 +455,7 @@ void IROptimizer::funcInline() {
       }
     }
     deadCodeElimination();
-  } while (originSize != funcIRs.size());
+  } while (toContinue);
 }
 
 unordered_set<Symbol *> IROptimizer::getInlinableFuncs() {
@@ -508,6 +509,11 @@ void IROptimizer::optimize() {
       processedSize += it->second.size();
   } while (originSize != processedSize);
   funcInline();
+  global2Local();
+  splitArrays();
+  singleVar2Reg();
+  deadCodeElimination();
+  splitTemps();
   processedSize = 0;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++)
@@ -527,6 +533,68 @@ void IROptimizer::optimize() {
          it != funcIRs.end(); it++)
       processedSize += it->second.size();
   } while (originSize != processedSize);
+}
+
+void IROptimizer::global2Local() {
+  unordered_set<Symbol *> moveableGlobals(globalVars.begin(), globalVars.end());
+  Symbol *mainFunc = nullptr;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    Symbol *func = it->first;
+    vector<IR *> &irs = it->second;
+    if (!func->name.compare("main")) {
+      mainFunc = func;
+      continue;
+    }
+    for (IR *ir : irs)
+      for (IRItem *item : ir->items)
+        if (item->type == IRItem::SYMBOL &&
+            item->symbol->symbolType == Symbol::GLOBAL_VAR)
+          moveableGlobals.erase(item->symbol);
+  }
+  vector<IR *> newIRs;
+  for (Symbol *moveableGlobal : moveableGlobals) {
+    if (moveableGlobal->dimensions.empty()) {
+      globalVars.erase(
+          find(globalVars.begin(), globalVars.end(), moveableGlobal));
+      moveableGlobal->symbolType = Symbol::LOCAL_VAR;
+      localVars[mainFunc].push_back(moveableGlobal);
+      if (moveableGlobal->dataType == Symbol::INT)
+        newIRs.push_back(new IR(IR::MOV, {new IRItem(moveableGlobal),
+                                          new IRItem(moveableGlobal->iVal)}));
+      else
+        newIRs.push_back(new IR(IR::MOV, {new IRItem(moveableGlobal),
+                                          new IRItem(moveableGlobal->fVal)}));
+    } else {
+      unsigned totalSize = 1;
+      for (unsigned dimension : moveableGlobal->dimensions)
+        totalSize *= dimension;
+      if (totalSize > 1024)
+        continue;
+      globalVars.erase(
+          find(globalVars.begin(), globalVars.end(), moveableGlobal));
+      moveableGlobal->symbolType = Symbol::LOCAL_VAR;
+      localVars[mainFunc].push_back(moveableGlobal);
+      for (unsigned i = 0; i < totalSize; i++) {
+        vector<unsigned> dimensions(moveableGlobal->dimensions.size(), 0);
+        unsigned t = i;
+        for (int j = moveableGlobal->dimensions.size() - 1; j >= 0; j--) {
+          dimensions[j] = t % moveableGlobal->dimensions[j];
+          t /= moveableGlobal->dimensions[j];
+        }
+        IR *newIR =
+            new IR(IR::MOV, {new IRItem(moveableGlobal),
+                             moveableGlobal->dataType == Symbol::INT
+                                 ? new IRItem(moveableGlobal->iMap[i])
+                                 : new IRItem(moveableGlobal->fMap[i])});
+        for (unsigned dimension : dimensions)
+          newIR->items.push_back(new IRItem((int)dimension));
+        newIRs.push_back(newIR);
+      }
+    }
+  }
+  funcIRs[mainFunc].insert(funcIRs[mainFunc].begin(), newIRs.begin(),
+                           newIRs.end());
 }
 
 void IROptimizer::optimizeFlow() {
@@ -842,6 +910,76 @@ void IROptimizer::singleVar2Reg() {
       newIRs.push_back(ir);
     }
     irs = newIRs;
+  }
+}
+
+void IROptimizer::splitArrays() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    Symbol *func = it->first;
+    vector<IR *> &irs = it->second;
+    unordered_set<Symbol *> possibleVars(localVars[func].begin(),
+                                         localVars[func].end());
+    for (IR *ir : irs) {
+      if (ir->type == IR::MOV) {
+        if (ir->items[0]->type == IRItem::SYMBOL &&
+            !ir->items[0]->symbol->dimensions.empty())
+          for (unsigned i = 2; i < ir->items.size(); i++)
+            if (ir->items[i]->type != IRItem::INT) {
+              possibleVars.erase(ir->items[0]->symbol);
+              break;
+            }
+        if (ir->items[1]->type == IRItem::SYMBOL &&
+            !ir->items[1]->symbol->dimensions.empty()) {
+          if (ir->items[1]->symbol->dimensions.size() + 2 != ir->items.size()) {
+            possibleVars.erase(ir->items[1]->symbol);
+            continue;
+          }
+          for (unsigned i = 2; i < ir->items.size(); i++)
+            if (ir->items[i]->type != IRItem::INT) {
+              possibleVars.erase(ir->items[1]->symbol);
+              break;
+            }
+        }
+      }
+    }
+    vector<Symbol *> newLocalVars;
+    for (Symbol *localVar : localVars[func])
+      if (possibleVars.find(localVar) == possibleVars.end())
+        newLocalVars.push_back(localVar);
+    for (Symbol *possibleVar : possibleVars) {
+      unordered_map<unsigned, Symbol *> newSymbols;
+      for (IR *ir : irs) {
+        if (ir->type == IR::MOV) {
+          if (ir->items[0]->type == IRItem::SYMBOL &&
+              ir->items[0]->symbol == possibleVar) {
+            unsigned size = 0;
+            for (unsigned i = 2; i < ir->items.size(); i++)
+              size = size * possibleVar->dimensions[i - 2] + ir->items[i]->iVal;
+            if (newSymbols.find(size) == newSymbols.end()) {
+              newSymbols[size] = possibleVar->clone();
+              newSymbols[size]->dimensions.clear();
+            }
+            ir->items[0]->symbol = newSymbols[size];
+            ir->items.resize(2);
+          }
+          if (ir->items[1]->type == IRItem::SYMBOL &&
+              ir->items[1]->symbol == possibleVar) {
+            unsigned size = 0;
+            for (unsigned i = 2; i < ir->items.size(); i++)
+              size = size * possibleVar->dimensions[i - 2] + ir->items[i]->iVal;
+            if (newSymbols.find(size) == newSymbols.end()) {
+              newSymbols[size] = possibleVar->clone();
+              newSymbols[size]->dimensions.clear();
+              newLocalVars.push_back(newSymbols[size]);
+            }
+            ir->items[1]->symbol = newSymbols[size];
+            ir->items.resize(2);
+          }
+        }
+      }
+    }
+    localVars[func] = newLocalVars;
   }
 }
 

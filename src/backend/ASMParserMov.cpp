@@ -430,8 +430,6 @@ void ASMParser::parseMovItempSymbolNone(vector<ASM *> &asms, IR *ir) {
   case Symbol::LOCAL_VAR:
     if (flag1 && isFull) {
       loadFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);
-      asms.push_back(
-          new ASM(ASM::LDR, {new ASMItem(Reg::A1), new ASMItem(Reg::A1)}));
       storeFromSP(asms, Reg::A1, spillOffsets[ir->items[0]->iVal]);
     } else if (flag1 && !isFull) {
       moveFromSP(asms, Reg::A1, offsets[ir->items[1]->symbol]);

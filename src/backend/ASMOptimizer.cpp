@@ -64,16 +64,6 @@ void ASMOptimizer::peepholeOptimize() {
           continue;
         }
       }
-      if (asms[i]->type == ASM::MOV && asms[i + 1]->type == ASM::STR &&
-          asms[i + 2]->type == ASM::MOV) {
-        if (asms[i]->items[0]->reg == asms[i + 2]->items[0]->reg &&
-            asms[i]->items[1]->iVal == asms[i + 2]->items[1]->iVal) {
-          newASMs.push_back(asms[i]);
-          newASMs.push_back(asms[i + 1]);
-          i += 2;
-          continue;
-        }
-      }
       if (asms[i]->type == ASM::MVN && asms[i + 1]->type == ASM::MOV) {
         if (asms[i]->items[0]->type == ASMItem::REG &&
             asms[i]->items[1]->type == ASMItem::INT &&
