@@ -104,7 +104,8 @@ private:
 
   // Used to convert IRItem to SSAVar
   std::unordered_map<float, IRvar *> floatCon;
-  std::unordered_map<int, IRvar *> tmpVar, intCon, label;
+  std::unordered_map<int, IRvar *> tmpVar, intCon;
+  std::unordered_map<IRItem*, IRvar *> label;
   std::unordered_map<Symbol *, IRvar *> symVar;
   IRvar *RET;
   // Convert IRItem to SSAVar

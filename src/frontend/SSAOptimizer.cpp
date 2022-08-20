@@ -188,11 +188,11 @@ SSAOptimizer::IRvar *SSAOptimizer::getSSAvar(IRItem *x) {
     }
     return floatCon[x->fVal];
   case IRItem::IR_T:
-    if (!label.count(x->iVal)) {
+    if (!label.count(x)) {
       ssaVars.push_back(new IRvar(x));
-      label[x->iVal] = ssaVars.back();
+      label[x] = ssaVars.back();
     }
-    return label[x->iVal];
+    return label[x];
   case IRItem::ITEMP:
   case IRItem::FTEMP:
     if (!tmpVar.count(x->iVal)) {
@@ -750,7 +750,7 @@ void SSAOptimizer::constantPropagation() {
       for (auto &x : ir->R)
         usedExp[x.x].push_back(ir);
     }
-  
+
   auto phi_eval = [&](SSAIR *ir) {
     for (auto &x : ir->R)
       if (!reachEdge.count({x.def, ir->L.def}))
@@ -887,7 +887,8 @@ void SSAOptimizer::constantPropagation() {
         st = state::INDET;
       else if (CONST) {
         if (ir->type == IR::MOV) {
-          if (ir->L->var->type == IRvar::GLOBAL || ir->L->var->type == IRvar::RETURN)
+          if (ir->L->var->type == IRvar::GLOBAL ||
+              ir->L->var->type == IRvar::RETURN)
             st = state::INDET;
           else {
             st = state::CONST;
@@ -1004,7 +1005,7 @@ void SSAOptimizer::constantPropagation() {
       }
     }
     int ok = 0;
-  
+
     // delete unreachable phi-function arguments
     for (auto &B : ssaIRs) {
       vector<SSAIR *> new_B;
@@ -1025,7 +1026,7 @@ void SSAOptimizer::constantPropagation() {
           new_B.push_back(ir);
       B.swap(new_B);
     }
-    
+
     // delete unreachable block and constant mov IR
     for (size_t i = 0; i < ssaIRs.size(); ++i)
       if (!reachBlock[i])
