@@ -79,55 +79,314 @@ void IROptimizer::assignPass() {
   }
 }
 
-void IROptimizer::constPassBlock() {
+void IROptimizer::constLoopExpand() {
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++) {
     vector<IR *> &irs = it->second;
-    unsigned left = 0, right = 0;
-    while (right < irs.size()) {
-      while (right < irs.size()) {
-        if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
-            irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
-            irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
-            irs[right]->type == IR::CALL || irs[right]->type == IR::GOTO ||
-            irs[right]->type == IR::LABEL)
+    for (unsigned i = 0; i < irs.size(); i++) {
+      unordered_map<IR *, unsigned> irIdMap;
+      for (unsigned i = 0; i < irs.size(); i++)
+        irIdMap[irs[i]] = i;
+      if (irs[i]->type == IR::BEQ || irs[i]->type == IR::BGE ||
+          irs[i]->type == IR::BGT || irs[i]->type == IR::BLE ||
+          irs[i]->type == IR::BLT || irs[i]->type == IR::BNE) {
+        unsigned beginId = irIdMap[irs[i]->items[0]->ir];
+        unsigned endId = i;
+        if (beginId >= endId)
+          continue;
+        if (irs[endId]->items[2]->type != IRItem::FLOAT &&
+            irs[endId]->items[2]->type != IRItem::INT)
+          continue;
+        int loopTempId = irs[endId]->items[1]->iVal;
+        int loopTempDefId = beginId - 1;
+        while (loopTempDefId >= 0) {
+          if (irs[loopTempDefId]->items.empty()) {
+            loopTempDefId--;
+            continue;
+          }
+          if (irs[loopTempDefId]->items[0]->type != IRItem::FTEMP &&
+              irs[loopTempDefId]->items[0]->type != IRItem::ITEMP) {
+            loopTempDefId--;
+            continue;
+          }
+          if (irs[loopTempDefId]->items[0]->iVal == loopTempId)
+            break;
+          loopTempDefId--;
+        }
+        if (loopTempDefId < 0)
+          continue;
+        if (irs[loopTempDefId]->type != IR::MOV ||
+            (irs[loopTempDefId]->items[1]->type != IRItem::FLOAT &&
+             irs[loopTempDefId]->items[1]->type != IRItem::INT))
+          continue;
+        int loopVal = irs[loopTempDefId]->items[1]->iVal;
+        bool flag = true;
+        for (unsigned j = loopTempDefId + 1; j < endId; j++) {
+          if (j == beginId)
+            continue;
+          if (irs[j]->type == IR::BEQ || irs[j]->type == IR::BGE ||
+              irs[j]->type == IR::BGT || irs[j]->type == IR::BLE ||
+              irs[j]->type == IR::BLT || irs[j]->type == IR::BNE ||
+              irs[j]->type == IR::GOTO || irs[j]->type == IR::LABEL) {
+            flag = false;
+            break;
+          }
+          if (irs[j]->items[0]->type == IRItem::ITEMP &&
+              irs[j]->items[0]->iVal == loopTempId) {
+            for (unsigned k = 1; k < irs[j]->items.size(); k++) {
+              if (irs[j]->items[k]->type == IRItem::ITEMP &&
+                  irs[j]->items[k]->iVal != loopTempId) {
+                flag = false;
+                break;
+              }
+            }
+          }
+          if (!flag)
+            break;
+        }
+        if (!flag)
+          continue;
+        vector<IR *> extraIRs;
+        unsigned curId = beginId + 1;
+        bool toContinue = true;
+        bool emergency = false;
+        do {
+          switch (irs[curId]->type) {
+          case IR::ADD:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal += irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::BEQ:
+            if (loopVal == irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::BGE:
+            if (loopVal >= irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::BGT:
+            if (loopVal > irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::BLE:
+            if (loopVal <= irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::BLT:
+            if (loopVal < irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::BNE:
+            if (loopVal != irs[curId]->items[2]->iVal)
+              curId = beginId;
+            else
+              toContinue = false;
+            break;
+          case IR::DIV:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal /= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::EQ:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal == irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::GE:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal >= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::GT:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal > irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::L_NOT:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = !loopVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::LE:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal <= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::LT:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal < irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::MOD:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal %= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::MUL:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal *= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::NE:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = loopVal != irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::NEG:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal = -loopVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          case IR::SUB:
+            if (irs[curId]->items[0]->iVal == loopTempId) {
+              loopVal -= irs[curId]->items[2]->iVal;
+              extraIRs.push_back(
+                  new IR(IR::MOV, {new IRItem(IRItem::ITEMP, loopTempId),
+                                   new IRItem(loopVal)}));
+            } else
+              extraIRs.push_back(irs[curId]->clone());
+            break;
+          default:
+            extraIRs.push_back(irs[curId]->clone());
+            break;
+          }
+          curId++;
+          if (extraIRs.size() > 8192) {
+            emergency = true;
+            break;
+          }
+        } while (toContinue);
+        if (!emergency) {
+          irs.erase(irs.begin() + beginId, irs.begin() + endId + 1);
+          irs.insert(irs.begin() + beginId, extraIRs.begin(), extraIRs.end());
           break;
-        right++;
-      }
-      if (right < irs.size())
-        right++;
-      unordered_map<unsigned, unsigned> temp2Int;
-      unordered_map<unsigned, unsigned> temp2Float;
-      for (unsigned i = left; i < right; i++) {
-        for (unsigned j = 1; j < irs[i]->items.size(); j++) {
-          if (irs[i]->items[j]->type == IRItem::FTEMP &&
-              temp2Float.find(irs[i]->items[j]->iVal) != temp2Float.end()) {
-            irs[i]->items[j]->type = IRItem::FLOAT;
-            irs[i]->items[j]->iVal = temp2Float[irs[i]->items[j]->iVal];
-          } else if (irs[i]->items[j]->type == IRItem::ITEMP &&
-                     temp2Int.find(irs[i]->items[j]->iVal) != temp2Int.end()) {
-            irs[i]->items[j]->type = IRItem::INT;
-            irs[i]->items[j]->iVal = temp2Int[irs[i]->items[j]->iVal];
-          }
-        }
-        if (irs[i]->type == IR::MOV) {
-          if (irs[i]->items[0]->type == IRItem::FTEMP) {
-            if (irs[i]->items[1]->type == IRItem::FLOAT)
-              temp2Float[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
-            else
-              temp2Float.erase(irs[i]->items[0]->iVal);
-          } else if (irs[i]->items[0]->type == IRItem::ITEMP) {
-            if (irs[i]->items[1]->type == IRItem::INT)
-              temp2Int[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
-            else
-              temp2Int.erase(irs[i]->items[0]->iVal);
-          }
         }
       }
-      left = right;
     }
-    standardize(irs);
   }
+}
+
+void IROptimizer::constPassBlock() {
+  bool toContinue = false;
+  do {
+    toContinue = false;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++) {
+      vector<IR *> &irs = it->second;
+      unsigned left = 0, right = 0;
+      while (right < irs.size()) {
+        while (right < irs.size()) {
+          if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
+              irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
+              irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
+              irs[right]->type == IR::CALL || irs[right]->type == IR::GOTO ||
+              irs[right]->type == IR::LABEL)
+            break;
+          right++;
+        }
+        if (right < irs.size())
+          right++;
+        unordered_map<unsigned, unsigned> temp2Int;
+        unordered_map<unsigned, unsigned> temp2Float;
+        for (unsigned i = left; i < right; i++) {
+          for (unsigned j = 1; j < irs[i]->items.size(); j++) {
+            if (irs[i]->items[j]->type == IRItem::FTEMP &&
+                temp2Float.find(irs[i]->items[j]->iVal) != temp2Float.end()) {
+              irs[i]->items[j]->type = IRItem::FLOAT;
+              irs[i]->items[j]->iVal = temp2Float[irs[i]->items[j]->iVal];
+              toContinue = true;
+            } else if (irs[i]->items[j]->type == IRItem::ITEMP &&
+                       temp2Int.find(irs[i]->items[j]->iVal) !=
+                           temp2Int.end()) {
+              irs[i]->items[j]->type = IRItem::INT;
+              irs[i]->items[j]->iVal = temp2Int[irs[i]->items[j]->iVal];
+              toContinue = true;
+            }
+          }
+          if (irs[i]->type == IR::MOV) {
+            if (irs[i]->items[0]->type == IRItem::FTEMP) {
+              if (irs[i]->items[1]->type == IRItem::FLOAT)
+                temp2Float[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+              else
+                temp2Float.erase(irs[i]->items[0]->iVal);
+            } else if (irs[i]->items[0]->type == IRItem::ITEMP) {
+              if (irs[i]->items[1]->type == IRItem::INT)
+                temp2Int[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+              else
+                temp2Int.erase(irs[i]->items[0]->iVal);
+            }
+          } else if (!irs[i]->items.empty()) {
+            if (irs[i]->items[0]->type == IRItem::FTEMP) {
+              temp2Float.erase(irs[i]->items[0]->iVal);
+            } else if (irs[i]->items[0]->type == IRItem::ITEMP) {
+              temp2Int.erase(irs[i]->items[0]->iVal);
+            }
+          }
+        }
+        left = right;
+      }
+      standardize(irs);
+    }
+  } while (toContinue);
 }
 
 void IROptimizer::constPassGlobal() {
@@ -508,11 +767,34 @@ void IROptimizer::optimize() {
          it != funcIRs.end(); it++)
       processedSize += it->second.size();
   } while (originSize != processedSize);
+  constLoopExpand();
   funcInline();
   global2Local();
   splitArrays();
   singleVar2Reg();
   deadCodeElimination();
+  splitTemps();
+  constLoopExpand();
+  processedSize = 0;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++)
+    processedSize += it->second.size();
+  do {
+    originSize = processedSize;
+    optimizeFlow();
+    peepholeOptimize();
+    deadCodeElimination();
+    constPassGlobal();
+    constPassBlock();
+    assignPass();
+    deadCodeElimination();
+    optimizeFlow();
+    processedSize = 0;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++)
+      processedSize += it->second.size();
+  } while (originSize != processedSize);
+  constLoopExpand();
   splitTemps();
   processedSize = 0;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();

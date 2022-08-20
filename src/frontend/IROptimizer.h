@@ -12,6 +12,7 @@
 class IROptimizer {
 private:
   void assignPass();
+  void constLoopExpand();
   void constPassBlock();
   void constPassGlobal();
   void deadCodeElimination();
