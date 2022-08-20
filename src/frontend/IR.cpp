@@ -32,6 +32,13 @@ IR::IR(IRType type, const vector<IRItem *> &items) {
   this->items = items;
 }
 
+IR *IR::clone() {
+  IR *newIR = new IR(type);
+  for (IRItem *item : items)
+    newIR->items.push_back(item->clone());
+  return newIR;
+}
+
 string IR::toString() {
   string s = to_string(irId) + "\t" + irTypeStr[type];
   for (IRItem *item : items) {

@@ -33,6 +33,7 @@ public:
   Symbol(SymbolType, DataType, const std::string &, const std::vector<int> &,
          const std::unordered_map<int, int> &);
 
+  Symbol *clone();
   std::string toString();
 };
 

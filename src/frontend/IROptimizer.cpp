@@ -145,7 +145,6 @@ void IROptimizer::constPassGlobal() {
         } else if (ir->items[0]->type == IRItem::ITEMP &&
                    ir->items[1]->type == IRItem::INT) {
           temp2Int[ir->items[0]->iVal] = ir->items[1]->iVal;
-          defCounter[ir->items[0]->iVal]++;
         }
       }
       if (!ir->items.empty() && (ir->items[0]->type == IRItem::FTEMP ||
@@ -354,6 +353,130 @@ void IROptimizer::deadCodeElimination() {
   }
 }
 
+void IROptimizer::funcInline() {
+  reassignTempId();
+  unsigned originSize;
+  do {
+    originSize = funcIRs.size();
+    unordered_set<Symbol *> toInlineFuncs = getInlinableFuncs();
+    for (Symbol *toInlineFunc : toInlineFuncs) {
+      for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+           it != funcIRs.end(); it++) {
+        Symbol *func = it->first;
+        vector<IR *> &irs = it->second;
+        if (func == toInlineFunc)
+          continue;
+        vector<IR *> newIRs;
+        bool lastIsInlineCall = false;
+        IRItem *retItem = nullptr;
+        unordered_set<Symbol *> arrs;
+        for (Symbol *param : toInlineFunc->params)
+          if (!param->dimensions.empty())
+            arrs.insert(param);
+        for (IR *ir : irs) {
+          if (lastIsInlineCall && ir->type == IR::MOV &&
+              ir->items[1]->type == IRItem::RETURN) {
+            ir->items[1] = retItem->clone();
+            newIRs.push_back(ir);
+            lastIsInlineCall = false;
+            continue;
+          }
+          if (ir->type != IR::CALL) {
+            newIRs.push_back(ir);
+            lastIsInlineCall = false;
+            continue;
+          }
+          if (ir->items[0]->symbol != toInlineFunc) {
+            newIRs.push_back(ir);
+            lastIsInlineCall = false;
+            continue;
+          }
+          lastIsInlineCall = true;
+          if (toInlineFunc->dataType == Symbol::FLOAT)
+            retItem = new IRItem(IRItem::FTEMP, tempId++);
+          if (toInlineFunc->dataType == Symbol::INT)
+            retItem = new IRItem(IRItem::ITEMP, tempId++);
+          unordered_map<Symbol *, IRItem *> symbol2IRItem;
+          for (unsigned i = 0; i < toInlineFunc->params.size(); i++)
+            symbol2IRItem[toInlineFunc->params[i]] = ir->items[i + 1];
+          vector<IR *> inlineIRs;
+          unordered_map<IR *, unsigned> irIdMap;
+          unordered_map<unsigned, unsigned> tempIds;
+          unordered_map<Symbol *, Symbol *> localVarOld2New;
+          for (unsigned i = 0; i < funcIRs[toInlineFunc].size(); i++) {
+            irIdMap[funcIRs[toInlineFunc][i]] = i;
+            IR *inlineIR = funcIRs[toInlineFunc][i]->clone();
+            inlineIRs.push_back(inlineIR);
+            if (inlineIR->type == IR::MOV &&
+                inlineIR->items[0]->type == IRItem::RETURN)
+              inlineIR->items[0] = retItem->clone();
+            for (unsigned j = 0; j < inlineIR->items.size(); j++) {
+              if (inlineIR->items[j]->type == IRItem::SYMBOL &&
+                  inlineIR->items[j]->symbol->symbolType == Symbol::LOCAL_VAR) {
+                if (localVarOld2New.find(inlineIR->items[j]->symbol) ==
+                    localVarOld2New.end()) {
+                  Symbol *newSymbol = inlineIR->items[j]->symbol->clone();
+                  localVars[func].push_back(newSymbol);
+                  localVarOld2New[inlineIR->items[j]->symbol] = newSymbol;
+                }
+                inlineIR->items[j]->symbol =
+                    localVarOld2New[inlineIR->items[j]->symbol];
+              }
+              if (inlineIR->items[j]->type == IRItem::SYMBOL &&
+                  inlineIR->items[j]->symbol->symbolType == Symbol::PARAM) {
+                inlineIR->items[j] =
+                    symbol2IRItem[inlineIR->items[j]->symbol]->clone();
+                continue;
+              }
+              if ((inlineIR->items[j]->type == IRItem::FTEMP ||
+                   inlineIR->items[j]->type == IRItem::ITEMP) &&
+                  (retItem == nullptr ||
+                   inlineIR->items[j]->iVal != retItem->iVal)) {
+                if (tempIds.find(inlineIR->items[j]->iVal) == tempIds.end())
+                  tempIds[inlineIR->items[j]->iVal] = tempId++;
+                inlineIR->items[j]->iVal = tempIds[inlineIR->items[j]->iVal];
+              }
+            }
+          }
+          for (unsigned i = 0; i < inlineIRs.size(); i++)
+            if (inlineIRs[i]->type == IR::BEQ ||
+                inlineIRs[i]->type == IR::BGE ||
+                inlineIRs[i]->type == IR::BGT ||
+                inlineIRs[i]->type == IR::BLE ||
+                inlineIRs[i]->type == IR::BLT ||
+                inlineIRs[i]->type == IR::BNE || inlineIRs[i]->type == IR::GOTO)
+              inlineIRs[i]->items[0]->ir =
+                  inlineIRs[irIdMap[inlineIRs[i]->items[0]->ir]];
+          newIRs.insert(newIRs.end(), inlineIRs.begin(), inlineIRs.end());
+        }
+        passArr(newIRs);
+        irs = newIRs;
+      }
+    }
+    deadCodeElimination();
+  } while (originSize != funcIRs.size());
+}
+
+unordered_set<Symbol *> IROptimizer::getInlinableFuncs() {
+  unordered_set<Symbol *> funcs;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    Symbol *func = it->first;
+    if (!func->name.compare("main"))
+      continue;
+    vector<IR *> &irs = it->second;
+    bool flag = true;
+    for (IR *ir : irs)
+      if (ir->type == IR::CALL && ir->items[0]->symbol == func) {
+        flag = false;
+        break;
+      }
+    if (flag)
+      funcs.insert(func);
+  }
+  return funcs;
+}
+
 void IROptimizer::optimize() {
   singleVar2Reg();
   deadCodeElimination();
@@ -376,6 +499,27 @@ void IROptimizer::optimize() {
     deadCodeElimination();
     constPassGlobal();
     constPassBlock();
+    assignPass();
+    deadCodeElimination();
+    optimizeFlow();
+    processedSize = 0;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++)
+      processedSize += it->second.size();
+  } while (originSize != processedSize);
+  funcInline();
+  processedSize = 0;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++)
+    processedSize += it->second.size();
+  do {
+    originSize = processedSize;
+    optimizeFlow();
+    peepholeOptimize();
+    deadCodeElimination();
+    constPassGlobal();
+    constPassBlock();
+    assignPass();
     deadCodeElimination();
     optimizeFlow();
     processedSize = 0;
@@ -470,6 +614,32 @@ void IROptimizer::optimizeFlow() {
   }
 }
 
+void IROptimizer::passArr(vector<IR *> &irs) {
+  unordered_map<unsigned, IR *> temp2Arr;
+  for (IR *ir : irs) {
+    if (ir->type == IR::MOV && ir->items[0]->type == IRItem::ITEMP &&
+        ir->items[1]->type == IRItem::SYMBOL &&
+        ir->items.size() - 2 < ir->items[1]->symbol->dimensions.size()) {
+      temp2Arr[ir->items[0]->iVal] = ir;
+      continue;
+    }
+    if (ir->type == IR::MOV && ir->items[1]->type == IRItem::ITEMP &&
+        temp2Arr.find(ir->items[1]->iVal) != temp2Arr.end()) {
+      IR *arrIR = temp2Arr[ir->items[1]->iVal];
+      ir->items[1] = arrIR->items[1]->clone();
+      for (unsigned i = 2; i < arrIR->items.size(); i++)
+        ir->items.insert(ir->items.begin() + i, arrIR->items[i]->clone());
+    }
+    if (ir->type == IR::MOV && ir->items[0]->type == IRItem::ITEMP &&
+        temp2Arr.find(ir->items[0]->iVal) != temp2Arr.end()) {
+      IR *arrIR = temp2Arr[ir->items[0]->iVal];
+      ir->items[0] = arrIR->items[1]->clone();
+      for (unsigned i = 2; i < arrIR->items.size(); i++)
+        ir->items.insert(ir->items.begin() + i, arrIR->items[i]->clone());
+    }
+  }
+}
+
 void IROptimizer::peepholeOptimize() {
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++) {
@@ -510,20 +680,6 @@ void IROptimizer::peepholeOptimize() {
         continue;
       }
       if (irs[i]->type == IR::MOV && irs[i + 1]->type == IR::MOV) {
-        if (irs[i]->items[0]->type == IRItem::RETURN &&
-            irs[i + 1]->items[1]->type == IRItem::RETURN &&
-            irs[i]->items[1]->equals(irs[i + 1]->items[0])) {
-          newIRs.push_back(irs[i]);
-          i++;
-          continue;
-        }
-        if (irs[i]->items[1]->type == IRItem::RETURN &&
-            irs[i + 1]->items[0]->type == IRItem::RETURN &&
-            irs[i]->items[1]->equals(irs[i + 1]->items[0])) {
-          newIRs.push_back(irs[i]);
-          i++;
-          continue;
-        }
         if (irs[i]->items.size() == 2 && irs[i + 1]->items.size() == 2 &&
             irs[i]->items[0]->type == IRItem::SYMBOL &&
             irs[i]->items[0]->equals(irs[i + 1]->items[1]))
@@ -538,11 +694,117 @@ void IROptimizer::peepholeOptimize() {
         irs[i]->items[0] = irs[i]->items[1]->clone();
         swap(irs[i + 1]->items[0], irs[i + 1]->items[1]);
       }
+      if (irs[i]->type == IR::ADD && irs[i + 1]->type == IR::ADD &&
+          irs[i]->items[0]->type == IRItem::ITEMP &&
+          irs[i + 1]->items[0]->type == IRItem::ITEMP &&
+          irs[i]->items[2]->type == IRItem::INT &&
+          irs[i + 1]->items[2]->type == IRItem::INT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->iVal =
+            irs[i]->items[2]->iVal + irs[i + 1]->items[2]->iVal;
+      }
+      if (irs[i]->type == IR::ADD && irs[i + 1]->type == IR::SUB &&
+          irs[i]->items[0]->type == IRItem::ITEMP &&
+          irs[i + 1]->items[0]->type == IRItem::ITEMP &&
+          irs[i]->items[2]->type == IRItem::INT &&
+          irs[i + 1]->items[2]->type == IRItem::INT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->iVal =
+            irs[i + 1]->items[2]->iVal - irs[i]->items[2]->iVal;
+      }
+      if (irs[i]->type == IR::SUB && irs[i + 1]->type == IR::ADD &&
+          irs[i]->items[0]->type == IRItem::ITEMP &&
+          irs[i + 1]->items[0]->type == IRItem::ITEMP &&
+          irs[i]->items[2]->type == IRItem::INT &&
+          irs[i + 1]->items[2]->type == IRItem::INT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->iVal =
+            irs[i + 1]->items[2]->iVal - irs[i]->items[2]->iVal;
+      }
+      if (irs[i]->type == IR::SUB && irs[i + 1]->type == IR::SUB &&
+          irs[i]->items[0]->type == IRItem::ITEMP &&
+          irs[i + 1]->items[0]->type == IRItem::ITEMP &&
+          irs[i]->items[2]->type == IRItem::INT &&
+          irs[i + 1]->items[2]->type == IRItem::INT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->iVal =
+            irs[i]->items[2]->iVal + irs[i + 1]->items[2]->iVal;
+      }
+      if (irs[i]->type == IR::ADD && irs[i + 1]->type == IR::ADD &&
+          irs[i]->items[0]->type == IRItem::FTEMP &&
+          irs[i + 1]->items[0]->type == IRItem::FTEMP &&
+          irs[i]->items[2]->type == IRItem::FLOAT &&
+          irs[i + 1]->items[2]->type == IRItem::FLOAT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->fVal =
+            irs[i]->items[2]->fVal + irs[i + 1]->items[2]->fVal;
+      }
+      if (irs[i]->type == IR::ADD && irs[i + 1]->type == IR::SUB &&
+          irs[i]->items[0]->type == IRItem::FTEMP &&
+          irs[i + 1]->items[0]->type == IRItem::FTEMP &&
+          irs[i]->items[2]->type == IRItem::FLOAT &&
+          irs[i + 1]->items[2]->type == IRItem::FLOAT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->fVal =
+            irs[i + 1]->items[2]->fVal - irs[i]->items[2]->fVal;
+      }
+      if (irs[i]->type == IR::SUB && irs[i + 1]->type == IR::ADD &&
+          irs[i]->items[0]->type == IRItem::FTEMP &&
+          irs[i + 1]->items[0]->type == IRItem::FTEMP &&
+          irs[i]->items[2]->type == IRItem::FLOAT &&
+          irs[i + 1]->items[2]->type == IRItem::FLOAT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->fVal =
+            irs[i + 1]->items[2]->fVal - irs[i]->items[2]->fVal;
+      }
+      if (irs[i]->type == IR::SUB && irs[i + 1]->type == IR::SUB &&
+          irs[i]->items[0]->type == IRItem::FTEMP &&
+          irs[i + 1]->items[0]->type == IRItem::FTEMP &&
+          irs[i]->items[2]->type == IRItem::FLOAT &&
+          irs[i + 1]->items[2]->type == IRItem::FLOAT &&
+          irs[i]->items[0]->equals(irs[i + 1]->items[1]) &&
+          !irs[i]->items[0]->equals(irs[i]->items[1])) {
+        irs[i + 1]->items[1] = irs[i]->items[1]->clone();
+        irs[i + 1]->items[2]->fVal =
+            irs[i]->items[2]->fVal + irs[i + 1]->items[2]->fVal;
+      }
       newIRs.push_back(irs[i]);
     }
     while (!newIRs.empty() && newIRs.back()->type == IR::NOP)
       newIRs.pop_back();
     irs = newIRs;
+  }
+}
+
+void IROptimizer::reassignTempId() {
+  tempId = 0;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    unordered_map<unsigned, unsigned> reassignMap;
+    for (IR *ir : irs)
+      for (IRItem *item : ir->items)
+        if ((item->type == IRItem::FTEMP || item->type == IRItem::ITEMP) &&
+            reassignMap.find(item->iVal) == reassignMap.end())
+          reassignMap[item->iVal] = tempId++;
+    for (IR *ir : irs)
+      for (IRItem *item : ir->items)
+        if (item->type == IRItem::FTEMP || item->type == IRItem::ITEMP)
+          item->iVal = reassignMap[item->iVal];
   }
 }
 
@@ -1019,7 +1281,7 @@ void IROptimizer::standardize(vector<IR *> &irs) {
     case IR::NEG:
       if (ir->items[1]->type == IRItem::FLOAT) {
         ir->type = IR::MOV;
-        ir->items[1]->iVal = -ir->items[1]->fVal;
+        ir->items[1]->fVal = -ir->items[1]->fVal;
       } else if (ir->items[1]->type == IRItem::INT) {
         ir->type = IR::MOV;
         ir->items[1]->iVal = -ir->items[1]->iVal;

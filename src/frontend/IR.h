@@ -45,10 +45,11 @@ public:
   IRType type;
   std::vector<IRItem *> items;
 
-  std::string toString();
-
   IR(IRType);
   IR(IRType, const std::vector<IRItem *> &);
+
+  IR *clone();
+  std::string toString();
 };
 
 #endif

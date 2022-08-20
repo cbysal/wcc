@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "backend/ASM.h"
@@ -12,6 +13,7 @@ extern unsigned stopLineno;
 extern std::vector<Token *> tokens;
 extern AST *root;
 extern std::vector<Symbol *> symbols;
+extern std::unordered_set<Symbol *> syscalls;
 extern std::vector<Symbol *> consts;
 extern std::vector<Symbol *> globalVars;
 extern std::unordered_map<Symbol *, std::vector<Symbol *>> localVars;

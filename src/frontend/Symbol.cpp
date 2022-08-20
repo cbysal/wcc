@@ -78,6 +78,17 @@ Symbol::Symbol(SymbolType symbolType, DataType dataType, const string &name,
   this->iMap = iMap;
 }
 
+Symbol *Symbol::clone() {
+  Symbol *newSymbol = new Symbol(symbolType, dataType, name);
+  for (Symbol *param : params)
+    newSymbol->params.push_back(param->clone());
+  newSymbol->dimensions = dimensions;
+  newSymbol->iVal = iVal;
+  newSymbol->fMap = fMap;
+  newSymbol->iMap = iMap;
+  return newSymbol;
+}
+
 string Symbol::toString() {
   bool first = true;
   string s = "(" + symbolTypeStr[symbolType] + ", " + name + ", ";

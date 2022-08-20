@@ -60,6 +60,7 @@ void SyntaxParser::initSymbols() {
   Symbol *param1, *param2;
   // getint
   func = new Symbol(Symbol::FUNC, Symbol::INT, "getint", vector<Symbol *>());
+  syscalls.insert(func);
   symbols.push_back(func);
   symbolStack.back()["getint"] = func;
   // getch
@@ -70,18 +71,21 @@ void SyntaxParser::initSymbols() {
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>{-1});
   func = new Symbol(Symbol::FUNC, Symbol::INT, "getarray",
                     vector<Symbol *>{param1});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbolStack.back()["getarray"] = func;
   // getfloat
   func =
       new Symbol(Symbol::FUNC, Symbol::FLOAT, "getfloat", vector<Symbol *>());
+  syscalls.insert(func);
   symbols.push_back(func);
   symbolStack.back()["getfloat"] = func;
   // getfarray
   param1 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>{-1});
   func = new Symbol(Symbol::FUNC, Symbol::INT, "getfarray",
                     vector<Symbol *>{param1});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbolStack.back()["getfarray"] = func;
@@ -89,6 +93,7 @@ void SyntaxParser::initSymbols() {
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putint",
                     vector<Symbol *>{param1});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbolStack.back()["putint"] = func;
@@ -96,6 +101,7 @@ void SyntaxParser::initSymbols() {
   param1 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>());
   func =
       new Symbol(Symbol::FUNC, Symbol::VOID, "putch", vector<Symbol *>{param1});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbolStack.back()["putch"] = func;
@@ -104,6 +110,7 @@ void SyntaxParser::initSymbols() {
   param2 = new Symbol(Symbol::PARAM, Symbol::INT, "a", vector<int>{-1});
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putarray",
                     vector<Symbol *>{param1, param2});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbols.push_back(param2);
@@ -112,6 +119,7 @@ void SyntaxParser::initSymbols() {
   param1 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>());
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfloat",
                     vector<Symbol *>{param1});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbolStack.back()["putfloat"] = func;
@@ -120,6 +128,7 @@ void SyntaxParser::initSymbols() {
   param2 = new Symbol(Symbol::PARAM, Symbol::FLOAT, "a", vector<int>{-1});
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "putfarray",
                     vector<Symbol *>{param1, param2});
+  syscalls.insert(func);
   symbols.push_back(func);
   symbols.push_back(param1);
   symbols.push_back(param2);
@@ -127,11 +136,13 @@ void SyntaxParser::initSymbols() {
   // starttime
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_starttime",
                     vector<Symbol *>());
+  syscalls.insert(func);
   symbols.push_back(func);
   symbolStack.back()["starttime"] = func;
   // stoptime
   func = new Symbol(Symbol::FUNC, Symbol::VOID, "_sysy_stoptime",
                     vector<Symbol *>());
+  syscalls.insert(func);
   symbols.push_back(func);
   symbolStack.back()["stoptime"] = func;
 }

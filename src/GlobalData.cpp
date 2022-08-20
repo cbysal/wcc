@@ -7,6 +7,7 @@ unsigned stopLineno;
 vector<Token *> tokens;
 AST *root;
 vector<Symbol *> symbols;
+unordered_set<Symbol *> syscalls;
 vector<Symbol *> consts;
 vector<Symbol *> globalVars;
 unordered_map<Symbol *, vector<Symbol *>> localVars;
@@ -20,6 +21,7 @@ void initGlobalData() {
   tokens.clear();
   root = nullptr;
   symbols.clear();
+  syscalls.clear();
   consts.clear();
   globalVars.clear();
   localVars.clear();

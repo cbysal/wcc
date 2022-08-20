@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include "LinearRegAllocator.h"
 
@@ -270,21 +271,13 @@ void LinearRegAllocator::preProcess() {
 void LinearRegAllocator::reassignTempId() {
   unordered_map<unsigned, unsigned> reassignMap;
   for (IR *ir : irs) {
-    for (IRItem *item : ir->items) {
-      if (item->type != IRItem::FTEMP && item->type != IRItem::ITEMP)
-        continue;
-      if (reassignMap.find(item->iVal) != reassignMap.end())
-        continue;
-      reassignMap[item->iVal] = tempNum++;
-    }
-  }
-  for (IR *ir : irs) {
     ir->irId = irNum++;
-    for (IRItem *item : ir->items) {
-      if (item->type != IRItem::FTEMP && item->type != IRItem::ITEMP)
-        continue;
-      item->iVal = reassignMap[item->iVal];
-    }
+    for (IRItem *item : ir->items)
+      if (item->type == IRItem::FTEMP || item->type == IRItem::ITEMP) {
+        if (reassignMap.find(item->iVal) == reassignMap.end())
+          reassignMap[item->iVal] = tempNum++;
+        item->iVal = reassignMap[item->iVal];
+      }
   }
   prevMap.resize(irNum);
   lifespan.resize(tempNum);

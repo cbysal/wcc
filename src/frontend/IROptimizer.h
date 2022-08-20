@@ -2,6 +2,7 @@
 #define __IR_OPTIMIZER_H__
 
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -14,9 +15,13 @@ private:
   void constPassBlock();
   void constPassGlobal();
   void deadCodeElimination();
+  std::unordered_set<Symbol *> getInlinableFuncs();
+  void funcInline();
   void optimizeFlow();
+  void passArr(std::vector<IR *> &);
   void passInBlock(unsigned, unsigned);
   void peepholeOptimize();
+  void reassignTempId();
   void singleVar2Reg();
   void splitTemps();
   void standardize(std::vector<IR *> &);

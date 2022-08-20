@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     syntaxParser.parseRoot();
     astOptimizer.optimize();
     irParser.parseRoot();
-    ssaOptimizer.process();
+    // ssaOptimizer.process();
     irOptimizer.optimize();
     asmParser.parse();
     asmOptimizer.optimize();
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     syntaxParser.parseRoot();
     astOptimizer.optimize();
     irParser.parseRoot();
-    ssaOptimizer.process();
+    // ssaOptimizer.process();
     irOptimizer.optimize();
     asmParser.parse();
     asmOptimizer.optimize();
