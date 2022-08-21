@@ -15,6 +15,7 @@ private:
   void constLoopExpand();
   void constPassBlock();
   void constPassGlobal();
+  void deadArrayAssignElimination();
   void deadCodeElimination();
   std::unordered_set<Symbol *> getInlinableFuncs();
   void funcInline();

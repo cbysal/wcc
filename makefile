@@ -7,20 +7,18 @@ compiler: testbench $(TARGET_DIR) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(
 	$(TARGET_DIR)/ASMParserAdd.o $(TARGET_DIR)/ASMParserBasic.o $(TARGET_DIR)/ASMParserCmp.o \
 	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
 	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
-	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
-	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o \
-	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
-	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
+	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o \
+	$(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o \
+	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/Symbol.o \
+	$(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o
 	$(CC) $(CFLAGS) $(TARGET_DIR)/ASM.o $(TARGET_DIR)/ASMItem.o $(TARGET_DIR)/ASMOptimizer.o \
 	$(TARGET_DIR)/ASMParserAdd.o $(TARGET_DIR)/ASMParserBasic.o $(TARGET_DIR)/ASMParserCmp.o \
 	$(TARGET_DIR)/ASMParserDiv.o $(TARGET_DIR)/ASMParserMod.o $(TARGET_DIR)/ASMParserMov.o \
 	$(TARGET_DIR)/ASMParserMul.o $(TARGET_DIR)/ASMParserSub.o $(TARGET_DIR)/ASMWriter.o $(TARGET_DIR)/AST.o \
-	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/BasicBlock.o $(TARGET_DIR)/ColoringRegAllocator.o \
-	$(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o $(TARGET_DIR)/IR.o \
-	$(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o $(TARGET_DIR)/LexicalParser.o \
-	$(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/RegFile.o $(TARGET_DIR)/SSAOptimizer.o \
-	$(TARGET_DIR)/Symbol.o $(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
+	$(TARGET_DIR)/ASTOptimizer.o $(TARGET_DIR)/Compiler.o $(TARGET_DIR)/GlobalData.o $(TARGET_DIR)/HardCoding.o \
+	$(TARGET_DIR)/IR.o $(TARGET_DIR)/IRItem.o $(TARGET_DIR)/IROptimizer.o $(TARGET_DIR)/IRParser.o \
+	$(TARGET_DIR)/LexicalParser.o $(TARGET_DIR)/LinearRegAllocator.o $(TARGET_DIR)/Reg.o $(TARGET_DIR)/Symbol.o \
+	$(TARGET_DIR)/SyntaxParser.o $(TARGET_DIR)/Token.o -o compiler
 
 $(TARGET_DIR)/ASM.o: src/backend/ASM.cpp src/backend/ASM.h
 	$(CC) $(CFLAGS) -c src/backend/ASM.cpp -o $(TARGET_DIR)/ASM.o
@@ -64,14 +62,8 @@ $(TARGET_DIR)/AST.o: src/frontend/AST.cpp src/frontend/AST.h
 $(TARGET_DIR)/ASTOptimizer.o: src/frontend/ASTOptimizer.cpp src/frontend/ASTOptimizer.h
 	$(CC) $(CFLAGS) -c src/frontend/ASTOptimizer.cpp -o $(TARGET_DIR)/ASTOptimizer.o
 
-$(TARGET_DIR)/BasicBlock.o: src/backend/BasicBlock.cpp src/backend/BasicBlock.h
-	$(CC) $(CFLAGS) -c src/backend/BasicBlock.cpp -o $(TARGET_DIR)/BasicBlock.o
-
 $(TARGET_DIR)/Compiler.o: src/Compiler.cpp src
 	$(CC) $(CFLAGS) -c src/Compiler.cpp -o $(TARGET_DIR)/Compiler.o
-
-$(TARGET_DIR)/ColoringRegAllocator.o: src/backend/ColoringRegAllocator.cpp src/backend/ColoringRegAllocator.h
-	$(CC) $(CFLAGS) -c src/backend/ColoringRegAllocator.cpp -o $(TARGET_DIR)/ColoringRegAllocator.o
 
 $(TARGET_DIR)/GlobalData.o: src/GlobalData.cpp src/GlobalData.h
 	$(CC) $(CFLAGS) -c src/GlobalData.cpp -o $(TARGET_DIR)/GlobalData.o
@@ -99,12 +91,6 @@ $(TARGET_DIR)/LinearRegAllocator.o: src/backend/LinearRegAllocator.cpp src/backe
 
 $(TARGET_DIR)/Reg.o: src/backend/Reg.cpp src/backend/Reg.h
 	$(CC) $(CFLAGS) -c src/backend/Reg.cpp -o $(TARGET_DIR)/Reg.o
-
-$(TARGET_DIR)/RegFile.o: src/backend/RegFile.cpp src/backend/RegFile.h
-	$(CC) $(CFLAGS) -c src/backend/RegFile.cpp -o $(TARGET_DIR)/RegFile.o
-
-$(TARGET_DIR)/SSAOptimizer.o: src/frontend/SSAOptimizer.cpp src/frontend/SSAOptimizer.h
-	$(CC) $(CFLAGS) -c src/frontend/SSAOptimizer.cpp -o $(TARGET_DIR)/SSAOptimizer.o
 
 $(TARGET_DIR)/Symbol.o: src/frontend/Symbol.cpp src/frontend/Symbol.h
 	$(CC) $(CFLAGS) -c src/frontend/Symbol.cpp -o $(TARGET_DIR)/Symbol.o

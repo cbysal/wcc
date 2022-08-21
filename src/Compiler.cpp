@@ -13,7 +13,6 @@
 #include "frontend/IROptimizer.h"
 #include "frontend/IRParser.h"
 #include "frontend/LexicalParser.h"
-#include "frontend/SSAOptimizer.h"
 #include "frontend/SyntaxParser.h"
 
 using namespace std;
@@ -22,7 +21,6 @@ LexicalParser lexicalParser;
 SyntaxParser syntaxParser;
 ASTOptimizer astOptimizer;
 IRParser irParser;
-SSAOptimizer ssaOptimizer;
 IROptimizer irOptimizer;
 ASMParser asmParser;
 ASMOptimizer asmOptimizer;
@@ -39,7 +37,6 @@ int main(int argc, char *argv[]) {
     syntaxParser.parseRoot();
     astOptimizer.optimize();
     irParser.parseRoot();
-    // ssaOptimizer.process();
     irOptimizer.optimize();
     asmParser.parse();
     asmOptimizer.optimize();
@@ -51,7 +48,6 @@ int main(int argc, char *argv[]) {
     syntaxParser.parseRoot();
     astOptimizer.optimize();
     irParser.parseRoot();
-    // ssaOptimizer.process();
     irOptimizer.optimize();
     asmParser.parse();
     asmOptimizer.optimize();

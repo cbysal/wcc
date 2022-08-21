@@ -94,30 +94,27 @@ void IROptimizer::constLoopExpand() {
         unsigned endId = i;
         if (beginId >= endId)
           continue;
-        if (irs[endId]->items[2]->type != IRItem::FLOAT &&
-            irs[endId]->items[2]->type != IRItem::INT)
+        if (irs[endId]->items[2]->type != IRItem::INT)
           continue;
         int loopTempId = irs[endId]->items[1]->iVal;
         int loopTempDefId = beginId - 1;
         while (loopTempDefId >= 0) {
-          if (irs[loopTempDefId]->items.empty()) {
-            loopTempDefId--;
-            continue;
-          }
-          if (irs[loopTempDefId]->items[0]->type != IRItem::FTEMP &&
-              irs[loopTempDefId]->items[0]->type != IRItem::ITEMP) {
-            loopTempDefId--;
-            continue;
-          }
-          if (irs[loopTempDefId]->items[0]->iVal == loopTempId)
+          bool flag = false;
+          for (IRItem *item : irs[loopTempDefId]->items)
+            if (item->type == IRItem::ITEMP && item->iVal == loopTempId) {
+              flag = true;
+              break;
+            }
+          if (flag)
             break;
           loopTempDefId--;
         }
         if (loopTempDefId < 0)
           continue;
         if (irs[loopTempDefId]->type != IR::MOV ||
-            (irs[loopTempDefId]->items[1]->type != IRItem::FLOAT &&
-             irs[loopTempDefId]->items[1]->type != IRItem::INT))
+            irs[loopTempDefId]->items[0]->type != IRItem::ITEMP ||
+            irs[loopTempDefId]->items[0]->iVal != loopTempId ||
+            irs[loopTempDefId]->items[1]->type != IRItem::INT)
           continue;
         int loopVal = irs[loopTempDefId]->items[1]->iVal;
         bool flag = true;
@@ -347,6 +344,9 @@ void IROptimizer::constPassBlock() {
           right++;
         unordered_map<unsigned, unsigned> temp2Int;
         unordered_map<unsigned, unsigned> temp2Float;
+        unordered_set<Symbol *> modifiedArrays;
+        unordered_map<Symbol *, unordered_map<unsigned, unsigned>> arr2Int;
+        unordered_map<Symbol *, unordered_map<unsigned, unsigned>> arr2Float;
         for (unsigned i = left; i < right; i++) {
           for (unsigned j = 1; j < irs[i]->items.size(); j++) {
             if (irs[i]->items[j]->type == IRItem::FTEMP &&
@@ -373,6 +373,118 @@ void IROptimizer::constPassBlock() {
                 temp2Int[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
               else
                 temp2Int.erase(irs[i]->items[0]->iVal);
+            }
+            bool flag = irs[i]->items.size() > 2;
+            for (unsigned j = 2; j < irs[i]->items.size(); j++)
+              if (irs[i]->items[j]->type != IRItem::INT) {
+                flag = false;
+                break;
+              }
+            if (flag) {
+              if (irs[i]->items[0]->type == IRItem::SYMBOL &&
+                  irs[i]->items[1]->type == IRItem::FLOAT &&
+                  modifiedArrays.find(irs[i]->items[0]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[0]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[0]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                arr2Float[irs[i]->items[0]->symbol][size] =
+                    irs[i]->items[1]->iVal;
+              }
+              if (irs[i]->items[0]->type == IRItem::SYMBOL &&
+                  irs[i]->items[1]->type == IRItem::INT &&
+                  modifiedArrays.find(irs[i]->items[0]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[0]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[0]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                arr2Int[irs[i]->items[0]->symbol][size] =
+                    irs[i]->items[1]->iVal;
+              }
+              if (irs[i]->items[0]->type == IRItem::SYMBOL &&
+                  irs[i]->items[1]->type == IRItem::FTEMP &&
+                  modifiedArrays.find(irs[i]->items[0]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[0]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[0]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                if (temp2Float.find(irs[i]->items[1]->iVal) == temp2Float.end())
+                  arr2Float[irs[i]->items[0]->symbol].erase(size);
+                else
+                  arr2Float[irs[i]->items[0]->symbol][size] =
+                      temp2Float[irs[i]->items[1]->iVal];
+              }
+              if (irs[i]->items[0]->type == IRItem::SYMBOL &&
+                  irs[i]->items[1]->type == IRItem::ITEMP &&
+                  modifiedArrays.find(irs[i]->items[0]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[0]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[0]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                if (temp2Int.find(irs[i]->items[1]->iVal) == temp2Int.end())
+                  arr2Int[irs[i]->items[0]->symbol].erase(size);
+                else
+                  arr2Int[irs[i]->items[0]->symbol][size] =
+                      temp2Int[irs[i]->items[1]->iVal];
+              }
+              if (irs[i]->items[0]->type == IRItem::FTEMP &&
+                  irs[i]->items[1]->type == IRItem::SYMBOL &&
+                  modifiedArrays.find(irs[i]->items[1]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[1]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[1]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                if (arr2Float.find(irs[i]->items[1]->symbol) !=
+                        arr2Float.end() &&
+                    arr2Float[irs[i]->items[1]->symbol].find(size) !=
+                        arr2Float[irs[i]->items[1]->symbol].end()) {
+                  irs[i]->items.resize(2);
+                  irs[i]->items[1]->type = IRItem::FLOAT;
+                  irs[i]->items[1]->iVal =
+                      arr2Float[irs[i]->items[1]->symbol][size];
+                  temp2Float[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+                  toContinue = true;
+                }
+              }
+              if (irs[i]->items[0]->type == IRItem::ITEMP &&
+                  irs[i]->items[1]->type == IRItem::SYMBOL &&
+                  modifiedArrays.find(irs[i]->items[1]->symbol) ==
+                      modifiedArrays.end() &&
+                  irs[i]->items[1]->symbol->dimensions.size() + 2 ==
+                      irs[i]->items.size()) {
+                unsigned size = 0;
+                for (unsigned j = 2; j < irs[i]->items.size(); j++)
+                  size = size * irs[i]->items[1]->symbol->dimensions[j - 2] +
+                         irs[i]->items[j]->iVal;
+                if (arr2Int.find(irs[i]->items[1]->symbol) != arr2Int.end() &&
+                    arr2Int[irs[i]->items[1]->symbol].find(size) !=
+                        arr2Int[irs[i]->items[1]->symbol].end()) {
+                  irs[i]->items.resize(2);
+                  irs[i]->items[1]->type = IRItem::INT;
+                  irs[i]->items[1]->iVal =
+                      arr2Int[irs[i]->items[1]->symbol][size];
+                  temp2Int[irs[i]->items[0]->iVal] = irs[i]->items[1]->iVal;
+                  toContinue = true;
+                }
+              }
+            } else {
+              if (irs[i]->items[0]->type == IRItem::SYMBOL)
+                modifiedArrays.insert(irs[i]->items[0]->symbol);
             }
           } else if (!irs[i]->items.empty()) {
             if (irs[i]->items[0]->type == IRItem::FTEMP) {
@@ -429,6 +541,79 @@ void IROptimizer::constPassGlobal() {
           ir->items[j]->iVal = temp2Int[ir->items[j]->iVal];
         }
       }
+    }
+    standardize(irs);
+  }
+}
+
+void IROptimizer::deadArrayAssignElimination() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    unsigned left = 0, right = 0;
+    while (right < irs.size()) {
+      while (right < irs.size()) {
+        if (irs[right]->type == IR::BEQ || irs[right]->type == IR::BGE ||
+            irs[right]->type == IR::BGT || irs[right]->type == IR::BLE ||
+            irs[right]->type == IR::BLT || irs[right]->type == IR::BNE ||
+            irs[right]->type == IR::CALL || irs[right]->type == IR::GOTO ||
+            irs[right]->type == IR::LABEL)
+          break;
+        right++;
+      }
+      if (right < irs.size())
+        right++;
+      for (unsigned i = left; i < right; i++) {
+        if (irs[i]->type != IR::MOV || irs[i]->items.size() <= 2 ||
+            irs[i]->items[0]->type != IRItem::SYMBOL ||
+            irs[i]->items[0]->symbol->dimensions.empty())
+          continue;
+        int leftSize = 0;
+        for (unsigned j = 2; j < irs[i]->items.size(); j++)
+          leftSize = leftSize * irs[i]->items[0]->symbol->dimensions[j - 2] +
+                     irs[i]->items[j]->iVal;
+        for (unsigned j = i + 1; j < right; j++) {
+          if (irs[j]->type != IR::MOV || irs[j]->items.size() <= 2)
+            continue;
+          if (irs[j]->items[0]->type == IRItem::SYMBOL &&
+              irs[j]->items[0]->symbol == irs[i]->items[0]->symbol) {
+            bool flag = true;
+            int rightSize = 0;
+            for (unsigned k = 2; k < irs[j]->items.size(); k++) {
+              rightSize =
+                  rightSize * irs[j]->items[0]->symbol->dimensions[k - 2] +
+                  irs[j]->items[k]->iVal;
+              if (irs[j]->items[k]->type != IRItem::INT) {
+                flag = false;
+                break;
+              }
+            }
+            if (flag && leftSize == rightSize) {
+              irs.erase(irs.begin() + i);
+              i--;
+              right--;
+              break;
+            }
+          }
+          if (irs[j]->items[1]->type == IRItem::SYMBOL &&
+              irs[j]->items[1]->symbol == irs[i]->items[0]->symbol) {
+            bool flag = true;
+            int rightSize = 0;
+            for (unsigned k = 2; k < irs[j]->items.size(); k++) {
+              rightSize =
+                  rightSize * irs[j]->items[1]->symbol->dimensions[k - 2] +
+                  irs[j]->items[k]->iVal;
+              if (irs[j]->items[k]->type != IRItem::INT) {
+                flag = false;
+                break;
+              }
+            }
+            if (!flag || leftSize == rightSize)
+              break;
+          }
+        }
+      }
+      left = right;
     }
     standardize(irs);
   }
@@ -761,6 +946,7 @@ void IROptimizer::optimize() {
     constPassBlock();
     assignPass();
     deadCodeElimination();
+    deadArrayAssignElimination();
     optimizeFlow();
     processedSize = 0;
     for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
@@ -773,6 +959,7 @@ void IROptimizer::optimize() {
   splitArrays();
   singleVar2Reg();
   deadCodeElimination();
+  deadArrayAssignElimination();
   splitTemps();
   constLoopExpand();
   processedSize = 0;
@@ -788,6 +975,7 @@ void IROptimizer::optimize() {
     constPassBlock();
     assignPass();
     deadCodeElimination();
+    deadArrayAssignElimination();
     optimizeFlow();
     processedSize = 0;
     for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
@@ -795,6 +983,8 @@ void IROptimizer::optimize() {
       processedSize += it->second.size();
   } while (originSize != processedSize);
   constLoopExpand();
+  splitArrays();
+  singleVar2Reg();
   splitTemps();
   processedSize = 0;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
@@ -809,6 +999,7 @@ void IROptimizer::optimize() {
     constPassBlock();
     assignPass();
     deadCodeElimination();
+    deadArrayAssignElimination();
     optimizeFlow();
     processedSize = 0;
     for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
