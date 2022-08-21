@@ -98,17 +98,6 @@ void IROptimizer::constLoopExpand() {
           continue;
         int loopTempId = irs[endId]->items[1]->iVal;
         int loopTempDefId = beginId - 1;
-        while (loopTempDefId >= 0) {
-          bool flag = false;
-          for (IRItem *item : irs[loopTempDefId]->items)
-            if (item->type == IRItem::ITEMP && item->iVal == loopTempId) {
-              flag = true;
-              break;
-            }
-          if (flag)
-            break;
-          loopTempDefId--;
-        }
         if (loopTempDefId < 0)
           continue;
         if (irs[loopTempDefId]->type != IR::MOV ||
@@ -986,6 +975,27 @@ void IROptimizer::optimize() {
   splitArrays();
   singleVar2Reg();
   splitTemps();
+  processedSize = 0;
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++)
+    processedSize += it->second.size();
+  do {
+    originSize = processedSize;
+    optimizeFlow();
+    peepholeOptimize();
+    deadCodeElimination();
+    constPassGlobal();
+    constPassBlock();
+    assignPass();
+    deadCodeElimination();
+    deadArrayAssignElimination();
+    optimizeFlow();
+    processedSize = 0;
+    for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+         it != funcIRs.end(); it++)
+      processedSize += it->second.size();
+  } while (originSize != processedSize);
+  varLoopExpand();
   processedSize = 0;
   for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
        it != funcIRs.end(); it++)
@@ -1919,4 +1929,65 @@ void IROptimizer::standardize(vector<IR *> &irs) {
     }
   }
   irs = newIRs;
+}
+
+void IROptimizer::varLoopExpand() {
+  for (unordered_map<Symbol *, vector<IR *>>::iterator it = funcIRs.begin();
+       it != funcIRs.end(); it++) {
+    vector<IR *> &irs = it->second;
+    for (unsigned i = 1; i < irs.size(); i++) {
+      unordered_map<IR *, unsigned> irIdMap;
+      for (unsigned i = 0; i < irs.size(); i++)
+        irIdMap[irs[i]] = i;
+      if (!irs[i - 1]->items.empty() && !irs[i]->items.empty() &&
+          irs[i - 1]->type == IR::ADD &&
+          irs[i - 1]->items[0]->type == IRItem::ITEMP &&
+          irs[i - 1]->items[1]->type == IRItem::ITEMP &&
+          irs[i - 1]->items[2]->type == IRItem::INT &&
+          irs[i - 1]->items[0]->iVal == irs[i - 1]->items[1]->iVal &&
+          irs[i - 1]->items[2]->iVal == 1 && irs[i]->type == IR::BLT &&
+          irs[i]->items[1]->type == IRItem::ITEMP &&
+          irs[i - 1]->items[0]->iVal == irs[i]->items[1]->iVal &&
+          irs[i]->items[2]->type == IRItem::ITEMP) {
+        unsigned beginId = irIdMap[irs[i]->items[0]->ir];
+        unsigned endId = i;
+        unsigned loopTempId = irs[i]->items[1]->iVal;
+        if (beginId >= endId)
+          continue;
+        bool flag = true;
+        for (unsigned j = beginId + 1; j < endId - 1; j++) {
+          if (j == beginId)
+            continue;
+          if (irs[j]->type == IR::BEQ || irs[j]->type == IR::BGE ||
+              irs[j]->type == IR::BGT || irs[j]->type == IR::BLE ||
+              irs[j]->type == IR::BLT || irs[j]->type == IR::BNE ||
+              irs[j]->type == IR::GOTO || irs[j]->type == IR::LABEL) {
+            flag = false;
+            break;
+          }
+          if (irs[j]->items[0]->type == IRItem::ITEMP &&
+              (unsigned)irs[j]->items[0]->iVal == loopTempId) {
+            flag = false;
+            break;
+          }
+        }
+        if (!flag)
+          continue;
+        vector<IR *> extraIRs;
+        IR *label = new IR(IR::LABEL);
+        for (unsigned k = 0; k < 2; k++) {
+          for (unsigned j = beginId + 1; j < endId; j++)
+            extraIRs.push_back(irs[j]->clone());
+          extraIRs.push_back(
+              new IR(IR::BEQ,
+                     {new IRItem(label), new IRItem(IRItem::ITEMP, loopTempId),
+                      irs[endId]->items[2]->clone()}));
+        }
+        extraIRs.back() = label;
+        irs.erase(irs.begin() + beginId + 1, irs.begin() + endId);
+        irs.insert(irs.begin() + beginId + 1, extraIRs.begin(), extraIRs.end());
+        break;
+      }
+    }
+  }
 }

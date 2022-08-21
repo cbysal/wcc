@@ -29,6 +29,7 @@ private:
   void splitArrays();
   void splitTemps();
   void standardize(std::vector<IR *> &);
+  void varLoopExpand();
 
 public:
   void optimize();

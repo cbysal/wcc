@@ -134,7 +134,7 @@ string ASM::toString() {
       break;
     }
     s += "[" + regTypeStr[items[1]->reg];
-    if (items.size() == 3)
+    if (items.size() >= 3)
       switch (items[2]->type) {
       case ASMItem::INT:
         if (items[2]->iVal)
@@ -146,6 +146,18 @@ string ASM::toString() {
       default:
         break;
       }
+    if (items.size() >= 4) {
+      switch (items[3]->type) {
+      case ASMItem::LSL:
+        s += ", lsl #" + to_string(items[3]->iVal);
+        break;
+      case ASMItem::LSR:
+        s += ", lsr #" + to_string(items[3]->iVal);
+        break;
+      default:
+        break;
+      }
+    }
     s += "]";
     break;
   case LSL:

@@ -61,6 +61,41 @@ void ASMOptimizer::peepholeOptimize() {
           continue;
         }
       }
+      if ((asms[i]->type == ASM::ADD || asms[i]->type == ASM::SUB) &&
+          asms[i]->items[2]->type == ASMItem::INT && !asms[i]->items[2]->iVal &&
+          asms[i]->items.size() == 3) {
+        if (asms[i]->items[0]->reg == asms[i + 1]->items[0]->reg) {
+          bool flag = false;
+          for (unsigned j = 1; j < asms[i + 1]->items.size(); j++) {
+            if (asms[i + 1]->items[j]->type == ASMItem::REG &&
+                asms[i]->items[0]->reg == asms[i + 1]->items[j]->reg) {
+              asms[i + 1]->items[j]->reg = asms[i]->items[1]->reg;
+              flag = true;
+            }
+          }
+          if (flag) {
+            newASMs.push_back(asms[i + 1]);
+            i++;
+            continue;
+          }
+        }
+        newASMs.push_back(
+            new ASM(ASM::MOV, {asms[i]->items[0], asms[i]->items[1]}));
+        continue;
+      }
+      if (asms[i]->type == ASM::ADD && asms[i + 1]->type == ASM::LDR &&
+          asms[i + 1]->items.size() == 2) {
+        if (asms[i]->items[0]->reg == asms[i + 1]->items[0]->reg &&
+            asms[i]->items[0]->reg == asms[i + 1]->items[1]->reg) {
+          asms[i + 1]->items.pop_back();
+          asms[i + 1]->items.insert(asms[i + 1]->items.end(),
+                                    asms[i]->items.begin() + 1,
+                                    asms[i]->items.end());
+          newASMs.push_back(asms[i + 1]);
+          i++;
+          continue;
+        }
+      }
       if (asms[i]->type == ASM::MVN && asms[i + 1]->type == ASM::MOV) {
         if (asms[i]->items[0]->type == ASMItem::REG &&
             asms[i]->items[1]->type == ASMItem::INT &&
